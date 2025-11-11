@@ -57,6 +57,15 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        glass: {
+          bg: "hsla(var(--glass-bg))",
+          border: "hsla(var(--glass-border))",
+        },
+        neon: {
+          primary: "hsl(var(--neon-primary))",
+          accent: "hsl(var(--neon-accent))",
+          glow: "hsla(var(--neon-glow))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
