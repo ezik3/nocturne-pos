@@ -14,16 +14,302 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      floorplans: {
+        Row: {
+          canvas_height: number | null
+          canvas_width: number | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          items: Json | null
+          name: string
+          updated_at: string | null
+          venue_id: string
+        }
+        Insert: {
+          canvas_height?: number | null
+          canvas_width?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          items?: Json | null
+          name: string
+          updated_at?: string | null
+          venue_id?: string
+        }
+        Update: {
+          canvas_height?: number | null
+          canvas_width?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          items?: Json | null
+          name?: string
+          updated_at?: string | null
+          venue_id?: string
+        }
+        Relationships: []
+      }
+      order_items: {
+        Row: {
+          created_at: string | null
+          id: string
+          image_url: string | null
+          menu_item_id: string
+          modifiers: Json | null
+          name: string
+          notes: string | null
+          order_id: string
+          price: number
+          quantity: number
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          image_url?: string | null
+          menu_item_id: string
+          modifiers?: Json | null
+          name: string
+          notes?: string | null
+          order_id: string
+          price: number
+          quantity?: number
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          image_url?: string | null
+          menu_item_id?: string
+          modifiers?: Json | null
+          name?: string
+          notes?: string | null
+          order_id?: string
+          price?: number
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          created_at: string | null
+          customer_name: string | null
+          id: string
+          notes: string | null
+          order_number: number
+          priority: string | null
+          staff_id: string | null
+          station: string | null
+          status: string | null
+          subtotal: number | null
+          table_id: string | null
+          table_number: string | null
+          tax: number | null
+          total: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          customer_name?: string | null
+          id?: string
+          notes?: string | null
+          order_number?: never
+          priority?: string | null
+          staff_id?: string | null
+          station?: string | null
+          status?: string | null
+          subtotal?: number | null
+          table_id?: string | null
+          table_number?: string | null
+          tax?: number | null
+          total?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          customer_name?: string | null
+          id?: string
+          notes?: string | null
+          order_number?: never
+          priority?: string | null
+          staff_id?: string | null
+          station?: string | null
+          status?: string | null
+          subtotal?: number | null
+          table_id?: string | null
+          table_number?: string | null
+          tax?: number | null
+          total?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "venue_tables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string | null
+          id: string
+          order_id: string
+          payment_method: string
+          staff_id: string | null
+          status: string | null
+          transaction_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          id?: string
+          order_id: string
+          payment_method: string
+          staff_id?: string | null
+          status?: string | null
+          transaction_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          id?: string
+          order_id?: string
+          payment_method?: string
+          staff_id?: string | null
+          status?: string | null
+          transaction_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          full_name: string | null
+          id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      venue_tables: {
+        Row: {
+          capacity: number
+          created_at: string | null
+          floorplan_id: string | null
+          id: string
+          section: string | null
+          status: string | null
+          table_number: string
+          updated_at: string | null
+          x_position: number | null
+          y_position: number | null
+        }
+        Insert: {
+          capacity?: number
+          created_at?: string | null
+          floorplan_id?: string | null
+          id?: string
+          section?: string | null
+          status?: string | null
+          table_number: string
+          updated_at?: string | null
+          x_position?: number | null
+          y_position?: number | null
+        }
+        Update: {
+          capacity?: number
+          created_at?: string | null
+          floorplan_id?: string | null
+          id?: string
+          section?: string | null
+          status?: string | null
+          table_number?: string
+          updated_at?: string | null
+          x_position?: number | null
+          y_position?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_tables_floorplan_id_fkey"
+            columns: ["floorplan_id"]
+            isOneToOne: false
+            referencedRelation: "floorplans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "manager" | "staff" | "kitchen"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +436,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "manager", "staff", "kitchen"],
+    },
   },
 } as const
