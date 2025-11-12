@@ -12,6 +12,10 @@ import Kitchen from "./pages/POS/Kitchen";
 import Orders from "./pages/POS/Orders";
 import Menu from "./pages/POS/Menu";
 import Inventory from "./pages/POS/Inventory";
+import Tables from "./pages/POS/Tables";
+import Sales from "./pages/POS/Sales";
+import Staff from "./pages/POS/Staff";
+import Analytics from "./pages/POS/Analytics";
 import Settings from "./pages/POS/Settings";
 
 const queryClient = new QueryClient();
@@ -35,6 +39,10 @@ const App = () => (
                 <Route path="orders" element={<Orders />} />
                 <Route path="menu" element={<Menu />} />
                 <Route path="inventory" element={<Inventory />} />
+                <Route path="tables" element={<Tables />} />
+                <Route path="sales" element={<Sales />} />
+                <Route path="staff" element={<Staff />} />
+                <Route path="analytics" element={<Analytics />} />
                 <Route path="settings" element={<Settings />} />
                 <Route path="*" element={<Dashboard />} />
               </Routes>
