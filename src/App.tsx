@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { lazy, Suspense } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
@@ -22,7 +23,7 @@ import Sales from "./pages/POS/Sales";
 import Staff from "./pages/POS/Staff";
 import Analytics from "./pages/POS/Analytics";
 import Settings from "./pages/POS/Settings";
-import FloorplanEditor from "./pages/POS/FloorplanEditor";
+const FloorplanEditor = lazy(() => import("./pages/POS/FloorplanEditor"));
 
 const queryClient = new QueryClient();
 
@@ -51,7 +52,7 @@ const App = () => (
                     <Route path="menu" element={<Menu />} />
                     <Route path="inventory" element={<Inventory />} />
                     <Route path="tables" element={<Tables />} />
-                    <Route path="floorplan" element={<FloorplanEditor />} />
+                    <Route path="floorplan" element={<Suspense fallback={<div className="p-8">Loading Floorplan...</div>}><FloorplanEditor /></Suspense>} />
                     <Route path="sales" element={<Sales />} />
                     <Route path="staff" element={<Staff />} />
                     <Route path="analytics" element={<Analytics />} />
