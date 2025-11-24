@@ -24,6 +24,11 @@ import Staff from "./pages/POS/Staff";
 import Analytics from "./pages/POS/Analytics";
 import Settings from "./pages/POS/Settings";
 const FloorplanEditor = lazy(() => import("./pages/POS/FloorplanEditor"));
+import CustomerLayout from "./components/Customer/CustomerLayout";
+import Feed from "./pages/Customer/Feed";
+import Discover from "./pages/Customer/Discover";
+import Profile from "./pages/Customer/Profile";
+import VenueDetail from "./pages/Customer/VenueDetail";
 
 const queryClient = new QueryClient();
 
