@@ -35,9 +35,24 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth/login" element={<Login />} />
-            <Route path="/auth/signup" element={<Signup />} />
+          <Route path="/" element={<Index />} />
+          <Route path="/auth/login" element={<Login />} />
+          <Route path="/auth/signup" element={<Signup />} />
+          
+          {/* Customer App Routes */}
+          <Route path="/app/*" element={
+            <ProtectedRoute>
+              <CustomerLayout>
+                <Routes>
+                  <Route path="feed" element={<Feed />} />
+                  <Route path="discover" element={<Discover />} />
+                  <Route path="venue/:id" element={<VenueDetail />} />
+                  <Route path="profile" element={<Profile />} />
+                  <Route path="*" element={<Feed />} />
+                </Routes>
+              </CustomerLayout>
+            </ProtectedRoute>
+          } />
             
             {/* POS Routes - Protected */}
             <Route path="/venue/pos/*" element={
