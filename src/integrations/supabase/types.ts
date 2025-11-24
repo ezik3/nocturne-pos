@@ -14,6 +14,89 @@ export type Database = {
   }
   public: {
     Tables: {
+      check_ins: {
+        Row: {
+          checked_in_at: string | null
+          checked_out_at: string | null
+          id: string
+          table_number: string | null
+          user_id: string
+          venue_id: string
+          visibility: string | null
+        }
+        Insert: {
+          checked_in_at?: string | null
+          checked_out_at?: string | null
+          id?: string
+          table_number?: string | null
+          user_id: string
+          venue_id: string
+          visibility?: string | null
+        }
+        Update: {
+          checked_in_at?: string | null
+          checked_out_at?: string | null
+          id?: string
+          table_number?: string | null
+          user_id?: string
+          venue_id?: string
+          visibility?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "check_ins_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_profiles: {
+        Row: {
+          age: number | null
+          avatar_url: string | null
+          bio: string | null
+          connection_count: number | null
+          created_at: string | null
+          display_name: string | null
+          id: string
+          location: string | null
+          relationship_status: string | null
+          selected_background: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          age?: number | null
+          avatar_url?: string | null
+          bio?: string | null
+          connection_count?: number | null
+          created_at?: string | null
+          display_name?: string | null
+          id?: string
+          location?: string | null
+          relationship_status?: string | null
+          selected_background?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          age?: number | null
+          avatar_url?: string | null
+          bio?: string | null
+          connection_count?: number | null
+          created_at?: string | null
+          display_name?: string | null
+          id?: string
+          location?: string | null
+          relationship_status?: string | null
+          selected_background?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       floorplans: {
         Row: {
           canvas_height: number | null
@@ -200,6 +283,117 @@ export type Database = {
           },
         ]
       }
+      post_comments: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_pounds: {
+        Row: {
+          created_at: string | null
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_pounds_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      posts: {
+        Row: {
+          comments_count: number | null
+          content: string
+          created_at: string | null
+          id: string
+          image_url: string | null
+          post_type: string | null
+          pounds_count: number | null
+          user_id: string
+          venue_id: string | null
+          video_url: string | null
+          visibility: string | null
+        }
+        Insert: {
+          comments_count?: number | null
+          content: string
+          created_at?: string | null
+          id?: string
+          image_url?: string | null
+          post_type?: string | null
+          pounds_count?: number | null
+          user_id: string
+          venue_id?: string | null
+          video_url?: string | null
+          visibility?: string | null
+        }
+        Update: {
+          comments_count?: number | null
+          content?: string
+          created_at?: string | null
+          id?: string
+          image_url?: string | null
+          post_type?: string | null
+          pounds_count?: number | null
+          user_id?: string
+          venue_id?: string | null
+          video_url?: string | null
+          visibility?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "posts_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -227,6 +421,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_connections: {
+        Row: {
+          connected_user_id: string
+          created_at: string | null
+          id: string
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          connected_user_id: string
+          created_at?: string | null
+          id?: string
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          connected_user_id?: string
+          created_at?: string | null
+          id?: string
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -244,6 +462,36 @@ export type Database = {
           created_at?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_wallets: {
+        Row: {
+          balance_jv_token: number | null
+          balance_usd: number | null
+          created_at: string | null
+          id: string
+          reward_points: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          balance_jv_token?: number | null
+          balance_usd?: number | null
+          created_at?: string | null
+          id?: string
+          reward_points?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          balance_jv_token?: number | null
+          balance_usd?: number | null
+          created_at?: string | null
+          id?: string
+          reward_points?: number | null
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []
@@ -294,6 +542,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      venues: {
+        Row: {
+          address: string | null
+          capacity: number | null
+          city: string | null
+          created_at: string | null
+          current_occupancy: number | null
+          description: string | null
+          id: string
+          image_url: string | null
+          latitude: number | null
+          longitude: number | null
+          name: string
+          updated_at: string | null
+          venue_type: string | null
+          vibe_score: number | null
+        }
+        Insert: {
+          address?: string | null
+          capacity?: number | null
+          city?: string | null
+          created_at?: string | null
+          current_occupancy?: number | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          name: string
+          updated_at?: string | null
+          venue_type?: string | null
+          vibe_score?: number | null
+        }
+        Update: {
+          address?: string | null
+          capacity?: number | null
+          city?: string | null
+          created_at?: string | null
+          current_occupancy?: number | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          name?: string
+          updated_at?: string | null
+          venue_type?: string | null
+          vibe_score?: number | null
+        }
+        Relationships: []
       }
     }
     Views: {
