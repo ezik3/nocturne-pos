@@ -19,6 +19,10 @@ export default function Wallet() {
   useEffect(() => {
     fetchBalance();
     
+    // Load pending offline transactions
+    const queue = JSON.parse(localStorage.getItem('offline_transactions') || '[]');
+    setPendingTransactions(queue);
+    
     // Monitor online/offline status
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
@@ -60,30 +64,55 @@ export default function Wallet() {
       return;
     }
 
-    // TODO: Implement actual payment gateway integration
-    // For now, simulate deposit to JV token
+    if (!isOnline) {
+      // Queue offline transaction
+      const transaction = {
+        type: 'deposit',
+        payment_type: type,
+        amount: parseFloat(amount),
+        timestamp: Date.now(),
+        status: 'pending'
+      };
+      queueOfflineTransaction(transaction);
+      toast({
+        title: "Offline Mode",
+        description: "Transaction queued. Will process when online.",
+      });
+      setAmount("");
+      return;
+    }
+
     toast({
-      title: "Deposit Initiated",
+      title: "Processing Payment",
       description: `Converting ${amount} ${type === "fiat" ? "USD" : "crypto"} to JV Tokens...`,
     });
 
-    // Simulate conversion rate: 1 USD = 10 JV Tokens
-    const jvAmount = parseFloat(amount) * 10;
-
-    const { error } = await supabase
-      .from("user_wallets")
-      .upsert({
-        user_id: user?.id,
-        balance_jv_token: balance.jv_token + jvAmount,
-        balance_usd: type === "fiat" ? balance.usd + parseFloat(amount) : balance.usd
+    try {
+      const { data, error } = await supabase.functions.invoke('deposit-funds', {
+        body: {
+          payment_type: type,
+          amount: parseFloat(amount),
+          currency: 'usd'
+        }
       });
 
-    if (error) {
-      toast({ title: "Error", description: "Failed to deposit funds", variant: "destructive" });
-    } else {
-      toast({ title: "Success", description: `Deposited ${jvAmount} JV Tokens` });
-      setAmount("");
-      fetchBalance();
+      if (error) throw error;
+
+      if (data.success) {
+        toast({
+          title: "Success!",
+          description: `Deposited ${data.jv_tokens} JV Tokens`,
+        });
+        setAmount("");
+        fetchBalance();
+      }
+    } catch (error) {
+      console.error("Payment error:", error);
+      toast({
+        title: "Payment Failed",
+        description: "There was an error processing your payment. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -96,13 +125,59 @@ export default function Wallet() {
     setPendingTransactions(queue);
   };
 
-  // TODO: Implement sync function that processes queued transactions when online
   const syncOfflineTransactions = async () => {
     const queue = JSON.parse(localStorage.getItem('offline_transactions') || '[]');
-    // Process each queued transaction
-    // Update status and remove from queue
-    // This needs backend support for idempotent transaction processing
+    
+    if (queue.length === 0) return;
+
+    toast({
+      title: "Syncing Transactions",
+      description: `Processing ${queue.length} pending transaction(s)...`,
+    });
+
+    const successfulTxs: number[] = [];
+    
+    for (let i = 0; i < queue.length; i++) {
+      const tx = queue[i];
+      try {
+        if (tx.type === 'deposit') {
+          const { data, error } = await supabase.functions.invoke('deposit-funds', {
+            body: {
+              payment_type: tx.payment_type,
+              amount: tx.amount,
+              currency: 'usd'
+            }
+          });
+
+          if (!error && data.success) {
+            successfulTxs.push(i);
+          }
+        }
+      } catch (error) {
+        console.error(`Failed to sync transaction ${i}:`, error);
+      }
+    }
+
+    // Remove successful transactions from queue
+    const remainingQueue = queue.filter((_: any, index: number) => !successfulTxs.includes(index));
+    localStorage.setItem('offline_transactions', JSON.stringify(remainingQueue));
+    setPendingTransactions(remainingQueue);
+
+    if (successfulTxs.length > 0) {
+      toast({
+        title: "Sync Complete",
+        description: `Successfully processed ${successfulTxs.length} transaction(s)`,
+      });
+      fetchBalance();
+    }
   };
+
+  // Auto-sync when coming back online
+  useEffect(() => {
+    if (isOnline && pendingTransactions.length > 0) {
+      syncOfflineTransactions();
+    }
+  }, [isOnline]);
 
   return (
     <div className="container max-w-4xl mx-auto p-4 space-y-6">
