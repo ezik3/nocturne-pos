@@ -6,7 +6,8 @@ import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Users, TrendingUp, CheckCircle } from "lucide-react";
+import { MapPin, Users, TrendingUp, CheckCircle, Bot, Phone } from "lucide-react";
+import AIChat from "@/components/Customer/AIChat";
 
 interface Venue {
   id: string;
@@ -27,6 +28,7 @@ const VenueDetail = () => {
   const [venue, setVenue] = useState<Venue | null>(null);
   const [loading, setLoading] = useState(true);
   const [isCheckedIn, setIsCheckedIn] = useState(false);
+  const [showAIChat, setShowAIChat] = useState(false);
 
   useEffect(() => {
     const fetchVenue = async () => {
@@ -185,22 +187,58 @@ const VenueDetail = () => {
               </Card>
             </div>
 
-            <div className="flex gap-4">
+            <div className="space-y-3">
               <Button
                 onClick={handleCheckIn}
                 disabled={isCheckedIn}
-                className="flex-1"
+                className="w-full"
                 size="lg"
               >
+                <CheckCircle className="mr-2 h-5 w-5" />
                 {isCheckedIn ? "Already Checked In" : "Check In Now"}
               </Button>
-              <Button variant="outline" size="lg" className="flex-1">
+
+              {isCheckedIn && (
+                <div className="grid grid-cols-2 gap-3">
+                  <Button 
+                    variant="default" 
+                    size="lg" 
+                    className="w-full"
+                    onClick={() => setShowAIChat(true)}
+                  >
+                    <Bot className="mr-2 h-5 w-5" />
+                    AI Waiter
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="lg" 
+                    className="w-full"
+                    onClick={() => {
+                      toast.success("Waiter called! They'll be with you shortly.");
+                    }}
+                  >
+                    <Phone className="mr-2 h-5 w-5" />
+                    Call Waiter
+                  </Button>
+                </div>
+              )}
+
+              <Button variant="outline" size="lg" className="w-full">
                 View Menu
               </Button>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* AI Chat Component */}
+      {showAIChat && (
+        <AIChat 
+          context="ai_waiter" 
+          venueId={id}
+          onClose={() => setShowAIChat(false)}
+        />
+      )}
     </div>
   );
 };

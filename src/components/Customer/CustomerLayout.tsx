@@ -1,7 +1,8 @@
 import { ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, Compass, MapPin, MessageSquare, Bell, User } from "lucide-react";
+import { Home, Compass, Wallet, MessageSquare, Bell, User } from "lucide-react";
 import { cn } from "@/lib/utils";
+import FloatingAIButton from "./FloatingAIButton";
 
 interface CustomerLayoutProps {
   children: ReactNode;
@@ -13,7 +14,7 @@ const CustomerLayout = ({ children }: CustomerLayoutProps) => {
   const navItems = [
     { path: "/app/feed", icon: Home, label: "Feed" },
     { path: "/app/discover", icon: Compass, label: "Venues" },
-    { path: "/app/map", icon: MapPin, label: "Map" },
+    { path: "/app/wallet", icon: Wallet, label: "Wallet" },
     { path: "/app/messages", icon: MessageSquare, label: "Messages" },
     { path: "/app/notifications", icon: Bell, label: "Notifications" },
     { path: "/app/profile", icon: User, label: "Profile" },
@@ -54,6 +55,9 @@ const CustomerLayout = ({ children }: CustomerLayoutProps) => {
       <main className="flex-1">
         {children}
       </main>
+
+      {/* Floating AI Assistant */}
+      <FloatingAIButton />
 
       {/* Mobile Bottom Navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border">

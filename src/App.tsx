@@ -29,6 +29,7 @@ import Feed from "./pages/Customer/Feed";
 import Discover from "./pages/Customer/Discover";
 import Profile from "./pages/Customer/Profile";
 import VenueDetail from "./pages/Customer/VenueDetail";
+import Wallet from "./pages/Customer/Wallet";
 
 const queryClient = new QueryClient();
 
@@ -53,6 +54,7 @@ const App = () => (
                   <Route path="discover" element={<Discover />} />
                   <Route path="venue/:id" element={<VenueDetail />} />
                   <Route path="profile" element={<Profile />} />
+                  <Route path="wallet" element={<Wallet />} />
                   <Route path="*" element={<Feed />} />
                 </Routes>
               </CustomerLayout>
