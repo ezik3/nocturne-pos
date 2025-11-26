@@ -24,12 +24,15 @@ import Staff from "./pages/POS/Staff";
 import Analytics from "./pages/POS/Analytics";
 import Settings from "./pages/POS/Settings";
 const FloorplanEditor = lazy(() => import("./pages/POS/FloorplanEditor"));
+const KitchenDisplay = lazy(() => import("./pages/POS/KitchenDisplay"));
+const StaffRoster = lazy(() => import("./pages/POS/StaffRoster"));
 import CustomerLayout from "./components/Customer/CustomerLayout";
 import Feed from "./pages/Customer/Feed";
 import Discover from "./pages/Customer/Discover";
 import Profile from "./pages/Customer/Profile";
 import VenueDetail from "./pages/Customer/VenueDetail";
 import Wallet from "./pages/Customer/Wallet";
+const ImmersiveVenue = lazy(() => import("./pages/Customer/ImmersiveVenue"));
 
 const queryClient = new QueryClient();
 
@@ -51,9 +54,14 @@ const App = () => (
               <CustomerLayout>
                 <Routes>
                   <Route path="feed" element={<Feed />} />
-                  <Route path="discover" element={<Discover />} />
-                  <Route path="venue/:id" element={<VenueDetail />} />
-                  <Route path="profile" element={<Profile />} />
+              <Route path="discover" element={<Discover />} />
+              <Route path="venue/:id" element={<VenueDetail />} />
+              <Route path="venue/:id/immersive" element={
+                <Suspense fallback={<div className="p-8">Loading...</div>}>
+                  <ImmersiveVenue venueName="The Electric Lounge" venueType="Nightclub" priceRange="$$" closingTime="2 AM" />
+                </Suspense>
+              } />
+              <Route path="profile" element={<Profile />} />
                   <Route path="wallet" element={<Wallet />} />
                   <Route path="*" element={<Feed />} />
                 </Routes>
@@ -70,6 +78,7 @@ const App = () => (
                     <Route path="new-order" element={<NewOrder />} />
                     <Route path="kitchen" element={<Kitchen />} />
                     <Route path="kitchen-enhanced" element={<KitchenEnhanced />} />
+                    <Route path="kitchen-display" element={<Suspense fallback={<div className="p-8">Loading...</div>}><KitchenDisplay /></Suspense>} />
                     <Route path="orders" element={<Orders />} />
                     <Route path="menu" element={<Menu />} />
                     <Route path="inventory" element={<Inventory />} />
@@ -77,6 +86,7 @@ const App = () => (
                     <Route path="floorplan" element={<Suspense fallback={<div className="p-8">Loading Floorplan...</div>}><FloorplanEditor /></Suspense>} />
                     <Route path="sales" element={<Sales />} />
                     <Route path="staff" element={<Staff />} />
+                    <Route path="staff-roster" element={<Suspense fallback={<div className="p-8">Loading...</div>}><StaffRoster /></Suspense>} />
                     <Route path="analytics" element={<Analytics />} />
                     <Route path="settings" element={<Settings />} />
                     <Route path="*" element={<Dashboard />} />

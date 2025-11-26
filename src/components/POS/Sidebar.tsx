@@ -18,12 +18,14 @@ const navItems = [
   { title: "Orders", url: "/venue/pos/orders", icon: UtensilsCrossed },
   { title: "Kitchen (Legacy)", url: "/venue/pos/kitchen", icon: UtensilsCrossed },
   { title: "Kitchen Display", url: "/venue/pos/kitchen-enhanced", icon: UtensilsCrossed },
+  { title: "Kitchen Display 2", url: "/venue/pos/kitchen-display", icon: UtensilsCrossed },
   { title: "Menu", url: "/venue/pos/menu", icon: Menu },
   { title: "Tables", url: "/venue/pos/tables", icon: Table2 },
   { title: "Floorplan", url: "/venue/pos/floorplan", icon: LayoutDashboard },
   { title: "Inventory", url: "/venue/pos/inventory", icon: Package },
   { title: "Analytics", url: "/venue/pos/analytics", icon: BarChart3 },
   { title: "Staff", url: "/venue/pos/staff", icon: Users },
+  { title: "Staff Roster", url: "/venue/pos/staff-roster", icon: Users },
   { title: "Settings", url: "/venue/pos/settings", icon: Settings },
 ];
 
