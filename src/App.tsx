@@ -34,6 +34,18 @@ import VenueDetail from "./pages/Customer/VenueDetail";
 import Wallet from "./pages/Customer/Wallet";
 const ImmersiveVenue = lazy(() => import("./pages/Customer/ImmersiveVenue"));
 
+// Venue Management imports
+import VenueLayout from "./components/Venue/VenueLayout";
+import VenueHome from "./pages/Venue/VenueHome";
+import VenueMenu from "./pages/Venue/VenueMenu";
+import VenueOrders from "./pages/Venue/VenueOrders";
+import VenueCredits from "./pages/Venue/VenueCredits";
+import VenueAssign from "./pages/Venue/VenueAssign";
+import VenueNotifications from "./pages/Venue/VenueNotifications";
+import VenueMessages from "./pages/Venue/VenueMessages";
+import VenueAccount from "./pages/Venue/VenueAccount";
+import VenueSettings from "./pages/Venue/VenueSettings";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -54,22 +66,42 @@ const App = () => (
               <CustomerLayout>
                 <Routes>
                   <Route path="feed" element={<Feed />} />
-              <Route path="discover" element={<Discover />} />
-              <Route path="venue/:id" element={<VenueDetail />} />
-              <Route path="venue/:id/immersive" element={
-                <Suspense fallback={<div className="p-8">Loading...</div>}>
-                  <ImmersiveVenue venueName="The Electric Lounge" venueType="Nightclub" priceRange="$$" closingTime="2 AM" />
-                </Suspense>
-              } />
-              <Route path="profile" element={<Profile />} />
+                  <Route path="discover" element={<Discover />} />
+                  <Route path="venue/:id" element={<VenueDetail />} />
+                  <Route path="venue/:id/immersive" element={
+                    <Suspense fallback={<div className="p-8">Loading...</div>}>
+                      <ImmersiveVenue venueName="The Electric Lounge" venueType="Nightclub" priceRange="$$" closingTime="2 AM" />
+                    </Suspense>
+                  } />
+                  <Route path="profile" element={<Profile />} />
                   <Route path="wallet" element={<Wallet />} />
                   <Route path="*" element={<Feed />} />
                 </Routes>
               </CustomerLayout>
             </ProtectedRoute>
           } />
+
+          {/* Venue Management Routes - Protected */}
+          <Route path="/venue/*" element={
+            <ProtectedRoute>
+              <VenueLayout>
+                <Routes>
+                  <Route path="home" element={<VenueHome />} />
+                  <Route path="menu" element={<VenueMenu />} />
+                  <Route path="orders" element={<VenueOrders />} />
+                  <Route path="credits" element={<VenueCredits />} />
+                  <Route path="assign" element={<VenueAssign />} />
+                  <Route path="notifications" element={<VenueNotifications />} />
+                  <Route path="messages" element={<VenueMessages />} />
+                  <Route path="account" element={<VenueAccount />} />
+                  <Route path="settings" element={<VenueSettings />} />
+                  <Route path="*" element={<VenueHome />} />
+                </Routes>
+              </VenueLayout>
+            </ProtectedRoute>
+          } />
             
-            {/* POS Routes - Protected */}
+          {/* POS Routes - Protected */}
             <Route path="/venue/pos/*" element={
               <ProtectedRoute>
                 <POSLayout>

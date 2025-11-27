@@ -13,15 +13,20 @@ const Index = () => {
           Complete POS solution with real-time kitchen display, floorplan editor,
           payment processing, and comprehensive venue management.
         </p>
-        <div className="flex gap-4 justify-center">
-          <Link to="/auth/login">
+        <div className="flex gap-4 justify-center flex-wrap">
+          <Link to="/venue/home">
             <Button size="lg" className="neon-glow text-lg px-8">
-              Sign In to POS
+              Venue Dashboard
             </Button>
           </Link>
-          <Link to="/auth/signup">
+          <Link to="/app/feed">
             <Button size="lg" variant="outline" className="text-lg px-8">
-              Create Account
+              Customer App
+            </Button>
+          </Link>
+          <Link to="/auth/login">
+            <Button size="lg" variant="ghost" className="text-lg px-8">
+              Sign In
             </Button>
           </Link>
         </div>
