@@ -35,23 +35,32 @@ export default function AuthPage() {
     e.preventDefault();
     setLoading(true);
     
-    // Store user type for redirect
+    // Store user type and email for verification flow
     if (userType) {
       localStorage.setItem('jv_user_type', userType);
     }
+    localStorage.setItem('jv_signup_email', email);
     
     let result;
     if (isLogin) {
       result = await signIn(email, password);
+      if (!result.error) {
+        // Login goes directly to home
+        if (userType === 'venue') {
+          navigate('/venue/home');
+        } else {
+          navigate('/app/feed');
+        }
+      }
     } else {
       result = await signUp(email, password, fullName);
-    }
-    
-    if (!result.error) {
-      if (userType === 'venue') {
-        navigate('/venue/home');
-      } else {
-        navigate('/app/feed');
+      if (!result.error) {
+        // Signup goes to email verification
+        if (userType === 'venue') {
+          navigate('/venue/verify-email');
+        } else {
+          navigate('/user/verify-email');
+        }
       }
     }
     
