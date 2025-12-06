@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,6 +32,25 @@ const CreatePostModal = ({
   const [visibility, setVisibility] = useState<"private" | "public">("private");
   const [isGold, setIsGold] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [displayName, setDisplayName] = useState(userName);
+  const [displayAvatar, setDisplayAvatar] = useState(userAvatar);
+
+  // Get user data from localStorage (from ID verification) if not provided
+  useEffect(() => {
+    if (!userName) {
+      const verifiedName = localStorage.getItem("jv_verified_name");
+      if (verifiedName) setDisplayName(verifiedName);
+    } else {
+      setDisplayName(userName);
+    }
+    
+    if (!userAvatar) {
+      const profilePic = localStorage.getItem("jv_profile_picture");
+      if (profilePic) setDisplayAvatar(profilePic);
+    } else {
+      setDisplayAvatar(userAvatar);
+    }
+  }, [userName, userAvatar]);
 
   const handleSubmit = async () => {
     if (!content.trim()) {
@@ -72,35 +91,31 @@ const CreatePostModal = ({
 
         <div className="p-4 space-y-4">
           {/* Privacy Toggle */}
-          <div className="flex gap-2">
-            <Button
+          <div className="flex gap-3">
+            <button
               type="button"
-              variant={visibility === "private" ? "default" : "outline"}
-              size="sm"
               onClick={() => setVisibility("private")}
-              className={`flex-1 gap-2 ${
+              className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold transition-all duration-300 ${
                 visibility === "private" 
-                  ? "bg-neon-purple hover:bg-neon-purple/90 text-white" 
-                  : "border-white/20 text-white/70 hover:text-white hover:bg-white/10"
+                  ? "bg-gradient-to-r from-neon-purple to-purple-600 text-white shadow-[0_0_20px_rgba(168,85,247,0.4)]" 
+                  : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/10"
               }`}
             >
               <Lock className="w-4 h-4" />
-              Private
-            </Button>
-            <Button
+              <span>Private</span>
+            </button>
+            <button
               type="button"
-              variant={visibility === "public" ? "default" : "outline"}
-              size="sm"
               onClick={() => setVisibility("public")}
-              className={`flex-1 gap-2 ${
+              className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold transition-all duration-300 ${
                 visibility === "public" 
-                  ? "bg-neon-cyan hover:bg-neon-cyan/90 text-black" 
-                  : "border-white/20 text-white/70 hover:text-white hover:bg-white/10"
+                  ? "bg-gradient-to-r from-neon-cyan to-cyan-600 text-black shadow-[0_0_20px_rgba(0,255,255,0.4)]" 
+                  : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/10"
               }`}
             >
               <Globe className="w-4 h-4" />
-              Public
-            </Button>
+              <span>Public</span>
+            </button>
           </div>
 
           {/* Gold Post Option */}
@@ -141,14 +156,14 @@ const CreatePostModal = ({
           }`}>
             <div className="flex gap-3 mb-3">
               <Avatar className={`w-10 h-10 ring-2 ${isGold ? "ring-yellow-400" : "ring-neon-purple"}`}>
-                <AvatarImage src={userAvatar} />
+                <AvatarImage src={displayAvatar} />
                 <AvatarFallback className="bg-gradient-to-br from-neon-purple to-neon-pink text-white">
-                  {userName?.[0] || "U"}
+                  {displayName?.[0] || "U"}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1">
-                <p className={`font-semibold ${isGold ? "text-yellow-400" : "text-neon-purple"}`}>
-                  {userName || "Anonymous"}
+                <p className={`font-semibold ${isGold ? "text-yellow-400" : "text-white"}`}>
+                  {displayName || "Set up your profile"}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {visibility === "private" ? "Friends only" : "Everyone nearby"}

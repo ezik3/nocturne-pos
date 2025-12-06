@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -8,6 +9,7 @@ import CreatePostBox from "@/components/Customer/Feed/CreatePostBox";
 import CreatePostModal from "@/components/Customer/Feed/CreatePostModal";
 import NearbyUsersCarousel from "@/components/Customer/Feed/NearbyUsersCarousel";
 import BackgroundSelector, { backgrounds } from "@/components/Customer/Feed/BackgroundSelector";
+import FloatingAIButton from "@/components/Customer/FloatingAIButton";
 import { Settings2 } from "lucide-react";
 
 interface Post {
@@ -37,10 +39,12 @@ interface NearbyUser {
   avatar_url?: string;
   distance?: number;
   isGold?: boolean;
+  city?: string;
 }
 
 const Feed = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [posts, setPosts] = useState<Post[]>([]);
   const [background, setBackground] = useState("dark");
   const [loading, setLoading] = useState(true);
@@ -52,6 +56,17 @@ const Feed = () => {
 
   useEffect(() => {
     const fetchUserProfile = async () => {
+      // First check localStorage for verified user data
+      const verifiedName = localStorage.getItem("jv_verified_name");
+      const profilePic = localStorage.getItem("jv_profile_picture");
+      
+      if (verifiedName || profilePic) {
+        setCurrentUserProfile({
+          display_name: verifiedName || undefined,
+          avatar_url: profilePic || undefined,
+        });
+      }
+      
       if (!user) return;
 
       const { data: profile } = await supabase
@@ -62,9 +77,10 @@ const Feed = () => {
 
       if (profile) {
         setBackground(profile.selected_background || "dark");
+        // Prefer database profile over localStorage
         setCurrentUserProfile({
-          display_name: profile.display_name || undefined,
-          avatar_url: profile.avatar_url || undefined,
+          display_name: profile.display_name || verifiedName || undefined,
+          avatar_url: profile.avatar_url || profilePic || undefined,
         });
       }
     };
@@ -101,13 +117,15 @@ const Feed = () => {
   useEffect(() => {
     fetchPosts();
 
-    // Generate mock nearby users
+    // Generate mock nearby public posters
+    const cities = ["Brisbane", "Sydney", "Melbourne", "Perth", "Adelaide"];
     const mockUsers: NearbyUser[] = Array.from({ length: 8 }, (_, i) => ({
       id: `user-${i}`,
       username: `Party${Math.floor(Math.random() * 100)}`,
       avatar_url: `https://randomuser.me/api/portraits/${i % 2 === 0 ? 'women' : 'men'}/${i + 20}.jpg`,
       distance: Math.random() * 5,
       isGold: i === 0 || i === 3,
+      city: cities[Math.floor(Math.random() * cities.length)],
     }));
     setNearbyUsers(mockUsers);
 
@@ -122,6 +140,11 @@ const Feed = () => {
       supabase.removeChannel(channel);
     };
   }, [fetchPosts]);
+
+  const handleNearbyUserClick = (nearbyUser: NearbyUser) => {
+    // Navigate to city view with the user's city
+    navigate("/app/city-view", { state: { city: nearbyUser.city || "Brisbane" } });
+  };
 
   const handleBackgroundChange = async (newBackground: string) => {
     setBackground(newBackground);
@@ -234,12 +257,23 @@ const Feed = () => {
         )}
       </main>
 
-      {/* Nearby Users Carousel (Fixed Bottom) */}
+      {/* Public Posters Carousel (Fixed Bottom) */}
       <div className="fixed bottom-0 left-0 right-0 z-30">
+        <div className="bg-black/80 backdrop-blur-xl border-t border-white/10 py-2 px-4">
+          <p className="text-xs text-neon-cyan font-medium mb-2 flex items-center gap-2">
+            <span className="w-2 h-2 bg-neon-cyan rounded-full animate-pulse" />
+            Public Posters Nearby
+          </p>
+        </div>
         <NearbyUsersCarousel
           users={nearbyUsers}
-          onUserClick={(user) => toast.info(`Viewing ${user.username}'s profile`)}
+          onUserClick={handleNearbyUserClick}
         />
+      </div>
+
+      {/* Floating AI Button - Side Position */}
+      <div className="fixed left-4 bottom-32 z-40">
+        <FloatingAIButton />
       </div>
 
       {/* Create Post Modal */}

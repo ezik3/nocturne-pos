@@ -46,6 +46,8 @@ import Discover from "./pages/Customer/Discover";
 import Profile from "./pages/Customer/Profile";
 import VenueDetail from "./pages/Customer/VenueDetail";
 import Wallet from "./pages/Customer/Wallet";
+import CityView from "./pages/Customer/CityView";
+import PublicPostView from "./pages/Customer/PublicPostView";
 const ImmersiveVenue = lazy(() => import("./pages/Customer/ImmersiveVenue"));
 
 // Venue Management imports
@@ -106,8 +108,12 @@ const App = () => (
                       <ImmersiveVenue venueName="The Electric Lounge" venueType="Nightclub" priceRange="$$" closingTime="2 AM" />
                     </Suspense>
                   } />
+                  <Route path="city-view" element={<CityView />} />
+                  <Route path="public-post" element={<PublicPostView />} />
                   <Route path="profile" element={<Profile />} />
                   <Route path="wallet" element={<Wallet />} />
+                  <Route path="messages" element={<div className="min-h-screen bg-black p-8 text-white">Messages Coming Soon</div>} />
+                  <Route path="notifications" element={<div className="min-h-screen bg-black p-8 text-white">Notifications Coming Soon</div>} />
                   <Route path="*" element={<Feed />} />
                 </Routes>
               </CustomerLayout>
