@@ -16,12 +16,14 @@ import UserVerifyPhone from "./pages/Auth/User/VerifyPhone";
 import UserIDVerification from "./pages/Auth/User/IDVerification";
 import UserFacialRecognition from "./pages/Auth/User/FacialRecognition";
 import UserPrivateKeyGeneration from "./pages/Auth/User/PrivateKeyGeneration";
+import UserProfileSetup from "./pages/Auth/User/ProfileSetup";
 import VenueSignup from "./pages/Auth/Venue/Signup";
 import VenueVerifyEmail from "./pages/Auth/Venue/VerifyEmail";
 import VenueVerifyPhone from "./pages/Auth/Venue/VerifyPhone";
 import VenueIDVerification from "./pages/Auth/Venue/IDVerification";
 import VenueFacialRecognition from "./pages/Auth/Venue/FacialRecognition";
 import VenuePrivateKeyGeneration from "./pages/Auth/Venue/PrivateKeyGeneration";
+import VenueProfileSetup from "./pages/Auth/Venue/ProfileSetup";
 import POSLayout from "./components/POS/POSLayout";
 import Dashboard from "./pages/POS/Dashboard";
 import NewOrder from "./pages/POS/NewOrder";
@@ -80,14 +82,16 @@ const App = () => (
           <Route path="/user/id-verification" element={<UserIDVerification />} />
           <Route path="/user/facial-recognition" element={<UserFacialRecognition />} />
           <Route path="/user/private-key" element={<UserPrivateKeyGeneration />} />
+          <Route path="/user/profile-setup" element={<UserProfileSetup />} />
           
           {/* Venue Registration Flow */}
           <Route path="/venue/signup" element={<VenueSignup />} />
           <Route path="/venue/verify-email" element={<VenueVerifyEmail />} />
           <Route path="/venue/verify-phone" element={<VenueVerifyPhone />} />
           <Route path="/venue/id-verification" element={<VenueIDVerification />} />
-          <Route path="/venue/private-key" element={<VenuePrivateKeyGeneration />} />
           <Route path="/venue/facial-recognition" element={<VenueFacialRecognition />} />
+          <Route path="/venue/private-key" element={<VenuePrivateKeyGeneration />} />
+          <Route path="/venue/profile-setup" element={<VenueProfileSetup />} />
           
           {/* Customer App Routes */}
           <Route path="/app/*" element={

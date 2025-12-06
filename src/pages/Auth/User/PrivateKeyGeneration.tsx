@@ -113,16 +113,16 @@ export default function UserPrivateKeyGeneration() {
     setConfirmed(true);
     setComplete(true);
     
-    // Store that user has completed setup
+    // Store that user has completed wallet setup
     localStorage.setItem('jv_wallet_setup', 'complete');
     
     setTimeout(() => {
-      navigate('/app/feed');
+      navigate('/user/profile-setup');
     }, 2000);
   };
 
   const handleSkip = () => {
-    navigate('/app/feed');
+    navigate('/user/profile-setup');
   };
 
   return (

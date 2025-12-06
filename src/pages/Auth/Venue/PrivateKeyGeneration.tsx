@@ -115,16 +115,16 @@ export default function VenuePrivateKeyGeneration() {
     setConfirmed(true);
     setComplete(true);
     
-    // Store that venue has completed setup
+    // Store that venue has completed wallet setup
     localStorage.setItem('jv_venue_wallet_setup', 'complete');
     
     setTimeout(() => {
-      navigate('/venue/home');
+      navigate('/venue/profile-setup');
     }, 2000);
   };
 
   const handleSkip = () => {
-    navigate('/venue/home');
+    navigate('/venue/profile-setup');
   };
 
   return (
