@@ -11,6 +11,8 @@ import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/Auth/AuthPage";
 import Login from "./pages/Auth/Login";
 import Signup from "./pages/Auth/Signup";
+import UserVerifyEmail from "./pages/Auth/User/VerifyEmail";
+import VenueVerifyEmail from "./pages/Auth/Venue/VerifyEmail";
 import POSLayout from "./components/POS/POSLayout";
 import Dashboard from "./pages/POS/Dashboard";
 import NewOrder from "./pages/POS/NewOrder";
@@ -62,6 +64,12 @@ const App = () => (
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/auth/login" element={<Login />} />
           <Route path="/auth/signup" element={<Signup />} />
+          
+          {/* User Registration Flow */}
+          <Route path="/user/verify-email" element={<UserVerifyEmail />} />
+          
+          {/* Venue Registration Flow */}
+          <Route path="/venue/verify-email" element={<VenueVerifyEmail />} />
           
           {/* Customer App Routes */}
           <Route path="/app/*" element={
