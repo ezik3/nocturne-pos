@@ -12,7 +12,10 @@ import AuthPage from "./pages/Auth/AuthPage";
 import Login from "./pages/Auth/Login";
 import Signup from "./pages/Auth/Signup";
 import UserVerifyEmail from "./pages/Auth/User/VerifyEmail";
+import UserVerifyPhone from "./pages/Auth/User/VerifyPhone";
+import VenueSignup from "./pages/Auth/Venue/Signup";
 import VenueVerifyEmail from "./pages/Auth/Venue/VerifyEmail";
+import VenueVerifyPhone from "./pages/Auth/Venue/VerifyPhone";
 import POSLayout from "./components/POS/POSLayout";
 import Dashboard from "./pages/POS/Dashboard";
 import NewOrder from "./pages/POS/NewOrder";
@@ -67,9 +70,12 @@ const App = () => (
           
           {/* User Registration Flow */}
           <Route path="/user/verify-email" element={<UserVerifyEmail />} />
+          <Route path="/user/verify-phone" element={<UserVerifyPhone />} />
           
           {/* Venue Registration Flow */}
+          <Route path="/venue/signup" element={<VenueSignup />} />
           <Route path="/venue/verify-email" element={<VenueVerifyEmail />} />
+          <Route path="/venue/verify-phone" element={<VenueVerifyPhone />} />
           
           {/* Customer App Routes */}
           <Route path="/app/*" element={

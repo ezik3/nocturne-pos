@@ -115,7 +115,7 @@ export default function AuthPage() {
           <div className="grid md:grid-cols-2 gap-6">
             {/* End User Card */}
             <button
-              onClick={() => setUserType('user')}
+              onClick={() => { setUserType('user'); setIsLogin(false); }}
               className="group glass rounded-3xl p-8 text-left transition-all duration-300 hover:scale-[1.02] hover:border-primary/50 relative overflow-hidden"
             >
               <div className="absolute -top-20 -right-20 w-40 h-40 bg-accent/10 rounded-full blur-3xl group-hover:bg-accent/20 transition-colors" />
@@ -136,7 +136,7 @@ export default function AuthPage() {
 
             {/* Venue Card */}
             <button
-              onClick={() => setUserType('venue')}
+              onClick={() => navigate('/venue/signup')}
               className="group glass rounded-3xl p-8 text-left transition-all duration-300 hover:scale-[1.02] hover:border-primary/50 relative overflow-hidden"
             >
               <div className="absolute -top-20 -right-20 w-40 h-40 bg-primary/10 rounded-full blur-3xl group-hover:bg-primary/20 transition-colors" />
