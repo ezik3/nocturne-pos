@@ -20,12 +20,12 @@ export default function UserVerifyPhone() {
     setVerified(true);
     
     setTimeout(() => {
-      navigate('/user/facial-recognition');
+      navigate('/user/id-verification');
     }, 1500);
   };
 
   const handleSkip = () => {
-    navigate('/user/facial-recognition');
+    navigate('/user/id-verification');
   };
 
   return (

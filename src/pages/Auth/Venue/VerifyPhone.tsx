@@ -20,12 +20,12 @@ export default function VenueVerifyPhone() {
     setVerified(true);
     
     setTimeout(() => {
-      navigate('/venue/facial-recognition');
+      navigate('/venue/id-verification');
     }, 1500);
   };
 
   const handleSkip = () => {
-    navigate('/venue/facial-recognition');
+    navigate('/venue/id-verification');
   };
 
   return (

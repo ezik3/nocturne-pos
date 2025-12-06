@@ -32,7 +32,7 @@ const VenueFacialRecognition = () => {
 
     if (phase === "complete") {
       const timeout = setTimeout(() => {
-        navigate("/venue/home");
+        navigate("/venue/private-key");
       }, 2000);
       return () => clearTimeout(timeout);
     }
@@ -226,7 +226,7 @@ const VenueFacialRecognition = () => {
               
               <Button
                 variant="ghost"
-                onClick={() => navigate("/venue/home")}
+                onClick={() => navigate("/venue/private-key")}
                 className="w-full text-muted-foreground hover:text-foreground"
               >
                 Skip for now (Dev Mode)
