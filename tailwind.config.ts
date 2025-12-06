@@ -64,8 +64,15 @@ export default {
         neon: {
           primary: "hsl(var(--neon-primary))",
           accent: "hsl(var(--neon-accent))",
+          pink: "hsl(var(--neon-pink))",
           glow: "hsla(var(--neon-glow))",
         },
+        cyan: "hsl(var(--cyan))",
+        purple: "hsl(var(--purple))",
+        pink: "hsl(var(--pink))",
+        orange: "hsl(var(--orange))",
+        green: "hsl(var(--green))",
+        gold: "hsl(var(--gold))",
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -89,10 +96,55 @@ export default {
             height: "0",
           },
         },
+        "pulse-ring": {
+          "0%": {
+            transform: "scale(1)",
+            opacity: "1",
+          },
+          "100%": {
+            transform: "scale(1.5)",
+            opacity: "0",
+          },
+        },
+        "scan-line": {
+          "0%": {
+            top: "0%",
+          },
+          "50%": {
+            top: "100%",
+          },
+          "100%": {
+            top: "0%",
+          },
+        },
+        shimmer: {
+          "0%": {
+            backgroundPosition: "-200% 0",
+          },
+          "100%": {
+            backgroundPosition: "200% 0",
+          },
+        },
+        float: {
+          "0%, 100%": {
+            transform: "translateY(0px)",
+          },
+          "50%": {
+            transform: "translateY(-20px)",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "pulse-ring": "pulse-ring 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+        "scan-line": "scan-line 2s ease-in-out infinite",
+        shimmer: "shimmer 2s linear infinite",
+        float: "float 6s ease-in-out infinite",
+      },
+      backgroundImage: {
+        "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
+        "gradient-conic": "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
       },
     },
   },
