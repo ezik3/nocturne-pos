@@ -10,10 +10,10 @@ export default function FloatingAIButton() {
     <>
       <Button
         size="lg"
-        className="fixed bottom-20 md:bottom-6 right-6 rounded-full w-14 h-14 shadow-2xl hover:scale-110 transition-transform z-40"
+        className="rounded-full w-14 h-14 shadow-2xl hover:scale-110 transition-transform bg-gradient-to-br from-neon-purple to-neon-pink hover:from-neon-pink hover:to-neon-purple"
         onClick={() => setShowChat(true)}
       >
-        <Bot className="h-6 w-6" />
+        <Bot className="h-6 w-6 text-white" />
       </Button>
 
       {showChat && (
