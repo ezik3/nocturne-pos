@@ -4,9 +4,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Sparkles, Zap, Users, MapPin, Wallet, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { Sparkles, Zap, Users, MapPin, Wallet, ArrowRight, Eye, EyeOff, Store, PartyPopper } from 'lucide-react';
+
+type UserType = 'user' | 'venue' | null;
 
 export default function AuthPage() {
+  const [userType, setUserType] = useState<UserType>(null);
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -18,13 +21,24 @@ export default function AuthPage() {
 
   useEffect(() => {
     if (user) {
-      navigate('/');
+      // Redirect based on stored user type or default
+      const storedType = localStorage.getItem('jv_user_type');
+      if (storedType === 'venue') {
+        navigate('/venue/home');
+      } else {
+        navigate('/app/feed');
+      }
     }
   }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    
+    // Store user type for redirect
+    if (userType) {
+      localStorage.setItem('jv_user_type', userType);
+    }
     
     let result;
     if (isLogin) {
@@ -34,18 +48,110 @@ export default function AuthPage() {
     }
     
     if (!result.error) {
-      navigate('/');
+      if (userType === 'venue') {
+        navigate('/venue/home');
+      } else {
+        navigate('/app/feed');
+      }
     }
     
     setLoading(false);
   };
 
-  const features = [
-    { icon: MapPin, title: "Discover Venues", desc: "Find the hottest spots near you" },
-    { icon: Users, title: "Connect", desc: "Meet people with similar vibes" },
-    { icon: Wallet, title: "JV Coin", desc: "Seamless crypto payments" },
-    { icon: Zap, title: "AI Waiter", desc: "Order with intelligent assistance" },
+  const userFeatures = [
+    { icon: MapPin, title: "Discover Venues", desc: "Find the hottest spots" },
+    { icon: Users, title: "Connect", desc: "Meet new people" },
+    { icon: Wallet, title: "JV Coin", desc: "Seamless payments" },
+    { icon: Zap, title: "AI Waiter", desc: "Smart ordering" },
   ];
+
+  const venueFeatures = [
+    { icon: Store, title: "Manage Venue", desc: "Full control" },
+    { icon: Users, title: "Staff Management", desc: "Organize your team" },
+    { icon: Wallet, title: "Accept JV Coin", desc: "Low-fee payments" },
+    { icon: Zap, title: "Smart POS", desc: "Built-in system" },
+  ];
+
+  // User type selection screen
+  if (!userType) {
+    return (
+      <div className="min-h-screen w-full bg-background overflow-hidden relative flex items-center justify-center p-4">
+        {/* Animated background */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-primary/20 via-transparent to-transparent rounded-full blur-3xl animate-pulse" />
+          <div className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-accent/20 via-transparent to-transparent rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+        </div>
+
+        {/* Grid pattern */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:50px_50px]" />
+
+        <div className="relative z-10 w-full max-w-4xl">
+          {/* Logo */}
+          <div className="text-center mb-12">
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <div className="relative">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center neon-glow">
+                  <Sparkles className="w-9 h-9 text-primary-foreground" />
+                </div>
+                <div className="absolute -inset-1 bg-gradient-to-br from-primary to-accent rounded-2xl blur opacity-40" />
+              </div>
+            </div>
+            <h1 className="text-5xl lg:text-6xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent mb-3">
+              Joint Vibe
+            </h1>
+            <p className="text-xl text-muted-foreground">How would you like to join?</p>
+          </div>
+
+          {/* User type cards */}
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* End User Card */}
+            <button
+              onClick={() => setUserType('user')}
+              className="group glass rounded-3xl p-8 text-left transition-all duration-300 hover:scale-[1.02] hover:border-primary/50 relative overflow-hidden"
+            >
+              <div className="absolute -top-20 -right-20 w-40 h-40 bg-accent/10 rounded-full blur-3xl group-hover:bg-accent/20 transition-colors" />
+              
+              <div className="relative z-10">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-accent/20 to-primary/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                  <PartyPopper className="w-8 h-8 text-accent" />
+                </div>
+                
+                <h2 className="text-2xl font-bold text-foreground mb-2">I'm here to party</h2>
+                <p className="text-muted-foreground mb-6">Discover venues, connect with people, and enjoy the nightlife</p>
+                
+                <div className="flex items-center text-primary font-medium group-hover:gap-3 gap-2 transition-all">
+                  Get Started <ArrowRight className="w-5 h-5" />
+                </div>
+              </div>
+            </button>
+
+            {/* Venue Card */}
+            <button
+              onClick={() => setUserType('venue')}
+              className="group glass rounded-3xl p-8 text-left transition-all duration-300 hover:scale-[1.02] hover:border-primary/50 relative overflow-hidden"
+            >
+              <div className="absolute -top-20 -right-20 w-40 h-40 bg-primary/10 rounded-full blur-3xl group-hover:bg-primary/20 transition-colors" />
+              
+              <div className="relative z-10">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                  <Store className="w-8 h-8 text-primary" />
+                </div>
+                
+                <h2 className="text-2xl font-bold text-foreground mb-2">I run a venue</h2>
+                <p className="text-muted-foreground mb-6">Manage your business, staff, orders, and accept JV Coin payments</p>
+                
+                <div className="flex items-center text-primary font-medium group-hover:gap-3 gap-2 transition-all">
+                  Get Started <ArrowRight className="w-5 h-5" />
+                </div>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const features = userType === 'user' ? userFeatures : venueFeatures;
 
   return (
     <div className="min-h-screen w-full bg-background overflow-hidden relative">
@@ -62,6 +168,15 @@ export default function AuthPage() {
       <div className="relative z-10 min-h-screen flex flex-col lg:flex-row">
         {/* Left side - Branding & Features */}
         <div className="flex-1 flex flex-col justify-center px-8 py-12 lg:px-16 lg:py-0">
+          {/* Back button */}
+          <button 
+            onClick={() => setUserType(null)}
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8 transition-colors w-fit"
+          >
+            <ArrowRight className="w-4 h-4 rotate-180" />
+            Back
+          </button>
+
           {/* Logo */}
           <div className="mb-12">
             <div className="flex items-center gap-3 mb-6">
@@ -75,12 +190,17 @@ export default function AuthPage() {
                 <h1 className="text-4xl lg:text-5xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
                   Joint Vibe
                 </h1>
-                <p className="text-muted-foreground text-sm">The Social Nightlife Experience</p>
+                <p className="text-muted-foreground text-sm">
+                  {userType === 'user' ? 'The Social Nightlife Experience' : 'Venue Management Platform'}
+                </p>
               </div>
             </div>
             
             <p className="text-xl lg:text-2xl text-foreground/80 max-w-lg leading-relaxed">
-              Discover venues, connect with people, and experience nightlife like never before.
+              {userType === 'user' 
+                ? 'Discover venues, connect with people, and experience nightlife like never before.'
+                : 'Manage your venue, staff, and orders with our powerful all-in-one platform.'
+              }
             </p>
           </div>
 
@@ -99,24 +219,6 @@ export default function AuthPage() {
                 <p className="text-sm text-muted-foreground">{feature.desc}</p>
               </div>
             ))}
-          </div>
-
-          {/* Social proof */}
-          <div className="mt-12 flex items-center gap-4">
-            <div className="flex -space-x-3">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div 
-                  key={i}
-                  className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent border-2 border-background flex items-center justify-center text-xs font-bold text-primary-foreground"
-                >
-                  {String.fromCharCode(64 + i)}
-                </div>
-              ))}
-            </div>
-            <div>
-              <p className="text-foreground font-semibold">Join 50,000+ vibers</p>
-              <p className="text-sm text-muted-foreground">Already experiencing the vibe</p>
-            </div>
           </div>
         </div>
 
@@ -161,7 +263,7 @@ export default function AuthPage() {
                 {/* Title */}
                 <div className="text-center mb-8">
                   <h2 className="text-2xl lg:text-3xl font-bold text-foreground mb-2">
-                    {isLogin ? 'Welcome back!' : 'Join the vibe'}
+                    {isLogin ? 'Welcome back!' : userType === 'user' ? 'Join the vibe' : 'Register your venue'}
                   </h2>
                   <p className="text-muted-foreground">
                     {isLogin 
@@ -175,11 +277,13 @@ export default function AuthPage() {
                 <form onSubmit={handleSubmit} className="space-y-5">
                   {!isLogin && (
                     <div className="space-y-2">
-                      <Label htmlFor="fullName" className="text-foreground">Full Name</Label>
+                      <Label htmlFor="fullName" className="text-foreground">
+                        {userType === 'user' ? 'Full Name' : 'Venue / Business Name'}
+                      </Label>
                       <Input
                         id="fullName"
                         type="text"
-                        placeholder="Enter your name"
+                        placeholder={userType === 'user' ? 'Enter your name' : 'Enter venue name'}
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
                         required={!isLogin}
