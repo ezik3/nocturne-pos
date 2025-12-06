@@ -32,7 +32,7 @@ const UserFacialRecognition = () => {
 
     if (phase === "complete") {
       const timeout = setTimeout(() => {
-        navigate("/app/feed");
+        navigate("/user/private-key");
       }, 2000);
       return () => clearTimeout(timeout);
     }
@@ -204,7 +204,7 @@ const UserFacialRecognition = () => {
               
               <Button
                 variant="ghost"
-                onClick={() => navigate("/app/feed")}
+                onClick={() => navigate("/user/private-key")}
                 className="w-full text-muted-foreground hover:text-foreground"
               >
                 Skip for now (Dev Mode)

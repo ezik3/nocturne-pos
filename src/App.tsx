@@ -13,11 +13,15 @@ import Login from "./pages/Auth/Login";
 import Signup from "./pages/Auth/Signup";
 import UserVerifyEmail from "./pages/Auth/User/VerifyEmail";
 import UserVerifyPhone from "./pages/Auth/User/VerifyPhone";
+import UserIDVerification from "./pages/Auth/User/IDVerification";
 import UserFacialRecognition from "./pages/Auth/User/FacialRecognition";
+import UserPrivateKeyGeneration from "./pages/Auth/User/PrivateKeyGeneration";
 import VenueSignup from "./pages/Auth/Venue/Signup";
 import VenueVerifyEmail from "./pages/Auth/Venue/VerifyEmail";
 import VenueVerifyPhone from "./pages/Auth/Venue/VerifyPhone";
+import VenueIDVerification from "./pages/Auth/Venue/IDVerification";
 import VenueFacialRecognition from "./pages/Auth/Venue/FacialRecognition";
+import VenuePrivateKeyGeneration from "./pages/Auth/Venue/PrivateKeyGeneration";
 import POSLayout from "./components/POS/POSLayout";
 import Dashboard from "./pages/POS/Dashboard";
 import NewOrder from "./pages/POS/NewOrder";
@@ -73,12 +77,16 @@ const App = () => (
           {/* User Registration Flow */}
           <Route path="/user/verify-email" element={<UserVerifyEmail />} />
           <Route path="/user/verify-phone" element={<UserVerifyPhone />} />
+          <Route path="/user/id-verification" element={<UserIDVerification />} />
           <Route path="/user/facial-recognition" element={<UserFacialRecognition />} />
+          <Route path="/user/private-key" element={<UserPrivateKeyGeneration />} />
           
           {/* Venue Registration Flow */}
           <Route path="/venue/signup" element={<VenueSignup />} />
           <Route path="/venue/verify-email" element={<VenueVerifyEmail />} />
           <Route path="/venue/verify-phone" element={<VenueVerifyPhone />} />
+          <Route path="/venue/id-verification" element={<VenueIDVerification />} />
+          <Route path="/venue/private-key" element={<VenuePrivateKeyGeneration />} />
           <Route path="/venue/facial-recognition" element={<VenueFacialRecognition />} />
           
           {/* Customer App Routes */}
