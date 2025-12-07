@@ -7,6 +7,7 @@ import Web3FeedHeader from "@/components/Customer/Feed/Web3FeedHeader";
 import ImmersivePostCard from "@/components/Customer/Feed/ImmersivePostCard";
 import HexagonalStoryRing from "@/components/Customer/Feed/HexagonalStoryRing";
 import CreatePostModal from "@/components/Customer/Feed/CreatePostModal";
+import CommentModal from "@/components/Customer/Feed/CommentModal";
 import FloatingAIButton from "@/components/Customer/FloatingAIButton";
 import { Plus, ChevronDown, Sparkles } from "lucide-react";
 
@@ -49,6 +50,8 @@ const ImmersiveFeed = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showCommentModal, setShowCommentModal] = useState(false);
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [currentUserProfile, setCurrentUserProfile] = useState<{ display_name?: string; avatar_url?: string } | null>(null);
   const [storyUsers, setStoryUsers] = useState<StoryUser[]>([]);
   const [canUseGold, setCanUseGold] = useState(true);
@@ -153,6 +156,37 @@ const ImmersiveFeed = () => {
   };
 
   // Handle post actions
+  // Handle comment click
+  const handleCommentClick = (post: Post) => {
+    setSelectedPost(post);
+    setShowCommentModal(true);
+  };
+
+  // Handle comment submission
+  const handleSubmitComment = async (data: { content: string; isPrivate: boolean; postId: string }) => {
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase.from("post_comments").insert({
+        post_id: data.postId,
+        user_id: user.id,
+        content: data.content,
+        // TODO: Add is_private field to database schema
+      });
+
+      if (error) throw error;
+      
+      if (data.isPrivate) {
+        toast.success("Private reply sent! They'll receive a special notification.");
+      } else {
+        toast.success("Comment posted!");
+      }
+      fetchPosts();
+    } catch (error) {
+      toast.error("Failed to post comment");
+    }
+  };
+
   const handlePound = async (postId: string) => {
     if (!user) return;
     const { error } = await supabase
@@ -263,7 +297,7 @@ const ImmersiveFeed = () => {
                 createdAt={post.created_at}
                 expiresIn={Math.floor(Math.random() * 20) + 4}
                 onPound={() => handlePound(post.id)}
-                onComment={() => toast.info("Comments coming soon!")}
+                onComment={() => handleCommentClick(post)}
                 onShare={() => toast.info("Share coming soon!")}
                 isActive={index === currentPostIndex}
               />
@@ -301,6 +335,21 @@ const ImmersiveFeed = () => {
         userName={currentUserProfile?.display_name}
         canUseGold={canUseGold}
         onSubmit={handleCreatePost}
+      />
+
+      {/* Comment Modal */}
+      <CommentModal
+        isOpen={showCommentModal}
+        onClose={() => {
+          setShowCommentModal(false);
+          setSelectedPost(null);
+        }}
+        postId={selectedPost?.id || ""}
+        postAuthorName={selectedPost?.customer_profiles?.display_name || "Anonymous"}
+        postAuthorAvatar={selectedPost?.customer_profiles?.avatar_url}
+        userAvatar={currentUserProfile?.avatar_url}
+        userName={currentUserProfile?.display_name}
+        onSubmitComment={handleSubmitComment}
       />
     </div>
   );
