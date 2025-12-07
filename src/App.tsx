@@ -43,11 +43,15 @@ const StaffRoster = lazy(() => import("./pages/POS/StaffRoster"));
 import CustomerLayout from "./components/Customer/CustomerLayout";
 import Feed from "./pages/Customer/Feed";
 import Discover from "./pages/Customer/Discover";
+import DiscoverNew from "./pages/Customer/DiscoverNew";
 import Profile from "./pages/Customer/Profile";
+import ProfileNew from "./pages/Customer/ProfileNew";
 import VenueDetail from "./pages/Customer/VenueDetail";
 import Wallet from "./pages/Customer/Wallet";
 import CityView from "./pages/Customer/CityView";
 import PublicPostView from "./pages/Customer/PublicPostView";
+import Top10 from "./pages/Customer/Top10";
+import Notifications from "./pages/Customer/Notifications";
 const ImmersiveVenue = lazy(() => import("./pages/Customer/ImmersiveVenue"));
 const ImmersiveFeed = lazy(() => import("./pages/Customer/ImmersiveFeed"));
 
@@ -116,10 +120,14 @@ const App = () => (
                   } />
                   <Route path="city-view" element={<CityView />} />
                   <Route path="public-post" element={<PublicPostView />} />
-                  <Route path="profile" element={<Profile />} />
+                  <Route path="top10" element={<Top10 />} />
+                  <Route path="venues" element={<DiscoverNew />} />
+                  <Route path="profile" element={<ProfileNew />} />
+                  <Route path="profile/edit" element={<Profile />} />
                   <Route path="wallet" element={<Wallet />} />
                   <Route path="messages" element={<div className="min-h-screen bg-black p-8 text-white">Messages Coming Soon</div>} />
-                  <Route path="notifications" element={<div className="min-h-screen bg-black p-8 text-white">Notifications Coming Soon</div>} />
+                  <Route path="notifications" element={<Notifications />} />
+                  <Route path="maps" element={<div className="min-h-screen bg-black p-8 text-white">Maps Coming Soon</div>} />
                   <Route path="*" element={<Feed />} />
                 </Routes>
               </CustomerLayout>

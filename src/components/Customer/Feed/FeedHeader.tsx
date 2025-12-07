@@ -7,7 +7,7 @@ const navItems = [
   { icon: Building2, label: "Venues", path: "/app/venues" },
   { icon: Map, label: "Maps", path: "/app/maps" },
   { icon: MessageSquare, label: "Messages", path: "/app/messages", badge: 3 },
-  { icon: Bell, label: "Alerts", path: "/app/notifications", badge: 20 },
+  { icon: Bell, label: "Notifications", path: "/app/notifications", badge: 5 },
   { icon: User, label: "Profile", path: "/app/profile" },
 ];
 
