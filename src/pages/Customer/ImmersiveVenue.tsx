@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Web3FeedHeader from "@/components/Customer/Feed/Web3FeedHeader";
-import AIChat from "@/components/Customer/AIChat";
+import VibeSphere from "@/components/VibeSphere/VibeSphere";
 import { 
   MapPin, 
   Users, 
@@ -15,7 +15,6 @@ import {
   Clock, 
   Phone, 
   Globe, 
-  Bot, 
   CheckCircle,
   ChevronLeft,
   Play,
@@ -61,7 +60,8 @@ const ImmersiveVenue = () => {
   const [venue, setVenue] = useState<Venue | null>(null);
   const [loading, setLoading] = useState(true);
   const [isCheckedIn, setIsCheckedIn] = useState(false);
-  const [showAIChat, setShowAIChat] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [showVibeSphere, setShowVibeSphere] = useState(false);
   const [userStatus, setUserStatus] = useState<"at" | "heading" | "maybe" | null>(null);
   
   // Mock crowd data
@@ -144,11 +144,17 @@ const ImmersiveVenue = () => {
       return;
     }
 
+    // Start transition animation
+    setIsTransitioning(true);
+
     if (!id || id === "mock") {
-      // Mock check-in
-      toast.success("Checked in successfully!");
-      setIsCheckedIn(true);
-      setUserStatus("at");
+      // Mock check-in - wait for transition
+      setTimeout(() => {
+        setIsCheckedIn(true);
+        setUserStatus("at");
+        setIsTransitioning(false);
+        setShowVibeSphere(true);
+      }, 3000);
       return;
     }
 
@@ -160,12 +166,21 @@ const ImmersiveVenue = () => {
 
     if (error) {
       toast.error("Failed to check in");
+      setIsTransitioning(false);
       console.error(error);
     } else {
-      toast.success("Checked in successfully!");
-      setIsCheckedIn(true);
-      setUserStatus("at");
+      // Wait for transition to complete
+      setTimeout(() => {
+        setIsCheckedIn(true);
+        setUserStatus("at");
+        setIsTransitioning(false);
+        setShowVibeSphere(true);
+      }, 3000);
     }
+  };
+
+  const handleExitVibeSphere = () => {
+    setShowVibeSphere(false);
   };
 
   const handleStatusChange = (status: "at" | "heading" | "maybe") => {
@@ -434,24 +449,14 @@ const ImmersiveVenue = () => {
               Maybe Going
             </Button>
 
-            {/* AI Waiter / Menu Buttons */}
-            {isCheckedIn && (
-              <div className="grid grid-cols-2 gap-3 pt-2">
-                <Button
-                  onClick={() => setShowAIChat(true)}
-                  className="h-12 bg-gradient-to-r from-cyan to-purple text-white rounded-xl"
-                >
-                  <Bot className="w-5 h-5 mr-2" />
-                  AI Waiter
-                </Button>
-                <Button
-                  onClick={() => toast.info("Menu coming soon!")}
-                  variant="outline"
-                  className="h-12 border-cyan/50 text-cyan hover:bg-cyan/20 rounded-xl"
-                >
-                  View Menu
-                </Button>
-              </div>
+            {/* Enter VenueVerse Button - shows when checked in */}
+            {isCheckedIn && !showVibeSphere && (
+              <Button
+                onClick={() => setShowVibeSphere(true)}
+                className="w-full h-14 text-lg font-semibold rounded-xl bg-gradient-to-r from-cyan via-purple to-pink text-white shadow-[0_0_30px_rgba(0,217,255,0.3)]"
+              >
+                🌐 Enter VenueVerse
+              </Button>
             )}
 
             {/* Call Waiter Button */}
@@ -469,14 +474,17 @@ const ImmersiveVenue = () => {
         </div>
       </div>
 
-      {/* AI Chat Component */}
-      {showAIChat && (
-        <AIChat 
-          context="ai_waiter" 
-          venueId={id}
-          onClose={() => setShowAIChat(false)}
-        />
-      )}
+      {/* VibeSphere Immersive Experience */}
+      <VibeSphere
+        isCheckedIn={isCheckedIn}
+        isTransitioning={isTransitioning}
+        venueName={venue.name}
+        venueType={venue.venue_type}
+        vibeLevel="🔥 Lit"
+        priceLevel="💰 $$"
+        hours="Closes 2 AM"
+        onExit={handleExitVibeSphere}
+      />
     </div>
   );
 };
