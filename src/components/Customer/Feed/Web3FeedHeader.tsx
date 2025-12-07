@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { 
   Home, 
-  TrendingUp, 
+  Trophy, 
   Building2, 
   Map, 
   MessageSquare, 
@@ -15,8 +15,8 @@ const Web3FeedHeader = () => {
   const location = useLocation();
   
   const navItems = [
-    { icon: Home, label: "Feed", path: "/app/feed", badge: null },
-    { icon: TrendingUp, label: "Top 10", path: "/app/top10", badge: null },
+    { icon: Home, label: "Feed", path: "/app/feed/immersive", badge: null },
+    { icon: Trophy, label: "Top 10", path: "/app/top10", badge: null },
     { icon: Building2, label: "Venues", path: "/app/venues", badge: null },
     { icon: Map, label: "Map", path: "/app/maps", badge: null },
     { icon: MessageSquare, label: "DMs", path: "/app/messages", badge: 3 },
@@ -37,7 +37,7 @@ const Web3FeedHeader = () => {
       <div className="relative max-w-4xl mx-auto px-2">
         <div className="flex items-center justify-between h-14">
           {/* Logo Section */}
-          <Link to="/app/feed" className="flex items-center gap-2 group">
+          <Link to="/app/feed/immersive" className="flex items-center gap-2 group">
             <div className="relative w-8 h-8">
               <Hexagon className="w-8 h-8 text-cyan group-hover:text-purple transition-colors" fill="currentColor" fillOpacity={0.1} />
               <span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-cyan group-hover:text-purple transition-colors">

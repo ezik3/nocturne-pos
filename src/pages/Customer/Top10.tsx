@@ -3,7 +3,7 @@ import { Search, Play, Image, Trophy, Building2, ChevronDown } from "lucide-reac
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import FeedHeader from "@/components/Customer/Feed/FeedHeader";
+import Web3FeedHeader from "@/components/Customer/Feed/Web3FeedHeader";
 
 const cities = ["All Cities", "New York", "Los Angeles", "Chicago", "Miami", "Las Vegas", "San Francisco", "New Orleans", "Nashville", "Austin"];
 const venueTypes = ["All", "Nightclubs", "Bars/Pubs", "Restaurants/Cafes", "Events"];
@@ -48,7 +48,7 @@ const Top10 = () => {
 
   return (
     <div className="min-h-screen bg-black">
-      <FeedHeader />
+      <Web3FeedHeader />
       
       <div className="px-4 py-6 max-w-7xl mx-auto">
         {/* Search Bar */}

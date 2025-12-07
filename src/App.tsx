@@ -112,10 +112,9 @@ const App = () => (
                     </Suspense>
                   } />
                   <Route path="discover" element={<Discover />} />
-                  <Route path="venue/:id" element={<VenueDetail />} />
-                  <Route path="venue/:id/immersive" element={
-                    <Suspense fallback={<div className="p-8">Loading...</div>}>
-                      <ImmersiveVenue venueName="The Electric Lounge" venueType="Nightclub" priceRange="$$" closingTime="2 AM" />
+                  <Route path="venue/:id" element={
+                    <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center text-white">Loading...</div>}>
+                      <ImmersiveVenue />
                     </Suspense>
                   } />
                   <Route path="city-view" element={<CityView />} />

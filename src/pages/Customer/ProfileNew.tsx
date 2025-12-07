@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Play, LogOut, Wallet, Edit2, UserPlus, Volume2, VolumeX } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import FeedHeader from "@/components/Customer/Feed/FeedHeader";
+import Web3FeedHeader from "@/components/Customer/Feed/Web3FeedHeader";
 
 // Mock friends data
 const mockFriends = [
@@ -87,7 +87,7 @@ const ProfileNew = () => {
 
   return (
     <div className="min-h-screen bg-black">
-      <FeedHeader />
+      <Web3FeedHeader />
       
       {/* Hero Section with Video Background Option */}
       <div className="relative h-[50vh] overflow-hidden">
