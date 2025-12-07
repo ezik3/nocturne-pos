@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -10,7 +10,7 @@ import CreatePostModal from "@/components/Customer/Feed/CreatePostModal";
 import NearbyUsersCarousel from "@/components/Customer/Feed/NearbyUsersCarousel";
 import BackgroundSelector, { backgrounds } from "@/components/Customer/Feed/BackgroundSelector";
 import FloatingAIButton from "@/components/Customer/FloatingAIButton";
-import { Settings2 } from "lucide-react";
+import { Settings2, Sparkles } from "lucide-react";
 
 interface Post {
   id: string;
@@ -203,13 +203,24 @@ const Feed = () => {
     <div className={`min-h-screen ${getBackgroundClass()} transition-all duration-700`}>
       <FeedHeader />
       
-      {/* Background Picker Toggle */}
-      <button
-        onClick={() => setShowBackgroundPicker(!showBackgroundPicker)}
-        className="fixed top-20 right-4 z-40 p-2.5 bg-black/60 backdrop-blur-xl rounded-full ring-1 ring-white/20 hover:ring-neon-cyan transition-all duration-200"
-      >
-        <Settings2 className="w-5 h-5 text-white" />
-      </button>
+      {/* Settings & View Toggle */}
+      <div className="fixed top-20 right-4 z-40 flex flex-col gap-2">
+        <button
+          onClick={() => setShowBackgroundPicker(!showBackgroundPicker)}
+          className="p-2.5 bg-black/60 backdrop-blur-xl rounded-full ring-1 ring-white/20 hover:ring-neon-cyan transition-all duration-200"
+        >
+          <Settings2 className="w-5 h-5 text-white" />
+        </button>
+        
+        {/* Immersive View Toggle */}
+        <Link
+          to="/app/feed/immersive"
+          className="p-2.5 bg-gradient-to-r from-cyan/20 to-purple/20 backdrop-blur-xl rounded-full ring-1 ring-cyan/30 hover:ring-cyan transition-all duration-200 group"
+          title="Try Immersive Mode"
+        >
+          <Sparkles className="w-5 h-5 text-cyan group-hover:text-white transition-colors" />
+        </Link>
+      </div>
 
       {showBackgroundPicker && (
         <div className="fixed top-32 right-4 z-40 animate-fade-in">

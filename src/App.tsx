@@ -49,6 +49,7 @@ import Wallet from "./pages/Customer/Wallet";
 import CityView from "./pages/Customer/CityView";
 import PublicPostView from "./pages/Customer/PublicPostView";
 const ImmersiveVenue = lazy(() => import("./pages/Customer/ImmersiveVenue"));
+const ImmersiveFeed = lazy(() => import("./pages/Customer/ImmersiveFeed"));
 
 // Venue Management imports
 import VenueLayout from "./components/Venue/VenueLayout";
@@ -101,6 +102,11 @@ const App = () => (
               <CustomerLayout>
                 <Routes>
                   <Route path="feed" element={<Feed />} />
+                  <Route path="feed/immersive" element={
+                    <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center text-white">Loading...</div>}>
+                      <ImmersiveFeed />
+                    </Suspense>
+                  } />
                   <Route path="discover" element={<Discover />} />
                   <Route path="venue/:id" element={<VenueDetail />} />
                   <Route path="venue/:id/immersive" element={

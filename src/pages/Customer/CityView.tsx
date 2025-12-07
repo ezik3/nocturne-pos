@@ -74,7 +74,22 @@ const CityView = () => {
   );
 
   const handlePosterClick = (poster: PublicPoster) => {
-    navigate("/app/public-post", { state: { poster, city: selectedCity } });
+    // Pass all posters so the carousel can navigate between them
+    navigate("/app/public-post", { 
+      state: { 
+        poster, 
+        city: selectedCity,
+        allPosters: publicPosters.map(p => ({
+          id: p.id,
+          username: p.username,
+          avatar_url: p.avatar_url,
+          isGold: p.isGold,
+          postContent: p.postContent,
+          postImage: p.postImage || `https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&q=80`,
+          pounds: Math.floor(Math.random() * 50) + 5,
+        }))
+      } 
+    });
   };
 
   const backgroundUrl = cityBackgrounds[selectedCity] || cityBackgrounds["Brisbane"];
