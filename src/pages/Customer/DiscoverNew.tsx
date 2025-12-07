@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Search, MapPin, TrendingUp, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import FeedHeader from "@/components/Customer/Feed/FeedHeader";
+import Web3FeedHeader from "@/components/Customer/Feed/Web3FeedHeader";
 import { useNavigate } from "react-router-dom";
 
 const cities = ["All Cities", "New York", "Los Angeles", "Chicago", "Miami", "Las Vegas", "San Francisco", "New Orleans", "Nashville", "Austin"];
@@ -101,7 +101,7 @@ const DiscoverNew = () => {
 
   return (
     <div className="min-h-screen bg-black">
-      <FeedHeader />
+      <Web3FeedHeader />
       
       <div className="px-4 py-6 max-w-7xl mx-auto">
         {/* Search Bar */}

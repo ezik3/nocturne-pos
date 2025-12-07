@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Heart, MessageSquare, Image, Calendar, UserPlus, Check } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import FeedHeader from "@/components/Customer/Feed/FeedHeader";
+import Web3FeedHeader from "@/components/Customer/Feed/Web3FeedHeader";
 
 interface Notification {
   id: string;
@@ -114,7 +114,7 @@ const Notifications = () => {
 
   return (
     <div className="min-h-screen bg-black">
-      <FeedHeader />
+      <Web3FeedHeader />
       
       <div className="px-4 py-6 max-w-3xl mx-auto">
         {/* Header */}

@@ -39,6 +39,8 @@ interface StoryUser {
   hasUnseenStory?: boolean;
   expiresIn?: number;
   city?: string;
+  distance?: number;
+  isOnline?: boolean;
 }
 
 const ImmersiveFeed = () => {
@@ -115,7 +117,7 @@ const ImmersiveFeed = () => {
   useEffect(() => {
     fetchPosts();
 
-    // Generate mock story users (public posters)
+    // Generate mock story users (public posters) - sorted by distance (closest first)
     const cities = ["Brisbane", "Sydney", "Melbourne", "Perth", "Adelaide", "Gold Coast"];
     const mockUsers: StoryUser[] = Array.from({ length: 12 }, (_, i) => ({
       id: `user-${i}`,
@@ -125,7 +127,11 @@ const ImmersiveFeed = () => {
       hasUnseenStory: i < 8,
       expiresIn: Math.floor(Math.random() * 20) + 4,
       city: cities[Math.floor(Math.random() * cities.length)],
+      distance: Math.round((i * 2.5 + Math.random() * 5) * 10) / 10, // km from user
+      isOnline: Math.random() > 0.4, // 60% chance of being online
     }));
+    // Sort by distance (closest first for new posts)
+    mockUsers.sort((a, b) => (a.distance || 0) - (b.distance || 0));
     setStoryUsers(mockUsers);
 
     // Subscribe to real-time updates

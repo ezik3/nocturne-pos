@@ -1,134 +1,484 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Bot, Menu, Users, Waves, MessageCircle, ChevronUp, Phone } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import Web3FeedHeader from "@/components/Customer/Feed/Web3FeedHeader";
 import AIChat from "@/components/Customer/AIChat";
+import { 
+  MapPin, 
+  Users, 
+  Star, 
+  Clock, 
+  Phone, 
+  Globe, 
+  Bot, 
+  CheckCircle,
+  ChevronLeft,
+  Play,
+  Calendar,
+  Shirt,
+  AlertCircle,
+  Navigation
+} from "lucide-react";
 
-interface ImmersiveVenueProps {
-  venueName: string;
-  venueType: string;
-  priceRange: string;
-  closingTime: string;
+interface Venue {
+  id: string;
+  name: string;
+  description?: string;
+  address?: string;
+  city?: string;
+  venue_type?: string;
+  vibe_score: number;
+  current_occupancy: number;
+  capacity?: number;
+  image_url?: string;
 }
 
-export default function ImmersiveVenue({ 
-  venueName = "The Electric Lounge",
-  venueType = "Nightclub",
-  priceRange = "$$",
-  closingTime = "2 AM"
-}: ImmersiveVenueProps) {
+// Mock venue details (would come from DB in production)
+const venueDetails = {
+  ageRestriction: "21+",
+  dressCode: "Smart Casual - No sportswear, sneakers allowed",
+  hours: {
+    "Mon-Thu": "4PM - 1AM",
+    "Fri-Sat": "4PM - 2AM",
+    "Sun": "4PM - 12AM"
+  },
+  phone: "+1 (555) 123-4567",
+  website: "www.skylineslounge.com",
+  rating: 4.8,
+  reviewCount: 896,
+  features: ["Rooftop", "Live DJ", "VIP Area", "Full Bar", "Restaurant"],
+};
+
+const ImmersiveVenue = () => {
+  const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [venue, setVenue] = useState<Venue | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isCheckedIn, setIsCheckedIn] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
-  const [selectedFeature, setSelectedFeature] = useState<string | null>(null);
+  const [userStatus, setUserStatus] = useState<"at" | "heading" | "maybe" | null>(null);
+  
+  // Mock crowd data
+  const [crowdStatus] = useState({
+    at: 127, // Green - checked in at venue
+    heading: 45, // Orange - heading to venue
+    maybe: 89, // Red - maybe going
+  });
 
-  const features = [
-    { id: "menu", icon: Menu, label: "Order Menu", color: "from-purple-500 to-pink-500" },
-    { id: "ai-waiter", icon: Bot, label: "AI Waiter", color: "from-blue-500 to-cyan-500" },
-    { id: "table", icon: Users, label: "My Table", color: "from-green-500 to-emerald-500" },
-    { id: "dj", icon: Waves, label: "DJ Booth", color: "from-orange-500 to-red-500" },
-    { id: "feed", icon: MessageCircle, label: "Live Feed", color: "from-indigo-500 to-purple-500" },
-    { id: "call-waiter", icon: Phone, label: "Call Waiter", color: "from-yellow-500 to-orange-500" }
-  ];
+  useEffect(() => {
+    const fetchVenue = async () => {
+      if (!id) {
+        // Use mock data if no ID
+        setVenue({
+          id: "mock",
+          name: "Skyline Lounge",
+          description: "Perched atop one of the city's most iconic skyscrapers, Skyline Lounge offers an unparalleled experience combining breathtaking panoramic views, world-class cocktails, and exquisite cuisine. Our expert mixologists craft signature drinks that perfectly complement the stunning cityscape.",
+          address: "123 Skyview Tower, Downtown",
+          city: "New York",
+          venue_type: "Rooftop Bar & Restaurant",
+          vibe_score: 92,
+          current_occupancy: 127,
+          capacity: 200,
+          image_url: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1200",
+        });
+        setLoading(false);
+        return;
+      }
 
-  const handleFeatureClick = (featureId: string) => {
-    if (featureId === "ai-waiter") {
-      setShowAIChat(true);
+      const { data, error } = await supabase
+        .from("venues")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (error) {
+        // Use mock data if venue not found
+        setVenue({
+          id: id,
+          name: "Skyline Lounge",
+          description: "Perched atop one of the city's most iconic skyscrapers, Skyline Lounge offers an unparalleled experience combining breathtaking panoramic views, world-class cocktails, and exquisite cuisine. Our expert mixologists craft signature drinks that perfectly complement the stunning cityscape.",
+          address: "123 Skyview Tower, Downtown",
+          city: "New York",
+          venue_type: "Rooftop Bar & Restaurant",
+          vibe_score: 92,
+          current_occupancy: 127,
+          capacity: 200,
+          image_url: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1200",
+        });
+      } else {
+        setVenue(data);
+      }
+      setLoading(false);
+    };
+
+    const checkIfCheckedIn = async () => {
+      if (!user || !id) return;
+
+      const { data } = await supabase
+        .from("check_ins")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("venue_id", id)
+        .is("checked_out_at", null)
+        .single();
+
+      if (data) {
+        setIsCheckedIn(true);
+        setUserStatus("at");
+      }
+    };
+
+    fetchVenue();
+    checkIfCheckedIn();
+  }, [id, user]);
+
+  const handleCheckIn = async () => {
+    if (!user) {
+      toast.error("Please sign in to check in");
+      return;
+    }
+
+    if (!id || id === "mock") {
+      // Mock check-in
+      toast.success("Checked in successfully!");
+      setIsCheckedIn(true);
+      setUserStatus("at");
+      return;
+    }
+
+    const { error } = await supabase.from("check_ins").insert({
+      user_id: user.id,
+      venue_id: id,
+      visibility: "public",
+    });
+
+    if (error) {
+      toast.error("Failed to check in");
+      console.error(error);
     } else {
-      setSelectedFeature(featureId);
-      // Handle other features
+      toast.success("Checked in successfully!");
+      setIsCheckedIn(true);
+      setUserStatus("at");
     }
   };
 
+  const handleStatusChange = (status: "at" | "heading" | "maybe") => {
+    if (status === "at" && !isCheckedIn) {
+      handleCheckIn();
+    } else {
+      setUserStatus(status);
+      const statusMessages = {
+        at: "You're marked as @ this venue",
+        heading: "You're marked as heading to this venue",
+        maybe: "You're marked as maybe going",
+      };
+      toast.success(statusMessages[status]);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative w-20 h-20">
+            <div className="absolute inset-0 border-4 border-cyan/30 rounded-full animate-ping" />
+            <div className="absolute inset-2 border-4 border-purple/50 rounded-full animate-pulse" />
+          </div>
+          <p className="text-white/80 animate-pulse">Loading venue...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!venue) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-lg text-white">Venue not found</div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 relative overflow-hidden">
-      {/* Animated background */}
-      <div className="absolute inset-0 opacity-20">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/30 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-secondary/30 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "1s" }} />
-      </div>
-
-      {/* Header */}
-      <div className="relative z-10 p-6 text-center">
-        <Badge className="mb-4 text-sm px-4 py-2">
-          🔥 Lit · {priceRange} · Open until {closingTime}
-        </Badge>
-        <h1 className="text-4xl md:text-5xl font-bold mb-2 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-          {venueName}
-        </h1>
-        <p className="text-muted-foreground text-lg">Immersive Venue Mode</p>
-      </div>
-
-      {/* Main content */}
-      <div className="relative z-10 px-6 py-12">
-        <div className="max-w-4xl mx-auto">
-          <Card className="glass border-primary/20 mb-8">
-            <CardContent className="p-8 text-center">
-              <h2 className="text-2xl font-bold mb-3">Tap any orb to explore features</h2>
-              <p className="text-muted-foreground mb-2">Double tap anywhere for AI Waiter</p>
-              <p className="text-sm text-muted-foreground">Swipe up to exit venue</p>
-            </CardContent>
-          </Card>
-
-          {/* Feature orbs */}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-8 mb-12">
-            {features.map((feature) => (
-              <button
-                key={feature.id}
-                onClick={() => handleFeatureClick(feature.id)}
-                className="group relative"
-              >
-                <div className={`
-                  aspect-square rounded-full bg-gradient-to-br ${feature.color}
-                  flex flex-col items-center justify-center gap-3
-                  transform transition-all duration-300
-                  hover:scale-110 hover:shadow-2xl hover:shadow-primary/50
-                  active:scale-95
-                  cursor-pointer
-                `}>
-                  <feature.icon className="h-12 w-12 md:h-16 md:w-16 text-white drop-shadow-lg" />
-                  <span className="text-white font-bold text-sm md:text-base px-2">
-                    {feature.label}
-                  </span>
-                </div>
-                <div className="absolute inset-0 rounded-full bg-white/20 opacity-0 group-hover:opacity-100 blur-xl transition-opacity" />
-              </button>
-            ))}
-          </div>
-
-          {/* Instructions */}
-          <div className="flex justify-center">
-            <Button
-              variant="outline"
-              size="lg"
-              className="glass border-primary/40 hover:border-primary group"
-            >
-              <ChevronUp className="h-5 w-5 mr-2 group-hover:animate-bounce" />
-              Swipe up to exit venue
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* AI Chat overlay */}
-      {showAIChat && (
-        <div className="fixed inset-0 bg-background/95 backdrop-blur-lg z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-2xl h-[600px] relative">
-            <AIChat context="ai_waiter" onClose={() => setShowAIChat(false)} />
-          </div>
-        </div>
-      )}
-
-      {/* Quick AI Waiter access */}
-      <div className="fixed bottom-8 right-8 z-40">
-        <Button
-          onClick={() => setShowAIChat(true)}
-          size="lg"
-          className="rounded-full h-16 w-16 neon-glow shadow-2xl"
+    <div className="min-h-screen bg-black">
+      <Web3FeedHeader />
+      
+      {/* Hero Section with Venue Image */}
+      <div className="relative h-[50vh] mt-14">
+        <img 
+          src={venue.image_url || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1200"} 
+          alt={venue.name}
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
+        
+        {/* Back Button */}
+        <button 
+          onClick={() => navigate(-1)}
+          className="absolute top-4 left-4 w-10 h-10 bg-black/50 rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors"
         >
-          <Bot className="h-8 w-8" />
-        </Button>
-        <p className="text-xs text-center mt-2 text-muted-foreground">Double tap<br/>anywhere</p>
+          <ChevronLeft className="w-6 h-6" />
+        </button>
+
+        {/* Video Play Button */}
+        <button className="absolute top-4 left-16 w-12 h-12 bg-pink/80 rounded-full flex items-center justify-center hover:scale-110 transition-transform shadow-lg">
+          <Play className="w-6 h-6 text-white ml-1" fill="currentColor" />
+        </button>
+
+        {/* Crowd Status Indicators - Top Right */}
+        <div className="absolute top-4 right-4 flex gap-2">
+          <button
+            onClick={() => handleStatusChange("at")}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-full transition-all ${
+              userStatus === "at" 
+                ? "bg-green-500 text-white shadow-[0_0_15px_rgba(34,197,94,0.5)]" 
+                : "bg-black/50 text-green-400 hover:bg-green-500/30"
+            }`}
+          >
+            <div className="w-3 h-3 bg-green-400 rounded-full" />
+            <span className="text-sm font-medium">{crowdStatus.at}</span>
+          </button>
+          <button
+            onClick={() => handleStatusChange("heading")}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-full transition-all ${
+              userStatus === "heading" 
+                ? "bg-orange-500 text-white shadow-[0_0_15px_rgba(249,115,22,0.5)]" 
+                : "bg-black/50 text-orange-400 hover:bg-orange-500/30"
+            }`}
+          >
+            <div className="w-3 h-3 bg-orange-400 rounded-full" />
+            <span className="text-sm font-medium">{crowdStatus.heading}</span>
+          </button>
+          <button
+            onClick={() => handleStatusChange("maybe")}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-full transition-all ${
+              userStatus === "maybe" 
+                ? "bg-red-500 text-white shadow-[0_0_15px_rgba(239,68,68,0.5)]" 
+                : "bg-black/50 text-red-400 hover:bg-red-500/30"
+            }`}
+          >
+            <div className="w-3 h-3 bg-red-400 rounded-full" />
+            <span className="text-sm font-medium">{crowdStatus.maybe}</span>
+          </button>
+        </div>
+
+        {/* Venue Info Overlay */}
+        <div className="absolute bottom-0 left-0 right-0 p-6">
+          <h1 className="text-4xl font-bold text-white mb-2">{venue.name}</h1>
+          <p className="text-cyan text-lg font-medium mb-2">{venue.venue_type}</p>
+          <div className="flex items-center gap-4 text-white/80">
+            <div className="flex items-center gap-1">
+              <Star className="w-5 h-5 text-gold fill-gold" />
+              <span>{venueDetails.rating}</span>
+              <span className="text-white/50">({venueDetails.reviewCount} reviews)</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Users className="w-5 h-5" />
+              <span>{venue.current_occupancy}/{venue.capacity}</span>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* Content */}
+      <div className="px-4 py-6 max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column - About */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* About Section */}
+          <div className="bg-secondary/20 rounded-2xl p-6 border border-border/30">
+            <h2 className="text-cyan text-2xl font-bold mb-4">About {venue.name}</h2>
+            <p className="text-white/80 leading-relaxed">{venue.description}</p>
+            
+            {/* Features */}
+            <div className="flex flex-wrap gap-2 mt-4">
+              {venueDetails.features.map((feature) => (
+                <Badge key={feature} variant="secondary" className="bg-purple/20 text-purple border-purple/30">
+                  {feature}
+                </Badge>
+              ))}
+            </div>
+          </div>
+
+          {/* Venue Rules */}
+          <div className="bg-secondary/20 rounded-2xl p-6 border border-border/30">
+            <h2 className="text-pink text-2xl font-bold mb-4">Venue Info</h2>
+            
+            <div className="space-y-4">
+              {/* Age Restriction */}
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-pink/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <AlertCircle className="w-6 h-6 text-pink" />
+                </div>
+                <div>
+                  <h3 className="text-white font-semibold">Age Restriction</h3>
+                  <p className="text-white/60">{venueDetails.ageRestriction} - Valid ID required</p>
+                </div>
+              </div>
+
+              {/* Dress Code */}
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-purple/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <Shirt className="w-6 h-6 text-purple" />
+                </div>
+                <div>
+                  <h3 className="text-white font-semibold">Dress Code</h3>
+                  <p className="text-white/60">{venueDetails.dressCode}</p>
+                </div>
+              </div>
+
+              {/* Hours */}
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-cyan/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <Clock className="w-6 h-6 text-cyan" />
+                </div>
+                <div>
+                  <h3 className="text-white font-semibold">Hours</h3>
+                  <div className="text-white/60 space-y-1">
+                    {Object.entries(venueDetails.hours).map(([day, hours]) => (
+                      <p key={day}><span className="text-white/80">{day}:</span> {hours}</p>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Who's Here - People at venue */}
+          <div className="bg-secondary/20 rounded-2xl p-6 border border-border/30">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-cyan text-xl font-bold">Who's Here</h2>
+              <span className="text-white/50 text-sm">{crowdStatus.at} people</span>
+            </div>
+            <div className="flex -space-x-3">
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                <Avatar key={i} className="w-12 h-12 border-2 border-black">
+                  <AvatarImage src={`https://randomuser.me/api/portraits/${i % 2 === 0 ? 'women' : 'men'}/${i + 30}.jpg`} />
+                  <AvatarFallback>U{i}</AvatarFallback>
+                </Avatar>
+              ))}
+              <div className="w-12 h-12 bg-secondary rounded-full flex items-center justify-center text-white/70 text-sm border-2 border-black">
+                +{crowdStatus.at - 8}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column - Details & Actions */}
+        <div className="space-y-6">
+          {/* Contact Card */}
+          <div className="bg-secondary/20 rounded-2xl p-6 border border-border/30">
+            <h2 className="text-cyan text-xl font-bold mb-4">Contact</h2>
+            
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 text-white/80">
+                <MapPin className="w-5 h-5 text-cyan" />
+                <span className="text-sm">{venue.address}</span>
+              </div>
+              <div className="flex items-center gap-3 text-white/80">
+                <Phone className="w-5 h-5 text-cyan" />
+                <span className="text-sm">{venueDetails.phone}</span>
+              </div>
+              <div className="flex items-center gap-3 text-white/80">
+                <Globe className="w-5 h-5 text-cyan" />
+                <span className="text-sm">{venueDetails.website}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="space-y-3">
+            {/* Check In Button */}
+            <Button
+              onClick={handleCheckIn}
+              disabled={isCheckedIn}
+              className={`w-full h-14 text-lg font-semibold rounded-xl ${
+                isCheckedIn 
+                  ? "bg-green-500/30 text-green-400 border border-green-500/50" 
+                  : "bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700"
+              }`}
+            >
+              <CheckCircle className="w-5 h-5 mr-2" />
+              {isCheckedIn ? "@ " + venue.name : "Check In"}
+            </Button>
+
+            {/* Heading To Button */}
+            <Button
+              onClick={() => handleStatusChange("heading")}
+              variant="outline"
+              className={`w-full h-12 rounded-xl ${
+                userStatus === "heading"
+                  ? "bg-orange-500/30 border-orange-500 text-orange-400"
+                  : "border-orange-500/50 text-orange-400 hover:bg-orange-500/20"
+              }`}
+            >
+              <Navigation className="w-5 h-5 mr-2" />
+              Heading There
+            </Button>
+
+            {/* Maybe Going Button */}
+            <Button
+              onClick={() => handleStatusChange("maybe")}
+              variant="outline"
+              className={`w-full h-12 rounded-xl ${
+                userStatus === "maybe"
+                  ? "bg-red-500/30 border-red-500 text-red-400"
+                  : "border-red-500/50 text-red-400 hover:bg-red-500/20"
+              }`}
+            >
+              <Calendar className="w-5 h-5 mr-2" />
+              Maybe Going
+            </Button>
+
+            {/* AI Waiter / Menu Buttons */}
+            {isCheckedIn && (
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <Button
+                  onClick={() => setShowAIChat(true)}
+                  className="h-12 bg-gradient-to-r from-cyan to-purple text-white rounded-xl"
+                >
+                  <Bot className="w-5 h-5 mr-2" />
+                  AI Waiter
+                </Button>
+                <Button
+                  onClick={() => toast.info("Menu coming soon!")}
+                  variant="outline"
+                  className="h-12 border-cyan/50 text-cyan hover:bg-cyan/20 rounded-xl"
+                >
+                  View Menu
+                </Button>
+              </div>
+            )}
+
+            {/* Call Waiter Button */}
+            {isCheckedIn && (
+              <Button
+                onClick={() => toast.success("Waiter called! They'll be with you shortly.")}
+                variant="outline"
+                className="w-full h-12 border-pink/50 text-pink hover:bg-pink/20 rounded-xl"
+              >
+                <Phone className="w-5 h-5 mr-2" />
+                Call Waiter
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* AI Chat Component */}
+      {showAIChat && (
+        <AIChat 
+          context="ai_waiter" 
+          venueId={id}
+          onClose={() => setShowAIChat(false)}
+        />
+      )}
     </div>
   );
-}
+};
+
+export default ImmersiveVenue;
