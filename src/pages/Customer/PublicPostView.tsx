@@ -2,7 +2,10 @@ import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { X, MapPin, MessageCircle, Share2, Heart, UserPlus, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, MapPin, MessageCircle, Share2, UserPlus, ChevronLeft, ChevronRight } from "lucide-react";
+import FistPoundIcon from "@/components/Customer/Feed/FistPoundIcon";
+import CommentModal from "@/components/Customer/Feed/CommentModal";
+import TaggedUsersDisplay from "@/components/Customer/Feed/TaggedUsersDisplay";
 
 const cityBackgrounds: Record<string, string> = {
   "Brisbane": "https://images.unsplash.com/photo-1524293581917-878a6d017c71?w=1920&q=80",
@@ -22,6 +25,12 @@ const mockPosts = [
     postContent: "It's Friday night & I'm gonna get my drank on!!! Where are my peoples?",
     isGold: true,
     pounds: 16,
+    comments: 8,
+    taggedUsers: [
+      { id: "t1", name: "Mike J", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100" },
+      { id: "t2", name: "Emma W", avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100" },
+      { id: "t3", name: "Alex C", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100" },
+    ],
   },
   {
     id: "2",
@@ -31,6 +40,8 @@ const mockPosts = [
     postContent: "Best DJ in town! 🔥🎵",
     isGold: false,
     pounds: 24,
+    comments: 12,
+    taggedUsers: [],
   },
   {
     id: "3",
@@ -40,6 +51,10 @@ const mockPosts = [
     postContent: "Living my best life tonight! 💃✨",
     isGold: false,
     pounds: 32,
+    comments: 5,
+    taggedUsers: [
+      { id: "t4", name: "Sarah M", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100" },
+    ],
   },
   {
     id: "4",
@@ -49,6 +64,16 @@ const mockPosts = [
     postContent: "Vibes are immaculate 🔥",
     isGold: true,
     pounds: 45,
+    comments: 18,
+    taggedUsers: [
+      { id: "t5", name: "User 1", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100" },
+      { id: "t6", name: "User 2", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100" },
+      { id: "t7", name: "User 3", avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100" },
+      { id: "t8", name: "User 4", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100" },
+      { id: "t9", name: "User 5", avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100" },
+      { id: "t10", name: "User 6", avatar: "https://images.unsplash.com/photo-1463453091185-61582044d556?w=100" },
+      { id: "t11", name: "User 7", avatar: "https://images.unsplash.com/photo-1519345182560-3f2917c472ef?w=100" },
+    ],
   },
 ];
 
@@ -63,6 +88,8 @@ const PublicPostView = () => {
   // Find initial index of current poster
   const initialIndex = poster ? posts.findIndex((p: any) => p.id === poster.id || p.username === poster.username) : 0;
   const [currentIndex, setCurrentIndex] = useState(initialIndex >= 0 ? initialIndex : 0);
+  const [poundedPosts, setPoundedPosts] = useState<Set<string>>(new Set());
+  const [commentModalOpen, setCommentModalOpen] = useState(false);
   
   const currentPost = posts[currentIndex] || poster || mockPosts[0];
   const prevPost = posts[currentIndex - 1];
@@ -83,16 +110,34 @@ const PublicPostView = () => {
     }
   };
 
+  const handlePound = (postId: string) => {
+    setPoundedPosts(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(postId)) {
+        newSet.delete(postId);
+      } else {
+        newSet.add(postId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSubmitComment = (data: { content: string; isPrivate: boolean; postId: string }) => {
+    console.log("Submitting comment:", data);
+    // TODO: Implement actual comment submission
+  };
+
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (commentModalOpen) return;
       if (e.key === "ArrowLeft") goToPrev();
       if (e.key === "ArrowRight") goToNext();
       if (e.key === "Escape") navigate(-1);
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [currentIndex, posts.length]);
+  }, [currentIndex, posts.length, commentModalOpen]);
 
   if (!currentPost) {
     return (
@@ -126,13 +171,28 @@ const PublicPostView = () => {
                 transform: "perspective(1000px) rotateY(25deg) translateX(-20%) scale(0.7)",
               }}
             >
-              <PostCard post={prevPost} city={city} isActive={false} />
+              <PostCard 
+                post={prevPost} 
+                city={city} 
+                isActive={false}
+                isPounded={poundedPosts.has(prevPost.id)}
+                onPound={() => {}}
+                onComment={() => {}}
+              />
             </div>
           )}
 
           {/* Current Post (Center) */}
           <div className="relative z-20 transition-all duration-500 ease-out transform scale-100">
-            <PostCard post={currentPost} city={city} isActive={true} timeAgo={timeAgo} />
+            <PostCard 
+              post={currentPost} 
+              city={city} 
+              isActive={true} 
+              timeAgo={timeAgo}
+              isPounded={poundedPosts.has(currentPost.id)}
+              onPound={() => handlePound(currentPost.id)}
+              onComment={() => setCommentModalOpen(true)}
+            />
           </div>
 
           {/* Next Post (Right Side) */}
@@ -144,7 +204,14 @@ const PublicPostView = () => {
                 transform: "perspective(1000px) rotateY(-25deg) translateX(20%) scale(0.7)",
               }}
             >
-              <PostCard post={nextPost} city={city} isActive={false} />
+              <PostCard 
+                post={nextPost} 
+                city={city} 
+                isActive={false}
+                isPounded={poundedPosts.has(nextPost.id)}
+                onPound={() => {}}
+                onComment={() => {}}
+              />
             </div>
           )}
         </div>
@@ -193,6 +260,18 @@ const PublicPostView = () => {
           <X className="w-8 h-8 text-white" />
         </button>
       </div>
+
+      {/* Comment Modal */}
+      <CommentModal
+        isOpen={commentModalOpen}
+        onClose={() => setCommentModalOpen(false)}
+        postId={currentPost.id}
+        postAuthorName={currentPost.username}
+        postAuthorAvatar={currentPost.avatar_url}
+        userAvatar={localStorage.getItem('jv_profile_picture') || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100"}
+        userName={localStorage.getItem('jv_verified_name') || "You"}
+        onSubmitComment={handleSubmitComment}
+      />
     </div>
   );
 };
@@ -202,13 +281,21 @@ const PostCard = ({
   post, 
   city, 
   isActive, 
-  timeAgo = "11 minutes ago" 
+  timeAgo = "11 minutes ago",
+  isPounded,
+  onPound,
+  onComment,
 }: { 
   post: any; 
   city?: string; 
   isActive: boolean;
   timeAgo?: string;
+  isPounded: boolean;
+  onPound: () => void;
+  onComment: () => void;
 }) => {
+  const poundCount = isPounded ? (post.pounds || 0) + 1 : (post.pounds || 0);
+  
   return (
     <div className={`flex flex-col items-center ${isActive ? "" : "pointer-events-none"}`}>
       {/* Profile Section - Only show for active */}
@@ -229,9 +316,16 @@ const PostCard = ({
           <h2 className="text-2xl font-bold text-white mt-4 drop-shadow-lg">{post.username}</h2>
           <div className="flex items-center gap-1 text-neon-cyan">
             <MapPin className="w-4 h-4" />
-            <span className="text-sm">@ {city || "Unknown"} with 5 others</span>
+            <span className="text-sm">@ {city || "Unknown"}</span>
           </div>
           <p className="text-white/70 text-sm mt-1">{timeAgo}</p>
+          
+          {/* Tagged Users */}
+          {post.taggedUsers && post.taggedUsers.length > 0 && (
+            <div className="mt-2">
+              <TaggedUsersDisplay users={post.taggedUsers} />
+            </div>
+          )}
         </div>
       )}
 
@@ -248,12 +342,22 @@ const PostCard = ({
           {/* Engagement Stats Overlay */}
           <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent">
             <div className="flex items-center gap-4">
-              <button className="flex items-center gap-1 text-white hover:text-neon-pink transition-colors">
-                <Heart className="w-6 h-6 fill-neon-pink text-neon-pink" />
-                <span className="text-sm font-bold">{post.pounds || 16}</span>
+              <button 
+                onClick={onPound}
+                className="flex items-center gap-1 text-white hover:text-neon-pink transition-colors group"
+              >
+                <FistPoundIcon 
+                  filled={isPounded} 
+                  className={`w-6 h-6 transition-all ${isPounded ? "text-neon-pink scale-110" : "text-white group-hover:scale-110"}`} 
+                />
+                <span className="text-sm font-bold">{poundCount}</span>
               </button>
-              <button className="flex items-center gap-1 text-white hover:text-neon-cyan transition-colors">
+              <button 
+                onClick={onComment}
+                className="flex items-center gap-1 text-white hover:text-neon-cyan transition-colors"
+              >
                 <MessageCircle className="w-6 h-6" />
+                <span className="text-sm font-bold">{post.comments || 0}</span>
               </button>
             </div>
           </div>

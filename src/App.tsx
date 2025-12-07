@@ -2,11 +2,10 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { lazy, Suspense } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/Auth/AuthPage";
 import Login from "./pages/Auth/Login";
@@ -41,12 +40,8 @@ const FloorplanEditor = lazy(() => import("./pages/POS/FloorplanEditor"));
 const KitchenDisplay = lazy(() => import("./pages/POS/KitchenDisplay"));
 const StaffRoster = lazy(() => import("./pages/POS/StaffRoster"));
 import CustomerLayout from "./components/Customer/CustomerLayout";
-import Feed from "./pages/Customer/Feed";
-import Discover from "./pages/Customer/Discover";
 import DiscoverNew from "./pages/Customer/DiscoverNew";
-import Profile from "./pages/Customer/Profile";
 import ProfileNew from "./pages/Customer/ProfileNew";
-import VenueDetail from "./pages/Customer/VenueDetail";
 import Wallet from "./pages/Customer/Wallet";
 import CityView from "./pages/Customer/CityView";
 import PublicPostView from "./pages/Customer/PublicPostView";
@@ -77,8 +72,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
-          <Route path="/" element={<AuthPage />} />
-          <Route path="/home" element={<Index />} />
+          {/* Auth Routes */}
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/auth/login" element={<Login />} />
           <Route path="/auth/signup" element={<Signup />} />
@@ -101,86 +95,274 @@ const App = () => (
           <Route path="/venue/profile-setup" element={<VenueProfileSetup />} />
           
           {/* Customer App Routes */}
-          <Route path="/app/*" element={
+          <Route path="/app/feed/immersive" element={
             <ProtectedRoute>
               <CustomerLayout>
-                <Routes>
-                  <Route path="feed" element={<Feed />} />
-                  <Route path="feed/immersive" element={
-                    <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center text-white">Loading...</div>}>
-                      <ImmersiveFeed />
-                    </Suspense>
-                  } />
-                  <Route path="discover" element={<Discover />} />
-                  <Route path="venue/:id" element={
-                    <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center text-white">Loading...</div>}>
-                      <ImmersiveVenue />
-                    </Suspense>
-                  } />
-                  <Route path="city-view" element={<CityView />} />
-                  <Route path="public-post" element={<PublicPostView />} />
-                  <Route path="top10" element={<Top10 />} />
-                  <Route path="venues" element={<DiscoverNew />} />
-                  <Route path="profile" element={<ProfileNew />} />
-                  <Route path="profile/edit" element={<Profile />} />
-                  <Route path="wallet" element={<Wallet />} />
-                  <Route path="messages" element={<div className="min-h-screen bg-black p-8 text-white">Messages Coming Soon</div>} />
-                  <Route path="notifications" element={<Notifications />} />
-                  <Route path="maps" element={<div className="min-h-screen bg-black p-8 text-white">Maps Coming Soon</div>} />
-                  <Route path="*" element={<Feed />} />
-                </Routes>
+                <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center text-white">Loading...</div>}>
+                  <ImmersiveFeed />
+                </Suspense>
+              </CustomerLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/app/venue/:id" element={
+            <ProtectedRoute>
+              <CustomerLayout>
+                <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center text-white">Loading...</div>}>
+                  <ImmersiveVenue />
+                </Suspense>
+              </CustomerLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/app/city-view" element={
+            <ProtectedRoute>
+              <CustomerLayout>
+                <CityView />
+              </CustomerLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/app/public-post" element={
+            <ProtectedRoute>
+              <CustomerLayout>
+                <PublicPostView />
+              </CustomerLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/app/top10" element={
+            <ProtectedRoute>
+              <CustomerLayout>
+                <Top10 />
+              </CustomerLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/app/venues" element={
+            <ProtectedRoute>
+              <CustomerLayout>
+                <DiscoverNew />
+              </CustomerLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/app/profile" element={
+            <ProtectedRoute>
+              <CustomerLayout>
+                <ProfileNew />
+              </CustomerLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/app/wallet" element={
+            <ProtectedRoute>
+              <CustomerLayout>
+                <Wallet />
+              </CustomerLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/app/messages" element={
+            <ProtectedRoute>
+              <CustomerLayout>
+                <div className="min-h-screen bg-black p-8 text-white">Messages Coming Soon</div>
+              </CustomerLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/app/notifications" element={
+            <ProtectedRoute>
+              <CustomerLayout>
+                <Notifications />
+              </CustomerLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/app/maps" element={
+            <ProtectedRoute>
+              <CustomerLayout>
+                <div className="min-h-screen bg-black p-8 text-white">Maps Coming Soon</div>
               </CustomerLayout>
             </ProtectedRoute>
           } />
 
           {/* Venue Management Routes - Protected */}
-          <Route path="/venue/*" element={
+          <Route path="/venue/home" element={
             <ProtectedRoute>
               <VenueLayout>
-                <Routes>
-                  <Route path="home" element={<VenueHome />} />
-                  <Route path="menu" element={<VenueMenu />} />
-                  <Route path="orders" element={<VenueOrders />} />
-                  <Route path="credits" element={<VenueCredits />} />
-                  <Route path="assign" element={<VenueAssign />} />
-                  <Route path="notifications" element={<VenueNotifications />} />
-                  <Route path="messages" element={<VenueMessages />} />
-                  <Route path="account" element={<VenueAccount />} />
-                  <Route path="settings" element={<VenueSettings />} />
-                  <Route path="*" element={<VenueHome />} />
-                </Routes>
+                <VenueHome />
+              </VenueLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/venue/menu" element={
+            <ProtectedRoute>
+              <VenueLayout>
+                <VenueMenu />
+              </VenueLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/venue/orders" element={
+            <ProtectedRoute>
+              <VenueLayout>
+                <VenueOrders />
+              </VenueLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/venue/credits" element={
+            <ProtectedRoute>
+              <VenueLayout>
+                <VenueCredits />
+              </VenueLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/venue/assign" element={
+            <ProtectedRoute>
+              <VenueLayout>
+                <VenueAssign />
+              </VenueLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/venue/notifications" element={
+            <ProtectedRoute>
+              <VenueLayout>
+                <VenueNotifications />
+              </VenueLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/venue/messages" element={
+            <ProtectedRoute>
+              <VenueLayout>
+                <VenueMessages />
+              </VenueLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/venue/account" element={
+            <ProtectedRoute>
+              <VenueLayout>
+                <VenueAccount />
+              </VenueLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/venue/settings" element={
+            <ProtectedRoute>
+              <VenueLayout>
+                <VenueSettings />
               </VenueLayout>
             </ProtectedRoute>
           } />
             
           {/* POS Routes - Protected */}
-            <Route path="/venue/pos/*" element={
-              <ProtectedRoute>
-                <POSLayout>
-                  <Routes>
-                    <Route path="dashboard" element={<Dashboard />} />
-                    <Route path="new-order" element={<NewOrder />} />
-                    <Route path="kitchen" element={<Kitchen />} />
-                    <Route path="kitchen-enhanced" element={<KitchenEnhanced />} />
-                    <Route path="kitchen-display" element={<Suspense fallback={<div className="p-8">Loading...</div>}><KitchenDisplay /></Suspense>} />
-                    <Route path="orders" element={<Orders />} />
-                    <Route path="menu" element={<Menu />} />
-                    <Route path="inventory" element={<Inventory />} />
-                    <Route path="tables" element={<Tables />} />
-                    <Route path="floorplan" element={<Suspense fallback={<div className="p-8">Loading Floorplan...</div>}><FloorplanEditor /></Suspense>} />
-                    <Route path="sales" element={<Sales />} />
-                    <Route path="staff" element={<Staff />} />
-                    <Route path="staff-roster" element={<Suspense fallback={<div className="p-8">Loading...</div>}><StaffRoster /></Suspense>} />
-                    <Route path="analytics" element={<Analytics />} />
-                    <Route path="settings" element={<Settings />} />
-                    <Route path="*" element={<Dashboard />} />
-                  </Routes>
-                </POSLayout>
-              </ProtectedRoute>
-            } />
+          <Route path="/venue/pos/dashboard" element={
+            <ProtectedRoute>
+              <POSLayout>
+                <Dashboard />
+              </POSLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/venue/pos/new-order" element={
+            <ProtectedRoute>
+              <POSLayout>
+                <NewOrder />
+              </POSLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/venue/pos/kitchen" element={
+            <ProtectedRoute>
+              <POSLayout>
+                <Kitchen />
+              </POSLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/venue/pos/kitchen-enhanced" element={
+            <ProtectedRoute>
+              <POSLayout>
+                <KitchenEnhanced />
+              </POSLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/venue/pos/kitchen-display" element={
+            <ProtectedRoute>
+              <POSLayout>
+                <Suspense fallback={<div className="p-8">Loading...</div>}>
+                  <KitchenDisplay />
+                </Suspense>
+              </POSLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/venue/pos/orders" element={
+            <ProtectedRoute>
+              <POSLayout>
+                <Orders />
+              </POSLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/venue/pos/menu" element={
+            <ProtectedRoute>
+              <POSLayout>
+                <Menu />
+              </POSLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/venue/pos/inventory" element={
+            <ProtectedRoute>
+              <POSLayout>
+                <Inventory />
+              </POSLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/venue/pos/tables" element={
+            <ProtectedRoute>
+              <POSLayout>
+                <Tables />
+              </POSLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/venue/pos/floorplan" element={
+            <ProtectedRoute>
+              <POSLayout>
+                <Suspense fallback={<div className="p-8">Loading Floorplan...</div>}>
+                  <FloorplanEditor />
+                </Suspense>
+              </POSLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/venue/pos/sales" element={
+            <ProtectedRoute>
+              <POSLayout>
+                <Sales />
+              </POSLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/venue/pos/staff" element={
+            <ProtectedRoute>
+              <POSLayout>
+                <Staff />
+              </POSLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/venue/pos/staff-roster" element={
+            <ProtectedRoute>
+              <POSLayout>
+                <Suspense fallback={<div className="p-8">Loading...</div>}>
+                  <StaffRoster />
+                </Suspense>
+              </POSLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/venue/pos/analytics" element={
+            <ProtectedRoute>
+              <POSLayout>
+                <Analytics />
+              </POSLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/venue/pos/settings" element={
+            <ProtectedRoute>
+              <POSLayout>
+                <Settings />
+              </POSLayout>
+            </ProtectedRoute>
+          } />
+          
+          {/* Redirects */}
+          <Route path="/" element={<Navigate to="/auth" replace />} />
+          <Route path="/app" element={<Navigate to="/app/feed/immersive" replace />} />
+          <Route path="/app/feed" element={<Navigate to="/app/feed/immersive" replace />} />
+          <Route path="/venue" element={<Navigate to="/venue/home" replace />} />
             
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
+          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
       </BrowserRouter>
