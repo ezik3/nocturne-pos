@@ -1,12 +1,18 @@
 import { useState } from "react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { ChevronDown, Play, Share2 } from "lucide-react";
+import { ChevronDown, Play, Share2, MessageCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import TaggedUsersDisplay from "./TaggedUsersDisplay";
+import FistPoundIcon from "./FistPoundIcon";
 
 interface TaggedUser {
   id: string;
   username: string;
   avatar_url?: string;
+  age?: number;
+  relationship_status?: string;
+  location?: string;
+  connection_count?: number;
 }
 
 interface PostCardProps {
@@ -19,6 +25,7 @@ interface PostCardProps {
   imageUrl?: string;
   videoUrl?: string;
   venueName?: string;
+  venueCheckedIn?: boolean;
   taggedUsers?: TaggedUser[];
   poundsCount: number;
   commentsCount: number;
@@ -38,6 +45,7 @@ const PostCard = ({
   imageUrl,
   videoUrl,
   venueName,
+  venueCheckedIn = false,
   taggedUsers = [],
   poundsCount,
   commentsCount,
@@ -88,21 +96,8 @@ const PostCard = ({
               {isGold && <span className="ml-1">⭐</span>}
             </span>
             {taggedUsers.length > 0 && (
-              <div className="flex items-center gap-1 mt-0.5">
-                <span className="text-xs text-muted-foreground">w/</span>
-                <div className="flex -space-x-2">
-                  {taggedUsers.slice(0, 3).map((user) => (
-                    <Avatar key={user.id} className="w-5 h-5 ring-1 ring-white dark:ring-black">
-                      <AvatarImage src={user.avatar_url} />
-                      <AvatarFallback className="text-[8px] bg-neon-cyan text-black">
-                        {user.username?.[0]}
-                      </AvatarFallback>
-                    </Avatar>
-                  ))}
-                </div>
-                {taggedUsers.length > 3 && (
-                  <span className="text-xs text-muted-foreground">& {taggedUsers.length - 3} others</span>
-                )}
+              <div className="mt-0.5">
+                <TaggedUsersDisplay users={taggedUsers} maxDisplay={5} size="sm" />
               </div>
             )}
           </div>
@@ -157,8 +152,9 @@ const PostCard = ({
                 <span>@</span>
                 <button 
                   onClick={onVenueClick}
-                  className="text-neon-cyan hover:underline"
+                  className={`hover:underline flex items-center gap-1 ${venueCheckedIn ? "text-green-500" : "text-neon-cyan"}`}
                 >
+                  {venueCheckedIn && <span className="w-2 h-2 bg-green-500 rounded-full" />}
                   {venueName}
                 </button>
               </>
@@ -171,25 +167,17 @@ const PostCard = ({
           <button 
             onClick={handlePound}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg transition-all duration-200 hover:bg-white/5 ${
-              isPounding ? "scale-110" : ""
+              isPounding ? "scale-110 text-neon-pink" : ""
             }`}
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-foreground">
-              <path d="M12 2C8.5 2 6 4.5 6 8c0 2.5 1.5 4.5 3 6l3 4 3-4c1.5-1.5 3-3.5 3-6 0-3.5-2.5-6-6-6z" 
-                    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M9 9h6M9 12h6M10 15h4" 
-                    stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-            </svg>
+            <FistPoundIcon className="w-6 h-6" filled={isPounding} />
           </button>
           <div className="w-px bg-white/10" />
           <button 
             onClick={onComment}
             className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg transition-colors hover:bg-white/5"
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-foreground">
-              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" 
-                    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
+            <MessageCircle className="w-5 h-5" />
           </button>
           <div className="w-px bg-white/10" />
           <button 

@@ -1,12 +1,18 @@
 import { useState, useRef, useEffect } from "react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Play, Pause, Volume2, VolumeX, Heart, MessageCircle, Share2, Sparkles, Clock, MapPin, Users } from "lucide-react";
+import { Play, Pause, Volume2, VolumeX, MessageCircle, Share2, Sparkles, Clock, MapPin } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import TaggedUsersDisplay from "./TaggedUsersDisplay";
+import FistPoundIcon from "./FistPoundIcon";
 
 interface TaggedUser {
   id: string;
   username: string;
   avatar_url?: string;
+  age?: number;
+  relationship_status?: string;
+  location?: string;
+  connection_count?: number;
 }
 
 interface ImmersivePostCardProps {
@@ -173,7 +179,7 @@ const ImmersivePostCard = ({
               ? 'bg-pink neon-glow-pink' 
               : 'bg-white/10 backdrop-blur-xl'
           }`}>
-            <Heart className={`w-6 h-6 ${isPounding ? 'fill-white text-white' : 'text-white'}`} />
+            <FistPoundIcon className={`w-6 h-6 ${isPounding ? 'text-white' : 'text-white'}`} filled={isPounding} />
           </div>
           <span className="text-xs text-white font-medium">{poundsCount}</span>
         </button>
@@ -229,22 +235,7 @@ const ImmersivePostCard = ({
           
           {/* Tagged Users */}
           {taggedUsers.length > 0 && (
-            <div className="flex items-center gap-1">
-              <Users className="w-4 h-4 text-white/60" />
-              <div className="flex -space-x-2">
-                {taggedUsers.slice(0, 3).map((user) => (
-                  <Avatar key={user.id} className="w-6 h-6 ring-2 ring-black">
-                    <AvatarImage src={user.avatar_url} />
-                    <AvatarFallback className="text-[8px] bg-cyan text-black">
-                      {user.username?.[0]}
-                    </AvatarFallback>
-                  </Avatar>
-                ))}
-              </div>
-              {taggedUsers.length > 3 && (
-                <span className="text-xs text-white/60">+{taggedUsers.length - 3}</span>
-              )}
-            </div>
+            <TaggedUsersDisplay users={taggedUsers} maxDisplay={5} size="sm" showLabel={false} />
           )}
         </div>
 
