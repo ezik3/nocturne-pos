@@ -264,22 +264,6 @@ const App = () => (
               </POSLayout>
             </ProtectedRoute>
           } />
-          <Route path="/venue/pos/kitchen-enhanced" element={
-            <ProtectedRoute>
-              <POSLayout>
-                <KitchenEnhanced />
-              </POSLayout>
-            </ProtectedRoute>
-          } />
-          <Route path="/venue/pos/kitchen-display" element={
-            <ProtectedRoute>
-              <POSLayout>
-                <Suspense fallback={<div className="p-8">Loading...</div>}>
-                  <KitchenDisplay />
-                </Suspense>
-              </POSLayout>
-            </ProtectedRoute>
-          } />
           <Route path="/venue/pos/orders" element={
             <ProtectedRoute>
               <POSLayout>
@@ -328,15 +312,6 @@ const App = () => (
             <ProtectedRoute>
               <POSLayout>
                 <Staff />
-              </POSLayout>
-            </ProtectedRoute>
-          } />
-          <Route path="/venue/pos/staff-roster" element={
-            <ProtectedRoute>
-              <POSLayout>
-                <Suspense fallback={<div className="p-8">Loading...</div>}>
-                  <StaffRoster />
-                </Suspense>
               </POSLayout>
             </ProtectedRoute>
           } />
