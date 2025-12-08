@@ -75,7 +75,7 @@ export default function VenueNotificationToast() {
   };
 
   return (
-    <div className="fixed top-20 right-4 z-50 space-y-2 pointer-events-none">
+    <div className="fixed top-4 left-4 z-50 space-y-2 pointer-events-none">
       <AnimatePresence>
         {notifications.map((notif) => {
           const Icon = getIcon(notif.type);
@@ -83,9 +83,9 @@ export default function VenueNotificationToast() {
           return (
             <motion.div
               key={notif.id}
-              initial={{ opacity: 0, x: 100, scale: 0.9 }}
+              initial={{ opacity: 0, x: -100, scale: 0.9 }}
               animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: 100, scale: 0.9 }}
+              exit={{ opacity: 0, x: -100, scale: 0.9 }}
               className="pointer-events-auto"
             >
               <div className="w-80 bg-background/95 backdrop-blur-lg border border-border rounded-lg shadow-xl overflow-hidden">

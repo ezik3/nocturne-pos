@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { 
   Users, ShoppingCart, DollarSign, Clock, Star, TrendingUp,
   Utensils, MessageCircle, Radio, Activity, Bot, Menu as MenuIcon,
-  ChevronRight, Bell, Settings, Eye, Megaphone
+  ChevronRight, Bell, Settings, Eye
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import LiveChatOverlay from "@/components/Venue/LiveChatOverlay";
 import NotificationSettingsModal from "@/components/Venue/NotificationSettingsModal";
 import VenueNotificationToast from "@/components/Venue/VenueNotificationToast";
-import PushNotificationDealsModal from "@/components/Venue/PushNotificationDealsModal";
+import GoLiveVideoPopup from "@/components/Venue/GoLiveVideoPopup";
 
 const venueData = {
   name: "The Electric Lounge",
@@ -109,13 +110,17 @@ const AmbientParticles = () => (
 );
 
 export default function VenueHome() {
+  const navigate = useNavigate();
   const [showChat, setShowChat] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [showDeals, setShowDeals] = useState(false);
+  const [isLive, setIsLive] = useState(false);
   const occupancyPercent = (venueData.currentOccupancy / venueData.maxCapacity) * 100;
 
   const handleOrbClick = (orbId: string) => {
     if (orbId === 'chat') setShowChat(true);
+    if (orbId === 'tables') navigate('/venue/pos/tables');
+    if (orbId === 'kitchen') navigate('/venue/pos/kitchen');
+    if (orbId === 'orders') navigate('/venue/pos/orders');
   };
 
   return (
@@ -123,7 +128,12 @@ export default function VenueHome() {
       <VenueNotificationToast />
       <LiveChatOverlay isOpen={showChat} onClose={() => setShowChat(false)} />
       <NotificationSettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
-      <PushNotificationDealsModal isOpen={showDeals} onClose={() => setShowDeals(false)} />
+      <GoLiveVideoPopup 
+        isLive={isLive} 
+        onClose={() => setIsLive(false)} 
+        streamerName="The Electric Lounge"
+        viewerCount={47}
+      />
 
       <div className="absolute inset-0">
         <div className="absolute inset-0 bg-gradient-radial from-primary/20 via-transparent to-transparent" />
@@ -145,10 +155,6 @@ export default function VenueHome() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" className="border-cyan-500 text-cyan-400 hover:bg-cyan-500/20" onClick={() => setShowDeals(true)}>
-              <Megaphone className="w-4 h-4 mr-2" />
-              Push Deals
-            </Button>
             <Button variant="ghost" size="icon" className="relative text-white" onClick={() => setShowSettings(true)}>
               <Bell className="w-5 h-5" />
               <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[10px] flex items-center justify-center">3</span>
@@ -265,7 +271,13 @@ export default function VenueHome() {
       <motion.div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-20" initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5 }}>
         <Card className="bg-slate-800/90 backdrop-blur-xl border-slate-700">
           <CardContent className="p-3 flex items-center gap-3">
-            <Button className="bg-gradient-to-r from-green-500 to-emerald-500 text-white"><TrendingUp className="w-4 h-4 mr-2" />Go Live</Button>
+            <Button 
+              className={isLive ? "bg-red-500 hover:bg-red-600" : "bg-gradient-to-r from-green-500 to-emerald-500"} 
+              onClick={() => setIsLive(!isLive)}
+            >
+              <Radio className={`w-4 h-4 mr-2 ${isLive ? 'animate-pulse' : ''}`} />
+              {isLive ? 'End Live' : 'Go Live'}
+            </Button>
             <Button variant="outline" className="border-slate-600 text-slate-300"><MenuIcon className="w-4 h-4 mr-2" />Quick Menu</Button>
             <Button variant="outline" className="border-slate-600 text-slate-300"><Bot className="w-4 h-4 mr-2" />AI Settings</Button>
           </CardContent>

@@ -1,6 +1,9 @@
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Coins, TrendingUp, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { Coins, TrendingUp, ArrowUpRight, ArrowDownRight, Megaphone } from "lucide-react";
+import PushNotificationDealsModal from "@/components/Venue/PushNotificationDealsModal";
+import DealCreatorModal from "@/components/Venue/DealCreatorModal";
 
 const transactions = [
   { id: "1", type: "received", amount: 150, from: "Table 5 Order", time: "2 min ago" },
@@ -11,7 +14,14 @@ const transactions = [
 ];
 
 export default function VenueCredits() {
+  const [showDealsModal, setShowDealsModal] = useState(false);
+  const [showDealCreator, setShowDealCreator] = useState(false);
+  const availableCredits = 15;
+
   return (
+    <>
+      <PushNotificationDealsModal isOpen={showDealsModal} onClose={() => setShowDealsModal(false)} />
+      <DealCreatorModal isOpen={showDealCreator} onClose={() => setShowDealCreator(false)} availableCredits={availableCredits} />
     <div className="p-8">
       <div className="mb-6">
         <h1 className="text-4xl font-bold text-primary mb-2">Credits & Payments</h1>
@@ -60,6 +70,26 @@ export default function VenueCredits() {
             <p className="text-sm text-muted-foreground mt-2">Avg. $27.50 per order</p>
           </CardContent>
         </Card>
+
+        {/* Push Notifications Card */}
+        <Card className="glass border-border border-cyan-500/30">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <Megaphone className="h-8 w-8 text-cyan-400" />
+              <span className="text-sm text-cyan-400">{availableCredits} credits</span>
+            </div>
+            <p className="text-2xl font-bold mb-1">Push Deals</p>
+            <p className="text-muted-foreground text-sm mb-4">Promote deals to nearby customers</p>
+            <div className="flex gap-2">
+              <Button size="sm" className="flex-1 bg-cyan-500 hover:bg-cyan-600 text-black" onClick={() => setShowDealsModal(true)}>
+                Buy Credits
+              </Button>
+              <Button size="sm" variant="outline" className="flex-1 border-cyan-500 text-cyan-400" onClick={() => setShowDealCreator(true)}>
+                Create Deal
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Recent Transactions */}
@@ -91,5 +121,6 @@ export default function VenueCredits() {
         </CardContent>
       </Card>
     </div>
+    </>
   );
 }
