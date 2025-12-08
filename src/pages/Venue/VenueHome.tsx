@@ -1,15 +1,18 @@
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { 
   Users, ShoppingCart, DollarSign, Clock, Star, TrendingUp,
   Utensils, MessageCircle, Radio, Activity, Bot, Menu as MenuIcon,
-  ChevronRight, Bell, Settings, Eye
+  ChevronRight, Bell, Settings, Eye, Megaphone
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import LiveChatOverlay from "@/components/Venue/LiveChatOverlay";
+import NotificationSettingsModal from "@/components/Venue/NotificationSettingsModal";
+import VenueNotificationToast from "@/components/Venue/VenueNotificationToast";
+import PushNotificationDealsModal from "@/components/Venue/PushNotificationDealsModal";
 
-// Mock venue data
 const venueData = {
   name: "The Electric Lounge",
   vibeLevel: "🔥 Lit",
@@ -22,7 +25,6 @@ const venueData = {
   rating: 4.8,
 };
 
-// VibeSphere Orbs for venue owner control
 const controlOrbs = [
   { id: "orders", icon: ShoppingCart, label: "Live Orders", color: "from-orange-500 to-red-500", count: 23 },
   { id: "kitchen", icon: Utensils, label: "Kitchen", color: "from-green-500 to-emerald-500", count: 8 },
@@ -32,7 +34,6 @@ const controlOrbs = [
   { id: "ai", icon: Bot, label: "AI Waiter", color: "from-cyan-500 to-blue-500", count: null },
 ];
 
-// Recent activity
 const recentActivity = [
   { time: "2 min ago", action: "New order #1234 received", type: "order", user: "Sarah M." },
   { time: "5 min ago", action: "Table 4 checked out", type: "checkout", user: "Mike J." },
@@ -40,7 +41,6 @@ const recentActivity = [
   { time: "18 min ago", action: "New reservation for 8 PM", type: "reservation", user: "Emma W." },
 ];
 
-// People at venue
 const peopleAtVenue = [
   { id: "1", name: "Sarah M.", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100", table: "4" },
   { id: "2", name: "Mike J.", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100", table: "7" },
@@ -50,16 +50,7 @@ const peopleAtVenue = [
   { id: "6", name: "Tom H.", avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100", table: "1" },
 ];
 
-// Floating Orb Component
-const FloatingOrb = ({ 
-  orb, 
-  index, 
-  onClick 
-}: { 
-  orb: typeof controlOrbs[0]; 
-  index: number; 
-  onClick: () => void;
-}) => {
+const FloatingOrb = ({ orb, index, onClick }: { orb: typeof controlOrbs[0]; index: number; onClick: () => void }) => {
   const positions = [
     { top: "15%", left: "15%" },
     { top: "15%", right: "15%" },
@@ -68,7 +59,6 @@ const FloatingOrb = ({
     { top: "75%", left: "20%" },
     { top: "75%", right: "20%" },
   ];
-
   const pos = positions[index] || positions[0];
 
   return (
@@ -76,11 +66,7 @@ const FloatingOrb = ({
       className="absolute cursor-pointer"
       style={pos}
       initial={{ scale: 0, opacity: 0 }}
-      animate={{ 
-        scale: 1, 
-        opacity: 1,
-        y: [0, -10, 0],
-      }}
+      animate={{ scale: 1, opacity: 1, y: [0, -10, 0] }}
       transition={{
         scale: { delay: index * 0.1, duration: 0.5 },
         y: { repeat: Infinity, duration: 3, ease: "easeInOut", delay: index * 0.2 }
@@ -89,79 +75,65 @@ const FloatingOrb = ({
       whileTap={{ scale: 0.95 }}
       onClick={onClick}
     >
-      <div className={`relative w-20 h-20 md:w-24 md:h-24 rounded-full bg-gradient-to-br ${orb.color} 
-        shadow-lg flex items-center justify-center group`}>
-        {/* Glow effect */}
-        <div className={`absolute inset-0 rounded-full bg-gradient-to-br ${orb.color} opacity-50 blur-xl 
-          group-hover:opacity-80 transition-opacity`} />
-        
-        {/* Icon */}
-        <orb.icon className="w-8 h-8 md:w-10 md:h-10 text-white relative z-10" />
-        
-        {/* Count badge */}
+      <div className={`relative w-24 h-24 md:w-28 md:h-28 rounded-full bg-gradient-to-br ${orb.color} 
+        shadow-2xl flex items-center justify-center group border-2 border-white/30`}>
+        <div className={`absolute inset-0 rounded-full bg-gradient-to-br ${orb.color} opacity-60 blur-2xl 
+          group-hover:opacity-90 transition-opacity`} />
+        <orb.icon className="w-10 h-10 md:w-12 md:h-12 text-white relative z-10 drop-shadow-lg" />
         {orb.count !== null && (
-          <div className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center 
-            justify-center text-white text-xs font-bold shadow-lg">
+          <div className="absolute -top-2 -right-2 w-8 h-8 bg-red-500 rounded-full flex items-center 
+            justify-center text-white text-sm font-bold shadow-lg border-2 border-white">
             {orb.count}
           </div>
         )}
       </div>
-      
-      {/* Label */}
-      <p className="text-center text-white text-sm mt-2 font-medium drop-shadow-lg">
+      <p className="text-center text-white text-sm mt-3 font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
         {orb.label}
       </p>
     </motion.div>
   );
 };
 
-// Ambient particles
 const AmbientParticles = () => (
   <div className="absolute inset-0 overflow-hidden pointer-events-none">
-    {[...Array(30)].map((_, i) => (
+    {[...Array(40)].map((_, i) => (
       <motion.div
         key={i}
-        className="absolute w-1 h-1 bg-primary/30 rounded-full"
-        style={{
-          left: `${Math.random() * 100}%`,
-          top: `${Math.random() * 100}%`,
-        }}
-        animate={{
-          y: [-20, -100],
-          opacity: [0, 1, 0],
-        }}
-        transition={{
-          duration: 3 + Math.random() * 2,
-          repeat: Infinity,
-          delay: Math.random() * 3,
-          ease: "easeOut",
-        }}
+        className="absolute w-2 h-2 bg-primary/50 rounded-full"
+        style={{ left: `${Math.random() * 100}%`, top: `${Math.random() * 100}%` }}
+        animate={{ y: [-20, -100], opacity: [0, 0.8, 0] }}
+        transition={{ duration: 4 + Math.random() * 3, repeat: Infinity, delay: Math.random() * 3, ease: "easeOut" }}
       />
     ))}
   </div>
 );
 
 export default function VenueHome() {
-  const [selectedOrb, setSelectedOrb] = useState<string | null>(null);
+  const [showChat, setShowChat] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showDeals, setShowDeals] = useState(false);
   const occupancyPercent = (venueData.currentOccupancy / venueData.maxCapacity) * 100;
 
+  const handleOrbClick = (orbId: string) => {
+    if (orbId === 'chat') setShowChat(true);
+  };
+
   return (
-    <div className="relative min-h-screen bg-gradient-to-b from-background via-background/95 to-background overflow-hidden">
-      {/* Ambient Background */}
+    <div className="relative min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 overflow-hidden">
+      <VenueNotificationToast />
+      <LiveChatOverlay isOpen={showChat} onClose={() => setShowChat(false)} />
+      <NotificationSettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
+      <PushNotificationDealsModal isOpen={showDeals} onClose={() => setShowDeals(false)} />
+
       <div className="absolute inset-0">
-        <div className="absolute inset-0 bg-gradient-radial from-primary/10 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-radial from-primary/20 via-transparent to-transparent" />
         <AmbientParticles />
       </div>
 
-      {/* Header */}
-      <motion.div 
-        className="relative z-10 p-6"
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-      >
+      <motion.div className="relative z-10 p-6" initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-primary via-neon-cyan to-neon-purple bg-clip-text text-transparent">
+            <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-primary via-cyan-400 to-purple-400 bg-clip-text text-transparent">
               {venueData.name}
             </h1>
             <div className="flex items-center gap-4 mt-2">
@@ -172,217 +144,130 @@ export default function VenueHome() {
               </div>
             </div>
           </div>
-          
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="w-5 h-5" />
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[10px] flex items-center justify-center text-white">
-                3
-              </span>
+            <Button variant="outline" className="border-cyan-500 text-cyan-400 hover:bg-cyan-500/20" onClick={() => setShowDeals(true)}>
+              <Megaphone className="w-4 h-4 mr-2" />
+              Push Deals
             </Button>
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" className="relative text-white" onClick={() => setShowSettings(true)}>
+              <Bell className="w-5 h-5" />
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[10px] flex items-center justify-center">3</span>
+            </Button>
+            <Button variant="ghost" size="icon" className="text-white" onClick={() => setShowSettings(true)}>
               <Settings className="w-5 h-5" />
             </Button>
           </div>
         </div>
       </motion.div>
 
-      {/* Stats Bar */}
-      <motion.div 
-        className="relative z-10 px-6"
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.1 }}
-      >
-        <Card className="glass border-border/50">
+      <motion.div className="relative z-10 px-6" initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }}>
+        <Card className="bg-slate-800/80 backdrop-blur-xl border-slate-700">
           <CardContent className="p-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="text-center">
                 <div className="flex items-center justify-center gap-2">
                   <Users className="w-5 h-5 text-green-400" />
-                  <span className="text-2xl font-bold">{venueData.currentOccupancy}</span>
-                  <span className="text-muted-foreground">/ {venueData.maxCapacity}</span>
+                  <span className="text-2xl font-bold text-white">{venueData.currentOccupancy}</span>
+                  <span className="text-slate-400">/ {venueData.maxCapacity}</span>
                 </div>
-                <p className="text-sm text-muted-foreground mt-1">Currently Here</p>
-                <div className="w-full h-2 bg-muted rounded-full mt-2 overflow-hidden">
-                  <div 
-                    className="h-full bg-gradient-to-r from-green-500 to-emerald-400 rounded-full transition-all"
-                    style={{ width: `${occupancyPercent}%` }}
-                  />
+                <p className="text-sm text-slate-400 mt-1">Currently Here</p>
+                <div className="w-full h-2 bg-slate-700 rounded-full mt-2 overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-green-500 to-emerald-400 rounded-full" style={{ width: `${occupancyPercent}%` }} />
                 </div>
               </div>
-              
               <div className="text-center">
                 <div className="flex items-center justify-center gap-2">
                   <ShoppingCart className="w-5 h-5 text-orange-400" />
-                  <span className="text-2xl font-bold">{venueData.activeOrders}</span>
+                  <span className="text-2xl font-bold text-white">{venueData.activeOrders}</span>
                 </div>
-                <p className="text-sm text-muted-foreground mt-1">Active Orders</p>
+                <p className="text-sm text-slate-400 mt-1">Active Orders</p>
               </div>
-              
               <div className="text-center">
                 <div className="flex items-center justify-center gap-2">
                   <DollarSign className="w-5 h-5 text-green-400" />
-                  <span className="text-2xl font-bold">${venueData.revenue.toLocaleString()}</span>
+                  <span className="text-2xl font-bold text-white">${venueData.revenue.toLocaleString()}</span>
                 </div>
-                <p className="text-sm text-muted-foreground mt-1">Today's Revenue</p>
+                <p className="text-sm text-slate-400 mt-1">Today's Revenue</p>
               </div>
-              
               <div className="text-center">
                 <div className="flex items-center justify-center gap-2">
                   <Clock className="w-5 h-5 text-blue-400" />
-                  <span className="text-2xl font-bold">{venueData.avgWaitTime}</span>
-                  <span className="text-muted-foreground">min</span>
+                  <span className="text-2xl font-bold text-white">{venueData.avgWaitTime}</span>
+                  <span className="text-slate-400">min</span>
                 </div>
-                <p className="text-sm text-muted-foreground mt-1">Avg Wait Time</p>
+                <p className="text-sm text-slate-400 mt-1">Avg Wait Time</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </motion.div>
 
-      {/* VibeSphere Control Center */}
       <div className="relative z-10 h-[400px] md:h-[500px] mt-8">
-        {/* Center venue pulse */}
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-          <motion.div
-            className="w-32 h-32 rounded-full bg-gradient-to-br from-primary/30 to-neon-purple/30 
-              flex items-center justify-center"
-            animate={{ scale: [1, 1.1, 1] }}
-            transition={{ repeat: Infinity, duration: 2 }}
-          >
-            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary/50 to-neon-purple/50 
-              flex items-center justify-center backdrop-blur-sm">
+          <motion.div className="w-32 h-32 rounded-full bg-gradient-to-br from-primary/40 to-purple-500/40 flex items-center justify-center border-2 border-white/20" animate={{ scale: [1, 1.1, 1] }} transition={{ repeat: Infinity, duration: 2 }}>
+            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary/60 to-purple-500/60 flex items-center justify-center backdrop-blur-sm">
               <Eye className="w-10 h-10 text-white" />
             </div>
           </motion.div>
-          <p className="text-center text-white/80 mt-4 font-medium">Control Center</p>
+          <p className="text-center text-white mt-4 font-bold text-lg drop-shadow-lg">Control Center</p>
         </div>
-
-        {/* Floating Control Orbs */}
         {controlOrbs.map((orb, index) => (
-          <FloatingOrb
-            key={orb.id}
-            orb={orb}
-            index={index}
-            onClick={() => setSelectedOrb(orb.id)}
-          />
+          <FloatingOrb key={orb.id} orb={orb} index={index} onClick={() => handleOrbClick(orb.id)} />
         ))}
       </div>
 
-      {/* Bottom Section - Activity & People */}
-      <div className="relative z-10 px-6 pb-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Activity */}
-        <motion.div
-          initial={{ x: -20, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          transition={{ delay: 0.3 }}
-        >
-          <Card className="glass border-border/50">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold flex items-center gap-2">
-                  <Activity className="w-5 h-5 text-primary" />
-                  Live Activity
-                </h2>
-                <Button variant="ghost" size="sm" className="text-primary">
-                  View All <ChevronRight className="w-4 h-4 ml-1" />
-                </Button>
-              </div>
-              
-              <div className="space-y-4">
-                {recentActivity.map((activity, i) => (
-                  <motion.div 
-                    key={i} 
-                    className="flex items-center gap-4 p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors"
-                    initial={{ x: -10, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    transition={{ delay: 0.4 + i * 0.1 }}
-                  >
-                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{activity.action}</p>
-                      <p className="text-xs text-muted-foreground">{activity.time} • {activity.user}</p>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+      <div className="relative z-10 px-6 pb-32 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="bg-slate-800/80 backdrop-blur-xl border-slate-700">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2"><Activity className="w-5 h-5 text-primary" />Live Activity</h2>
+              <Button variant="ghost" size="sm" className="text-primary">View All <ChevronRight className="w-4 h-4 ml-1" /></Button>
+            </div>
+            <div className="space-y-4">
+              {recentActivity.map((activity, i) => (
+                <div key={i} className="flex items-center gap-4 p-3 rounded-lg bg-slate-700/50">
+                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-white">{activity.action}</p>
+                    <p className="text-xs text-slate-400">{activity.time} • {activity.user}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
-        {/* People at Venue */}
-        <motion.div
-          initial={{ x: 20, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          transition={{ delay: 0.3 }}
-        >
-          <Card className="glass border-border/50">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold flex items-center gap-2">
-                  <Users className="w-5 h-5 text-green-400" />
-                  Who's Here
-                </h2>
-                <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm font-medium">
-                  {venueData.currentOccupancy} checked in
-                </span>
-              </div>
-              
-              <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
-                {peopleAtVenue.map((person, i) => (
-                  <motion.div
-                    key={person.id}
-                    className="flex flex-col items-center group cursor-pointer"
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ delay: 0.5 + i * 0.1 }}
-                    whileHover={{ scale: 1.1 }}
-                  >
-                    <div className="relative">
-                      <Avatar className="w-12 h-12 ring-2 ring-green-500/50 group-hover:ring-green-500">
-                        <AvatarImage src={person.avatar} />
-                        <AvatarFallback>{person.name[0]}</AvatarFallback>
-                      </Avatar>
-                      <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-background rounded-full 
-                        flex items-center justify-center text-[10px] font-bold border border-green-500 text-green-400">
-                        {person.table}
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-2 truncate max-w-full">{person.name}</p>
-                  </motion.div>
-                ))}
-              </div>
-              
-              <Button variant="outline" className="w-full mt-4 border-border/50">
-                View All Guests
-              </Button>
-            </CardContent>
-          </Card>
-        </motion.div>
+        <Card className="bg-slate-800/80 backdrop-blur-xl border-slate-700">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2"><Users className="w-5 h-5 text-green-400" />Who's Here</h2>
+              <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm font-medium">{venueData.currentOccupancy} checked in</span>
+            </div>
+            <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
+              {peopleAtVenue.map((person) => (
+                <div key={person.id} className="flex flex-col items-center group cursor-pointer">
+                  <div className="relative">
+                    <Avatar className="w-12 h-12 ring-2 ring-green-500/50 group-hover:ring-green-500">
+                      <AvatarImage src={person.avatar} />
+                      <AvatarFallback>{person.name[0]}</AvatarFallback>
+                    </Avatar>
+                    <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-slate-900 rounded-full flex items-center justify-center text-[10px] font-bold border border-green-500 text-green-400">{person.table}</div>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-2 truncate max-w-full">{person.name}</p>
+                </div>
+              ))}
+            </div>
+            <Button variant="outline" className="w-full mt-4 border-slate-600 text-slate-300">View All Guests</Button>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Quick Actions Bar */}
-      <motion.div
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-20"
-        initial={{ y: 50, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.5 }}
-      >
-        <Card className="glass border-border/50">
+      <motion.div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-20" initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5 }}>
+        <Card className="bg-slate-800/90 backdrop-blur-xl border-slate-700">
           <CardContent className="p-3 flex items-center gap-3">
-            <Button className="bg-gradient-to-r from-green-500 to-emerald-500 text-white">
-              <TrendingUp className="w-4 h-4 mr-2" />
-              Go Live
-            </Button>
-            <Button variant="outline" className="border-border/50">
-              <MenuIcon className="w-4 h-4 mr-2" />
-              Quick Menu
-            </Button>
-            <Button variant="outline" className="border-border/50">
-              <Bot className="w-4 h-4 mr-2" />
-              AI Settings
-            </Button>
+            <Button className="bg-gradient-to-r from-green-500 to-emerald-500 text-white"><TrendingUp className="w-4 h-4 mr-2" />Go Live</Button>
+            <Button variant="outline" className="border-slate-600 text-slate-300"><MenuIcon className="w-4 h-4 mr-2" />Quick Menu</Button>
+            <Button variant="outline" className="border-slate-600 text-slate-300"><Bot className="w-4 h-4 mr-2" />AI Settings</Button>
           </CardContent>
         </Card>
       </motion.div>
