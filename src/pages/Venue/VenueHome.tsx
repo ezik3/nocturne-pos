@@ -14,6 +14,7 @@ import NotificationSettingsModal from "@/components/Venue/NotificationSettingsMo
 import VenueNotificationToast from "@/components/Venue/VenueNotificationToast";
 import GoLiveVideoPopup from "@/components/Venue/GoLiveVideoPopup";
 import DealCreatorModal from "@/components/Venue/DealCreatorModal";
+import TablesPopup from "@/components/Venue/TablesPopup";
 
 const venueData = {
   name: "The Electric Lounge",
@@ -116,11 +117,12 @@ export default function VenueHome() {
   const [showSettings, setShowSettings] = useState(false);
   const [isLive, setIsLive] = useState(false);
   const [showDealCreator, setShowDealCreator] = useState(false);
+  const [showTablesPopup, setShowTablesPopup] = useState(false);
   const occupancyPercent = (venueData.currentOccupancy / venueData.maxCapacity) * 100;
 
   const handleOrbClick = (orbId: string) => {
     if (orbId === 'chat') setShowChat(true);
-    if (orbId === 'tables') navigate('/venue/pos/tables');
+    if (orbId === 'tables') setShowTablesPopup(true); // Show popup instead of navigating
     if (orbId === 'kitchen') navigate('/venue/pos/kitchen');
     if (orbId === 'orders') navigate('/venue/pos/orders');
   };
@@ -137,6 +139,7 @@ export default function VenueHome() {
         viewerCount={47}
       />
       <DealCreatorModal isOpen={showDealCreator} onClose={() => setShowDealCreator(false)} availableCredits={15} />
+      <TablesPopup isOpen={showTablesPopup} onClose={() => setShowTablesPopup(false)} />
 
       <div className="absolute inset-0">
         <div className="absolute inset-0 bg-gradient-radial from-primary/20 via-transparent to-transparent" />
