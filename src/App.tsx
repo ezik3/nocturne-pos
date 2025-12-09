@@ -39,6 +39,7 @@ import Settings from "./pages/POS/Settings";
 const FloorplanEditor = lazy(() => import("./pages/POS/FloorplanEditor"));
 const KitchenDisplay = lazy(() => import("./pages/POS/KitchenDisplay"));
 const StaffRoster = lazy(() => import("./pages/POS/StaffRoster"));
+const EmployeeLogin = lazy(() => import("./pages/POS/EmployeeLogin"));
 import CustomerLayout from "./components/Customer/CustomerLayout";
 import DiscoverNew from "./pages/Customer/DiscoverNew";
 import ProfileNew from "./pages/Customer/ProfileNew";
@@ -240,6 +241,13 @@ const App = () => (
                 <VenueSettings />
               </VenueLayout>
             </ProtectedRoute>
+          } />
+          
+          {/* Employee Work Mode Login */}
+          <Route path="/venue/pos/login" element={
+            <Suspense fallback={<div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">Loading...</div>}>
+              <EmployeeLogin />
+            </Suspense>
           } />
             
           {/* POS Routes - Protected */}

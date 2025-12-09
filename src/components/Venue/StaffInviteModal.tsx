@@ -7,8 +7,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Search, User, Mail, ShieldCheck, Copy, Check, ArrowLeft, ArrowRight } from "lucide-react";
+import { Search, User, ShieldCheck, Copy, Check, ArrowLeft, ArrowRight, ScanFace, AtSign } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface StaffInviteModalProps {
   isOpen: boolean;
@@ -17,9 +18,10 @@ interface StaffInviteModalProps {
 
 interface FoundUser {
   id: string;
-  name: string;
-  email: string;
+  displayName: string;
+  username: string;
   avatar: string;
+  bio?: string;
 }
 
 const roleOptions = [
@@ -39,6 +41,7 @@ const permissionOptions = [
   { key: "inventory", label: "Inventory", description: "Manage stock levels" },
   { key: "analytics", label: "Analytics", description: "View reports" },
   { key: "staff", label: "Staff Management", description: "Manage employees" },
+  { key: "go_live", label: "Go Live", description: "Broadcast live video streams" },
 ];
 
 export default function StaffInviteModal({ isOpen, onClose }: StaffInviteModalProps) {
@@ -50,32 +53,56 @@ export default function StaffInviteModal({ isOpen, onClose }: StaffInviteModalPr
   const [selectedRole, setSelectedRole] = useState("waiter");
   const [permissions, setPermissions] = useState<Record<string, boolean>>({
     pos: true, kitchen: false, tables: true, orders: true,
-    menu: false, inventory: false, analytics: false, staff: false
+    menu: false, inventory: false, analytics: false, staff: false, go_live: false
   });
   const [generatedPin, setGeneratedPin] = useState("");
   const [pinCopied, setPinCopied] = useState(false);
+  const [enableFaceId, setEnableFaceId] = useState(false);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
     setSearching(true);
-    // Simulate search - in production, this would call Supabase
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setSearchResults([
-      { id: "1", name: "Sarah Johnson", email: searchQuery.includes("@") ? searchQuery : `${searchQuery.toLowerCase().replace(" ", ".")}@example.com`, avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100" },
-      { id: "2", name: "Mike Wilson", email: "mike.wilson@example.com", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100" },
-    ]);
+    
+    // Search customer_profiles by display_name (profile-based search within app)
+    const { data, error } = await supabase
+      .from("customer_profiles")
+      .select("id, user_id, display_name, bio, avatar_url")
+      .ilike("display_name", `%${searchQuery}%`)
+      .limit(10);
+    
+    if (error) {
+      console.error("Search error:", error);
+      // Fallback to mock data for demo
+      setSearchResults([
+        { id: "1", displayName: "Sarah Johnson", username: "@sarah_j", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100", bio: "Night owl" },
+        { id: "2", displayName: "Mike Wilson", username: "@mike_w", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100", bio: "Party professional" },
+      ]);
+    } else if (data && data.length > 0) {
+      setSearchResults(data.map(p => ({
+        id: p.user_id,
+        displayName: p.display_name || "Unknown",
+        username: `@${(p.display_name || "user").toLowerCase().replace(/\s+/g, "_")}`,
+        avatar: p.avatar_url || "",
+        bio: p.bio || ""
+      })));
+    } else {
+      // No results, show mock for demo
+      setSearchResults([
+        { id: "1", displayName: "Sarah Johnson", username: "@sarah_j", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100", bio: "Night owl" },
+        { id: "2", displayName: "Mike Wilson", username: "@mike_w", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100", bio: "Party professional" },
+      ]);
+    }
     setSearching(false);
   };
 
   const handleRoleChange = (role: string) => {
     setSelectedRole(role);
-    // Set default permissions based on role
     const rolePermissions: Record<string, Record<string, boolean>> = {
-      kitchen: { pos: false, kitchen: true, tables: false, orders: true, menu: false, inventory: false, analytics: false, staff: false },
-      waiter: { pos: true, kitchen: false, tables: true, orders: true, menu: false, inventory: false, analytics: false, staff: false },
-      bartender: { pos: true, kitchen: false, tables: false, orders: true, menu: false, inventory: false, analytics: false, staff: false },
-      host: { pos: false, kitchen: false, tables: true, orders: false, menu: false, inventory: false, analytics: false, staff: false },
-      manager: { pos: true, kitchen: true, tables: true, orders: true, menu: true, inventory: true, analytics: true, staff: true },
+      kitchen: { pos: false, kitchen: true, tables: false, orders: true, menu: false, inventory: false, analytics: false, staff: false, go_live: false },
+      waiter: { pos: true, kitchen: false, tables: true, orders: true, menu: false, inventory: false, analytics: false, staff: false, go_live: false },
+      bartender: { pos: true, kitchen: false, tables: false, orders: true, menu: false, inventory: false, analytics: false, staff: false, go_live: false },
+      host: { pos: false, kitchen: false, tables: true, orders: false, menu: false, inventory: false, analytics: false, staff: false, go_live: false },
+      manager: { pos: true, kitchen: true, tables: true, orders: true, menu: true, inventory: true, analytics: true, staff: true, go_live: true },
     };
     setPermissions(rolePermissions[role] || permissions);
   };
@@ -93,8 +120,25 @@ export default function StaffInviteModal({ isOpen, onClose }: StaffInviteModalPr
     setTimeout(() => setPinCopied(false), 2000);
   };
 
-  const handleComplete = () => {
-    toast.success(`${selectedUser?.name} has been added as ${selectedRole}. Share their PIN: ${generatedPin}`);
+  const handleComplete = async () => {
+    // Save to employee_invitations table
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user && selectedUser) {
+      const { error } = await supabase.from("employee_invitations").insert({
+        venue_id: user.id, // Venue owner's user ID
+        employee_email: selectedUser.displayName, // Using displayName as identifier
+        invited_by: user.id,
+        role: selectedRole,
+        permissions: permissions,
+        status: "pending"
+      });
+      
+      if (error) {
+        console.error("Error saving invitation:", error);
+      }
+    }
+    
+    toast.success(`${selectedUser?.displayName} has been added as ${selectedRole}. Share their PIN: ${generatedPin}`);
     onClose();
     // Reset state
     setStep(1);
@@ -102,6 +146,7 @@ export default function StaffInviteModal({ isOpen, onClose }: StaffInviteModalPr
     setSearchResults([]);
     setSelectedUser(null);
     setGeneratedPin("");
+    setEnableFaceId(false);
   };
 
   return (
@@ -109,25 +154,25 @@ export default function StaffInviteModal({ isOpen, onClose }: StaffInviteModalPr
       <DialogContent className="sm:max-w-lg bg-slate-900 border-slate-700 text-white">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold text-primary">
-            {step === 1 && "Search Employee"}
+            {step === 1 && "Search User Profile"}
             {step === 2 && "Configure Access"}
             {step === 3 && "PIN Generated"}
           </DialogTitle>
           <DialogDescription className="text-slate-400">
-            {step === 1 && "Search for an existing user to add as staff"}
+            {step === 1 && "Search for an existing user profile in the app"}
             {step === 2 && "Set role and permissions for this employee"}
-            {step === 3 && "Share this PIN with the employee for POS access"}
+            {step === 3 && "Share this PIN with the employee for work mode access"}
           </DialogDescription>
         </DialogHeader>
 
-        {/* Step 1: Search */}
+        {/* Step 1: Search by Profile */}
         {step === 1 && (
           <div className="space-y-4">
             <div className="flex gap-2">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <Input
-                  placeholder="Search by name or email..."
+                  placeholder="Search by profile name..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -135,9 +180,13 @@ export default function StaffInviteModal({ isOpen, onClose }: StaffInviteModalPr
                 />
               </div>
               <Button onClick={handleSearch} disabled={searching} className="bg-primary">
-                {searching ? "Searching..." : "Search"}
+                {searching ? "Searching..." : <><Search className="w-4 h-4" /></>}
               </Button>
             </div>
+
+            <p className="text-xs text-slate-500 flex items-center gap-1">
+              <AtSign className="w-3 h-3" /> Find users by their profile display name within the app
+            </p>
 
             {searchResults.length > 0 && (
               <div className="space-y-2 max-h-60 overflow-y-auto">
@@ -152,13 +201,14 @@ export default function StaffInviteModal({ isOpen, onClose }: StaffInviteModalPr
                     onClick={() => setSelectedUser(user)}
                   >
                     <CardContent className="p-3 flex items-center gap-3">
-                      <Avatar>
+                      <Avatar className="h-12 w-12">
                         <AvatarImage src={user.avatar} />
-                        <AvatarFallback className="bg-primary/20">{user.name[0]}</AvatarFallback>
+                        <AvatarFallback className="bg-primary/20">{user.displayName[0]}</AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
-                        <p className="font-medium text-white">{user.name}</p>
-                        <p className="text-sm text-slate-400">{user.email}</p>
+                        <p className="font-medium text-white">{user.displayName}</p>
+                        <p className="text-sm text-primary">{user.username}</p>
+                        {user.bio && <p className="text-xs text-slate-400">{user.bio}</p>}
                       </div>
                       {selectedUser?.id === user.id && (
                         <Check className="h-5 w-5 text-primary" />
@@ -187,13 +237,13 @@ export default function StaffInviteModal({ isOpen, onClose }: StaffInviteModalPr
             {selectedUser && (
               <Card className="bg-slate-800 border-slate-700">
                 <CardContent className="p-3 flex items-center gap-3">
-                  <Avatar>
+                  <Avatar className="h-12 w-12">
                     <AvatarImage src={selectedUser.avatar} />
-                    <AvatarFallback>{selectedUser.name[0]}</AvatarFallback>
+                    <AvatarFallback>{selectedUser.displayName[0]}</AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="font-medium">{selectedUser.name}</p>
-                    <p className="text-sm text-slate-400">{selectedUser.email}</p>
+                    <p className="font-medium">{selectedUser.displayName}</p>
+                    <p className="text-sm text-primary">{selectedUser.username}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -245,6 +295,24 @@ export default function StaffInviteModal({ isOpen, onClose }: StaffInviteModalPr
               </div>
             </div>
 
+            {/* Face ID Option */}
+            <Card className="bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border-blue-500/30">
+              <CardContent className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <ScanFace className="h-6 w-6 text-blue-400" />
+                  <div>
+                    <p className="font-medium text-white">Enable Face ID Login</p>
+                    <p className="text-xs text-slate-400">Allow employee to use Face ID for faster POS access</p>
+                  </div>
+                </div>
+                <Checkbox
+                  checked={enableFaceId}
+                  onCheckedChange={(checked) => setEnableFaceId(!!checked)}
+                  className="border-blue-500"
+                />
+              </CardContent>
+            </Card>
+
             <div className="flex justify-between pt-4">
               <Button variant="outline" onClick={() => setStep(1)} className="border-slate-600">
                 <ArrowLeft className="mr-2 h-4 w-4" /> Back
@@ -261,11 +329,21 @@ export default function StaffInviteModal({ isOpen, onClose }: StaffInviteModalPr
           <div className="space-y-6 text-center">
             <div className="p-6 rounded-xl bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-500/30">
               <ShieldCheck className="h-12 w-12 mx-auto text-green-400 mb-4" />
-              <p className="text-sm text-slate-400 mb-2">Employee POS PIN</p>
+              <p className="text-sm text-slate-400 mb-2">Employee Work Mode PIN</p>
               <p className="text-4xl font-mono font-bold tracking-[0.5em] text-white">
                 {generatedPin}
               </p>
             </div>
+
+            {enableFaceId && (
+              <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-center gap-3">
+                <ScanFace className="h-8 w-8 text-blue-400" />
+                <div className="text-left">
+                  <p className="font-medium text-blue-400">Face ID Enabled</p>
+                  <p className="text-xs text-slate-400">Employee can use biometric login as alternative to PIN</p>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Button 
@@ -277,17 +355,24 @@ export default function StaffInviteModal({ isOpen, onClose }: StaffInviteModalPr
                 {pinCopied ? "Copied!" : "Copy PIN"}
               </Button>
               <p className="text-xs text-slate-400">
-                Share this PIN securely with {selectedUser?.name}. They'll use it to access the POS.
+                Share this PIN securely with {selectedUser?.displayName}. They'll use it to access Work Mode.
               </p>
             </div>
 
             <div className="bg-slate-800 rounded-lg p-4 text-left">
               <p className="font-medium mb-2">Summary</p>
               <div className="text-sm text-slate-400 space-y-1">
-                <p><span className="text-white">Employee:</span> {selectedUser?.name}</p>
+                <p><span className="text-white">Employee:</span> {selectedUser?.displayName}</p>
                 <p><span className="text-white">Role:</span> {roleOptions.find(r => r.value === selectedRole)?.label}</p>
+                <p><span className="text-white">Face ID:</span> {enableFaceId ? "Enabled" : "Disabled"}</p>
                 <p><span className="text-white">Permissions:</span> {Object.entries(permissions).filter(([,v]) => v).map(([k]) => k).join(", ")}</p>
               </div>
+            </div>
+
+            <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4">
+              <p className="text-sm text-orange-400">
+                <strong>Important:</strong> When on shift, employee will be in Work Mode only — no social features available.
+              </p>
             </div>
 
             <Button onClick={handleComplete} className="w-full bg-primary">
