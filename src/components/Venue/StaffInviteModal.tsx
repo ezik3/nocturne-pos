@@ -150,8 +150,8 @@ export default function StaffInviteModal({ isOpen, onClose }: StaffInviteModalPr
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg bg-slate-900 border-slate-700 text-white">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-lg bg-slate-900 border-slate-700 text-white z-[100]">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold text-primary">
             {step === 1 && "Search User Profile"}

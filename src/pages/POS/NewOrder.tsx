@@ -3,15 +3,24 @@ import { usePOS } from "@/contexts/POSContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Minus, Trash2, Search } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Plus, Minus, Trash2, Search, ShoppingCart, AlertCircle, Layers } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+interface MenuItemSize {
+  id: string;
+  name: string;
+  price: number;
+}
 
 export default function NewOrder() {
   const { menu, cart, addToCart, removeFromCart, updateCartItem, clearCart, createOrder } = usePOS();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [sizeSelectItem, setSizeSelectItem] = useState<any>(null);
 
   const categories = ["All", ...new Set(menu.map(item => item.category))];
   
@@ -21,9 +30,32 @@ export default function NewOrder() {
     return matchesCategory && matchesSearch && item.available;
   });
 
-  const cartTotal = cart.reduce((sum, item) => sum + (item.menuItem.price * item.quantity), 0);
+  const getItemPrice = (item: any) => {
+    if (item.selectedSize) {
+      return item.selectedSize.price * item.quantity;
+    }
+    return (item.menuItem.basePrice || item.menuItem.price) * item.quantity;
+  };
+
+  const cartTotal = cart.reduce((sum, item) => sum + getItemPrice(item), 0);
   const tax = cartTotal * 0.1;
   const total = cartTotal + tax;
+
+  const handleItemClick = (item: any) => {
+    // If item has sizes, show size selector
+    if (item.sizes && item.sizes.length > 0) {
+      setSizeSelectItem(item);
+    } else {
+      addToCart(item);
+    }
+  };
+
+  const handleSizeSelect = (size: MenuItemSize) => {
+    if (sizeSelectItem) {
+      addToCart(sizeSelectItem, 1, size);
+      setSizeSelectItem(null);
+    }
+  };
 
   const handleCheckout = async () => {
     if (cart.length === 0) {
@@ -35,7 +67,7 @@ export default function NewOrder() {
       subtotal: cartTotal,
       tax,
       total,
-      table: "Table 1", // Mock
+      table: "Table 1",
     });
 
     toast({
@@ -62,7 +94,7 @@ export default function NewOrder() {
           </div>
 
           <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
-            <TabsList className="glass">
+            <TabsList className="glass flex-wrap">
               {categories.map(cat => (
                 <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
               ))}
@@ -70,33 +102,87 @@ export default function NewOrder() {
           </Tabs>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filteredMenu.map(item => (
-            <Card 
-              key={item.id} 
-              className="glass glass-hover cursor-pointer border-border"
-              onClick={() => addToCart(item)}
-            >
-              <CardContent className="p-4">
-                <div className="aspect-square bg-secondary/30 rounded-lg mb-3 flex items-center justify-center">
-                  <span className="text-4xl">🍽️</span>
-                </div>
-                <h3 className="font-semibold mb-1">{item.name}</h3>
-                <p className="text-sm text-muted-foreground mb-2">{item.description}</p>
-                <p className="text-lg font-bold text-primary">${item.price.toFixed(2)}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        {filteredMenu.length === 0 ? (
+          <div className="text-center py-12">
+            <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <p className="text-muted-foreground mb-2">No menu items found</p>
+            <p className="text-sm text-muted-foreground">
+              Add items in Menu Management to see them here
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {filteredMenu.map(item => (
+              <Card 
+                key={item.id} 
+                className="glass glass-hover cursor-pointer border-border relative"
+                onClick={() => handleItemClick(item)}
+              >
+                <CardContent className="p-4">
+                  {/* Size indicator */}
+                  {item.sizes && item.sizes.length > 0 && (
+                    <div className="absolute top-2 right-2">
+                      <Badge variant="outline" className="bg-purple-500/20 text-purple-400 border-purple-500/30 text-xs">
+                        <Layers className="h-3 w-3 mr-1" />
+                        {item.sizes.length} sizes
+                      </Badge>
+                    </div>
+                  )}
+                  
+                  <div className="aspect-square bg-secondary/30 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
+                    {item.imageUrl ? (
+                      <img 
+                        src={item.imageUrl} 
+                        alt={item.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.parentElement!.innerHTML = '<span class="text-4xl">🍽️</span>';
+                        }}
+                      />
+                    ) : (
+                      <span className="text-4xl">🍽️</span>
+                    )}
+                  </div>
+                  <h3 className="font-semibold mb-1">{item.name}</h3>
+                  <p className="text-sm text-muted-foreground mb-2 line-clamp-1">
+                    {item.description || item.category}
+                  </p>
+                  
+                  {/* Price display */}
+                  {item.sizes && item.sizes.length > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                      <span className="text-sm text-muted-foreground">From </span>
+                      <span className="text-lg font-bold text-primary">
+                        ${Math.min(...item.sizes.map((s: MenuItemSize) => s.price)).toFixed(2)}
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="text-lg font-bold text-primary">
+                      ${(item.basePrice || item.price).toFixed(2)}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Cart Section */}
       <div className="w-96 glass border-l border-border p-6 flex flex-col">
-        <h2 className="text-2xl font-bold mb-4">Current Order</h2>
+        <div className="flex items-center gap-2 mb-4">
+          <ShoppingCart className="h-5 w-5 text-primary" />
+          <h2 className="text-2xl font-bold">Current Order</h2>
+        </div>
 
         <div className="flex-1 overflow-auto mb-4 space-y-3">
           {cart.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">Cart is empty</p>
+            <div className="text-center py-8">
+              <ShoppingCart className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+              <p className="text-muted-foreground">Cart is empty</p>
+              <p className="text-xs text-muted-foreground mt-1">Tap items to add</p>
+            </div>
           ) : (
             cart.map(item => (
               <Card key={item.id} className="glass border-border">
@@ -104,7 +190,14 @@ export default function NewOrder() {
                   <div className="flex justify-between items-start mb-2">
                     <div className="flex-1">
                       <h4 className="font-semibold">{item.menuItem.name}</h4>
-                      <p className="text-sm text-primary">${item.menuItem.price.toFixed(2)}</p>
+                      {item.selectedSize && (
+                        <Badge variant="outline" className="text-xs mt-1">
+                          {item.selectedSize.name}
+                        </Badge>
+                      )}
+                      <p className="text-sm text-primary">
+                        ${(item.selectedSize?.price || item.menuItem.basePrice || item.menuItem.price).toFixed(2)}
+                      </p>
                     </div>
                     <Button
                       variant="ghost"
@@ -137,7 +230,7 @@ export default function NewOrder() {
                       </Button>
                     </div>
                     <span className="font-bold">
-                      ${(item.menuItem.price * item.quantity).toFixed(2)}
+                      ${getItemPrice(item).toFixed(2)}
                     </span>
                   </div>
                 </CardContent>
@@ -180,6 +273,53 @@ export default function NewOrder() {
           </div>
         </div>
       </div>
+
+      {/* Size Selection Modal */}
+      <Dialog open={!!sizeSelectItem} onOpenChange={() => setSizeSelectItem(null)}>
+        <DialogContent className="bg-slate-900 border-slate-700 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Select Size</DialogTitle>
+          </DialogHeader>
+          
+          {sizeSelectItem && (
+            <div className="space-y-3">
+              <div className="text-center mb-4">
+                <h3 className="text-lg font-bold">{sizeSelectItem.name}</h3>
+                <p className="text-sm text-muted-foreground">{sizeSelectItem.description}</p>
+              </div>
+              
+              <div className="space-y-2">
+                {sizeSelectItem.sizes?.map((size: MenuItemSize) => (
+                  <Button
+                    key={size.id}
+                    variant="outline"
+                    className="w-full justify-between h-14 border-slate-600 hover:border-primary"
+                    onClick={() => handleSizeSelect(size)}
+                  >
+                    <span className="font-medium">{size.name}</span>
+                    <span className="text-primary font-bold">${size.price.toFixed(2)}</span>
+                  </Button>
+                ))}
+              </div>
+              
+              {/* Also allow base price if exists */}
+              {sizeSelectItem.basePrice > 0 && (
+                <Button
+                  variant="outline"
+                  className="w-full justify-between h-14 border-slate-600 hover:border-primary"
+                  onClick={() => {
+                    addToCart(sizeSelectItem, 1, null);
+                    setSizeSelectItem(null);
+                  }}
+                >
+                  <span className="font-medium">Regular</span>
+                  <span className="text-primary font-bold">${sizeSelectItem.basePrice.toFixed(2)}</span>
+                </Button>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
