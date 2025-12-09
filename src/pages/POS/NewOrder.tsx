@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { usePOS } from "@/contexts/POSContext";
+import { useVenueOrders } from "@/hooks/useVenueOrders";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Minus, Trash2, Search, ShoppingCart, AlertCircle, Layers } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { toast as sonnerToast } from "sonner";
 
 interface MenuItemSize {
   id: string;
@@ -16,11 +18,13 @@ interface MenuItemSize {
 }
 
 export default function NewOrder() {
-  const { menu, cart, addToCart, removeFromCart, updateCartItem, clearCart, createOrder } = usePOS();
+  const { menu, cart, addToCart, removeFromCart, updateCartItem, clearCart } = usePOS();
+  const { addOrder } = useVenueOrders();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [sizeSelectItem, setSizeSelectItem] = useState<any>(null);
+  const [selectedTable, setSelectedTable] = useState("Table 1");
 
   const categories = ["All", ...new Set(menu.map(item => item.category))];
   
@@ -63,16 +67,28 @@ export default function NewOrder() {
       return;
     }
 
-    await createOrder({
-      subtotal: cartTotal,
-      tax,
+    // Create order using the shared hook
+    const orderItems = cart.map(item => ({
+      id: item.id,
+      name: item.menuItem.name,
+      quantity: item.quantity,
+      price: item.selectedSize?.price || item.menuItem.basePrice || item.menuItem.price,
+      size: item.selectedSize?.name,
+    }));
+
+    const newOrder = addOrder({
+      tableNumber: selectedTable,
+      items: orderItems,
       total,
-      table: "Table 1",
+      status: "pending",
+      source: "pos",
+      priority: "normal",
     });
 
-    toast({
-      title: "Order created!",
-      description: "Order sent to kitchen",
+    clearCart();
+    
+    sonnerToast.success(`Order #${newOrder.orderNumber} Created`, {
+      description: `Sent to kitchen - ${selectedTable}`,
     });
   };
 

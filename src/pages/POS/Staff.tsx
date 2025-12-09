@@ -6,7 +6,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UserPlus, Clock, DollarSign, Search, TrendingUp, Calendar, Plus } from "lucide-react";
+import { UserPlus, Clock, DollarSign, Search, TrendingUp, Calendar } from "lucide-react";
+import StaffInviteModal from "@/components/Venue/StaffInviteModal";
 
 // Mock staff data
 const mockStaff = [
@@ -104,6 +105,7 @@ export default function Staff() {
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [showInviteModal, setShowInviteModal] = useState(false);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -146,11 +148,13 @@ export default function Staff() {
           <h1 className="text-4xl font-bold mb-2">Staff Management</h1>
           <p className="text-muted-foreground">Manage team members, schedules, and performance</p>
         </div>
-        <Button className="neon-glow">
+        <Button className="neon-glow" onClick={() => setShowInviteModal(true)}>
           <UserPlus className="h-4 w-4 mr-2" />
           Add Staff
         </Button>
       </div>
+
+      <StaffInviteModal isOpen={showInviteModal} onClose={() => setShowInviteModal(false)} />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

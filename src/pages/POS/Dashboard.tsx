@@ -1,13 +1,34 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, ShoppingCart, Users, TrendingUp } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { DollarSign, ShoppingCart, Users, TrendingUp, RefreshCw } from "lucide-react";
+import { useVenueOrders } from "@/hooks/useVenueOrders";
+import { formatDistanceToNow } from "date-fns";
 
 export default function Dashboard() {
-  const stats = [
-    { title: "Today's Sales", value: "$2,543.00", icon: DollarSign, trend: "+12.5%" },
-    { title: "Orders", value: "48", icon: ShoppingCart, trend: "+8.2%" },
-    { title: "Active Tables", value: "12", icon: Users, trend: "+3" },
-    { title: "Avg. Order", value: "$52.98", icon: TrendingUp, trend: "+5.3%" },
+  const { orders, stats, getRecentOrders } = useVenueOrders();
+  
+  const recentOrders = getRecentOrders(5);
+  const todayRevenue = orders
+    .filter(o => o.status === "served")
+    .reduce((sum, o) => sum + o.total, 0);
+  const avgOrder = orders.length > 0 ? todayRevenue / Math.max(stats.served, 1) : 0;
+
+  const dashboardStats = [
+    { title: "Today's Sales", value: `$${todayRevenue.toFixed(2)}`, icon: DollarSign, trend: "Live" },
+    { title: "Total Orders", value: stats.total.toString(), icon: ShoppingCart, trend: `${stats.pending} pending` },
+    { title: "Active Orders", value: (stats.pending + stats.preparing).toString(), icon: Users, trend: `${stats.ready} ready` },
+    { title: "Avg. Order", value: `$${avgOrder.toFixed(2)}`, icon: TrendingUp, trend: "Today" },
   ];
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "pending": return "bg-yellow-500/20 text-yellow-400";
+      case "preparing": return "bg-blue-500/20 text-blue-400";
+      case "ready": return "bg-green-500/20 text-green-400";
+      case "served": return "bg-muted text-muted-foreground";
+      default: return "bg-muted";
+    }
+  };
 
   return (
     <div className="p-8 space-y-8">
@@ -17,7 +38,7 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat) => (
+        {dashboardStats.map((stat) => (
           <Card key={stat.title} className="glass glass-hover border-border">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -27,7 +48,7 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">{stat.value}</div>
-              <p className="text-xs text-accent mt-1">{stat.trend} from yesterday</p>
+              <p className="text-xs text-accent mt-1">{stat.trend}</p>
             </CardContent>
           </Card>
         ))}
@@ -39,35 +60,48 @@ export default function Dashboard() {
             <CardTitle>Recent Orders</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                  <div>
-                    <p className="font-medium">Order #{1000 + i}</p>
-                    <p className="text-sm text-muted-foreground">Table {i}</p>
+            {recentOrders.length === 0 ? (
+              <div className="text-center py-8">
+                <RefreshCw className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                <p className="text-muted-foreground">No recent orders</p>
+                <p className="text-xs text-muted-foreground">Orders will appear here in real-time</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {recentOrders.map((order) => (
+                  <div key={order.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                    <div>
+                      <p className="font-medium">Order #{order.orderNumber}</p>
+                      <p className="text-sm text-muted-foreground">{order.tableNumber}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold">${order.total.toFixed(2)}</p>
+                      <Badge className={getStatusColor(order.status)}>
+                        {order.status}
+                      </Badge>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-semibold">${(45 + i * 10).toFixed(2)}</p>
-                    <span className="text-xs px-2 py-1 rounded-full bg-primary/20 text-primary">
-                      Preparing
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
         <Card className="glass border-border">
           <CardHeader>
-            <CardTitle>Top Items</CardTitle>
+            <CardTitle>Order Stats</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {['Signature Cocktail', 'House Wine', 'Premium Beer', 'Appetizer Platter', 'Dessert Special'].map((item, i) => (
-                <div key={item} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                  <span className="font-medium">{item}</span>
-                  <span className="text-sm text-muted-foreground">{24 - i * 3} sold</span>
+              {[
+                { label: "Pending", count: stats.pending, color: "text-yellow-400" },
+                { label: "Preparing", count: stats.preparing, color: "text-blue-400" },
+                { label: "Ready for Pickup", count: stats.ready, color: "text-green-400" },
+                { label: "Served Today", count: stats.served, color: "text-muted-foreground" },
+              ].map((item) => (
+                <div key={item.label} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                  <span className={`font-medium ${item.color}`}>{item.label}</span>
+                  <span className="text-2xl font-bold">{item.count}</span>
                 </div>
               ))}
             </div>

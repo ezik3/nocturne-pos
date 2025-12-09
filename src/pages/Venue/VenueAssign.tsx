@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Plus, Search } from "lucide-react";
+import StaffInviteModal from "@/components/Venue/StaffInviteModal";
 
 const employees = [
   { id: "1", name: "John Doe", avatar: "", role: "Server" },
@@ -22,6 +23,7 @@ const stations = [
 const filterTabs = ["All", "Serving", "Registry", "Bar", "Kitchen"];
 
 export default function VenueAssign() {
+  const [showInviteModal, setShowInviteModal] = useState(false);
   const [activeFilter, setActiveFilter] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -34,7 +36,10 @@ export default function VenueAssign() {
       <h1 className="text-4xl font-bold text-primary mb-6">Assign Employees</h1>
 
       <div className="flex items-center justify-between mb-6">
-        <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+        <Button 
+          className="bg-primary text-primary-foreground hover:bg-primary/90"
+          onClick={() => setShowInviteModal(true)}
+        >
           <Plus className="h-4 w-4 mr-2" />
           Create Employee
         </Button>
@@ -42,6 +47,8 @@ export default function VenueAssign() {
           Create Roster
         </Button>
       </div>
+
+      <StaffInviteModal isOpen={showInviteModal} onClose={() => setShowInviteModal(false)} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Employee List */}
