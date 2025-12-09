@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search, User, ShieldCheck, Copy, Check, ArrowLeft, ArrowRight, ScanFace, AtSign } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -63,7 +64,6 @@ export default function StaffInviteModal({ isOpen, onClose }: StaffInviteModalPr
     if (!searchQuery.trim()) return;
     setSearching(true);
     
-    // Search customer_profiles by display_name (profile-based search within app)
     const { data, error } = await supabase
       .from("customer_profiles")
       .select("id, user_id, display_name, bio, avatar_url")
@@ -72,7 +72,6 @@ export default function StaffInviteModal({ isOpen, onClose }: StaffInviteModalPr
     
     if (error) {
       console.error("Search error:", error);
-      // Fallback to mock data for demo
       setSearchResults([
         { id: "1", displayName: "Sarah Johnson", username: "@sarah_j", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100", bio: "Night owl" },
         { id: "2", displayName: "Mike Wilson", username: "@mike_w", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100", bio: "Party professional" },
@@ -86,7 +85,6 @@ export default function StaffInviteModal({ isOpen, onClose }: StaffInviteModalPr
         bio: p.bio || ""
       })));
     } else {
-      // No results, show mock for demo
       setSearchResults([
         { id: "1", displayName: "Sarah Johnson", username: "@sarah_j", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100", bio: "Night owl" },
         { id: "2", displayName: "Mike Wilson", username: "@mike_w", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100", bio: "Party professional" },
@@ -121,12 +119,11 @@ export default function StaffInviteModal({ isOpen, onClose }: StaffInviteModalPr
   };
 
   const handleComplete = async () => {
-    // Save to employee_invitations table
     const { data: { user } } = await supabase.auth.getUser();
     if (user && selectedUser) {
       const { error } = await supabase.from("employee_invitations").insert({
-        venue_id: user.id, // Venue owner's user ID
-        employee_email: selectedUser.displayName, // Using displayName as identifier
+        venue_id: user.id,
+        employee_email: selectedUser.displayName,
         invited_by: user.id,
         role: selectedRole,
         permissions: permissions,
@@ -140,7 +137,16 @@ export default function StaffInviteModal({ isOpen, onClose }: StaffInviteModalPr
     
     toast.success(`${selectedUser?.displayName} has been added as ${selectedRole}. Share their PIN: ${generatedPin}`);
     onClose();
-    // Reset state
+    setStep(1);
+    setSearchQuery("");
+    setSearchResults([]);
+    setSelectedUser(null);
+    setGeneratedPin("");
+    setEnableFaceId(false);
+  };
+
+  const handleClose = () => {
+    onClose();
     setStep(1);
     setSearchQuery("");
     setSearchResults([]);
@@ -150,8 +156,8 @@ export default function StaffInviteModal({ isOpen, onClose }: StaffInviteModalPr
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-lg bg-slate-900 border-slate-700 text-white z-[100]">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-hidden bg-slate-900 border-slate-700 text-white z-[100]">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold text-primary">
             {step === 1 && "Search User Profile"}
@@ -165,221 +171,223 @@ export default function StaffInviteModal({ isOpen, onClose }: StaffInviteModalPr
           </DialogDescription>
         </DialogHeader>
 
-        {/* Step 1: Search by Profile */}
-        {step === 1 && (
-          <div className="space-y-4">
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input
-                  placeholder="Search by profile name..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                  className="pl-10 bg-slate-800 border-slate-600"
-                />
+        <ScrollArea className="max-h-[calc(90vh-120px)] pr-4">
+          {/* Step 1: Search by Profile */}
+          {step === 1 && (
+            <div className="space-y-4">
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input
+                    placeholder="Search by profile name..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                    className="pl-10 bg-slate-800 border-slate-600 text-white"
+                  />
+                </div>
+                <Button onClick={handleSearch} disabled={searching} className="bg-primary">
+                  {searching ? "..." : <Search className="w-4 h-4" />}
+                </Button>
               </div>
-              <Button onClick={handleSearch} disabled={searching} className="bg-primary">
-                {searching ? "Searching..." : <><Search className="w-4 h-4" /></>}
-              </Button>
-            </div>
 
-            <p className="text-xs text-slate-500 flex items-center gap-1">
-              <AtSign className="w-3 h-3" /> Find users by their profile display name within the app
-            </p>
+              <p className="text-xs text-slate-500 flex items-center gap-1">
+                <AtSign className="w-3 h-3" /> Find users by their profile display name within the app
+              </p>
 
-            {searchResults.length > 0 && (
-              <div className="space-y-2 max-h-60 overflow-y-auto">
-                {searchResults.map((user) => (
-                  <Card
-                    key={user.id}
-                    className={`cursor-pointer transition-all border-2 ${
-                      selectedUser?.id === user.id 
-                        ? "border-primary bg-primary/10" 
-                        : "border-slate-700 bg-slate-800 hover:border-slate-600"
-                    }`}
-                    onClick={() => setSelectedUser(user)}
-                  >
-                    <CardContent className="p-3 flex items-center gap-3">
-                      <Avatar className="h-12 w-12">
-                        <AvatarImage src={user.avatar} />
-                        <AvatarFallback className="bg-primary/20">{user.displayName[0]}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <p className="font-medium text-white">{user.displayName}</p>
-                        <p className="text-sm text-primary">{user.username}</p>
-                        {user.bio && <p className="text-xs text-slate-400">{user.bio}</p>}
-                      </div>
-                      {selectedUser?.id === user.id && (
-                        <Check className="h-5 w-5 text-primary" />
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-
-            <div className="flex justify-end pt-4">
-              <Button
-                onClick={() => setStep(2)}
-                disabled={!selectedUser}
-                className="bg-primary"
-              >
-                Next <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 2: Configure */}
-        {step === 2 && (
-          <div className="space-y-4">
-            {selectedUser && (
-              <Card className="bg-slate-800 border-slate-700">
-                <CardContent className="p-3 flex items-center gap-3">
-                  <Avatar className="h-12 w-12">
-                    <AvatarImage src={selectedUser.avatar} />
-                    <AvatarFallback>{selectedUser.displayName[0]}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-medium">{selectedUser.displayName}</p>
-                    <p className="text-sm text-primary">{selectedUser.username}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            <div className="space-y-2">
-              <Label>Role</Label>
-              <Select value={selectedRole} onValueChange={handleRoleChange}>
-                <SelectTrigger className="bg-slate-800 border-slate-600">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-800 border-slate-600">
-                  {roleOptions.map((role) => (
-                    <SelectItem key={role.value} value={role.value} className="text-white">
-                      <div>
-                        <p className="font-medium">{role.label}</p>
-                        <p className="text-xs text-slate-400">{role.description}</p>
-                      </div>
-                    </SelectItem>
+              {searchResults.length > 0 && (
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {searchResults.map((user) => (
+                    <Card
+                      key={user.id}
+                      className={`cursor-pointer transition-all border-2 ${
+                        selectedUser?.id === user.id 
+                          ? "border-primary bg-primary/10" 
+                          : "border-slate-700 bg-slate-800 hover:border-slate-600"
+                      }`}
+                      onClick={() => setSelectedUser(user)}
+                    >
+                      <CardContent className="p-3 flex items-center gap-3">
+                        <Avatar className="h-12 w-12">
+                          <AvatarImage src={user.avatar} />
+                          <AvatarFallback className="bg-primary/20 text-white">{user.displayName[0]}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <p className="font-medium text-white">{user.displayName}</p>
+                          <p className="text-sm text-primary">{user.username}</p>
+                          {user.bio && <p className="text-xs text-slate-400">{user.bio}</p>}
+                        </div>
+                        {selectedUser?.id === user.id && (
+                          <Check className="h-5 w-5 text-primary" />
+                        )}
+                      </CardContent>
+                    </Card>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
+                </div>
+              )}
 
-            <div className="space-y-2">
-              <Label>Permissions</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {permissionOptions.map((perm) => (
-                  <div
-                    key={perm.key}
-                    className={`flex items-center gap-2 p-2 rounded-lg border transition-colors ${
-                      permissions[perm.key] 
-                        ? "border-primary/50 bg-primary/10" 
-                        : "border-slate-700 bg-slate-800"
-                    }`}
-                  >
-                    <Checkbox
-                      checked={permissions[perm.key]}
-                      onCheckedChange={(checked) => 
-                        setPermissions({...permissions, [perm.key]: !!checked})
-                      }
-                      className="border-slate-500"
-                    />
+              <div className="flex justify-end pt-4">
+                <Button
+                  onClick={() => setStep(2)}
+                  disabled={!selectedUser}
+                  className="bg-primary"
+                >
+                  Next <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: Configure */}
+          {step === 2 && (
+            <div className="space-y-4">
+              {selectedUser && (
+                <Card className="bg-slate-800 border-slate-700">
+                  <CardContent className="p-3 flex items-center gap-3">
+                    <Avatar className="h-12 w-12">
+                      <AvatarImage src={selectedUser.avatar} />
+                      <AvatarFallback className="text-white">{selectedUser.displayName[0]}</AvatarFallback>
+                    </Avatar>
                     <div>
-                      <p className="text-sm font-medium">{perm.label}</p>
+                      <p className="font-medium text-white">{selectedUser.displayName}</p>
+                      <p className="text-sm text-primary">{selectedUser.username}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              <div className="space-y-2">
+                <Label className="text-white">Role</Label>
+                <Select value={selectedRole} onValueChange={handleRoleChange}>
+                  <SelectTrigger className="bg-slate-800 border-slate-600 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-800 border-slate-600">
+                    {roleOptions.map((role) => (
+                      <SelectItem key={role.value} value={role.value} className="text-white">
+                        <div>
+                          <p className="font-medium">{role.label}</p>
+                          <p className="text-xs text-slate-400">{role.description}</p>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-white">Permissions</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {permissionOptions.map((perm) => (
+                    <div
+                      key={perm.key}
+                      className={`flex items-center gap-2 p-2 rounded-lg border transition-colors ${
+                        permissions[perm.key] 
+                          ? "border-primary/50 bg-primary/10" 
+                          : "border-slate-700 bg-slate-800"
+                      }`}
+                    >
+                      <Checkbox
+                        checked={permissions[perm.key]}
+                        onCheckedChange={(checked) => 
+                          setPermissions({...permissions, [perm.key]: !!checked})
+                        }
+                        className="border-slate-500"
+                      />
+                      <div>
+                        <p className="text-sm font-medium text-white">{perm.label}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Face ID Option */}
+              <Card className="bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border-blue-500/30">
+                <CardContent className="p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <ScanFace className="h-6 w-6 text-blue-400" />
+                    <div>
+                      <p className="font-medium text-blue-400">Enable Face ID Login</p>
+                      <p className="text-xs text-slate-400">Allow employee to use Face ID for faster POS access</p>
                     </div>
                   </div>
-                ))}
+                  <Checkbox
+                    checked={enableFaceId}
+                    onCheckedChange={(checked) => setEnableFaceId(!!checked)}
+                    className="border-blue-500"
+                  />
+                </CardContent>
+              </Card>
+
+              <div className="flex justify-between pt-4">
+                <Button variant="outline" onClick={() => setStep(1)} className="border-slate-600 text-white hover:text-white">
+                  <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                </Button>
+                <Button onClick={generatePin} className="bg-green-600 hover:bg-green-700">
+                  <ShieldCheck className="mr-2 h-4 w-4" /> Generate PIN
+                </Button>
               </div>
             </div>
+          )}
 
-            {/* Face ID Option */}
-            <Card className="bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border-blue-500/30">
-              <CardContent className="p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <ScanFace className="h-6 w-6 text-blue-400" />
-                  <div>
-                    <p className="font-medium text-white">Enable Face ID Login</p>
-                    <p className="text-xs text-slate-400">Allow employee to use Face ID for faster POS access</p>
+          {/* Step 3: PIN */}
+          {step === 3 && (
+            <div className="space-y-4 text-center">
+              <div className="p-6 rounded-xl bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-500/30">
+                <ShieldCheck className="h-12 w-12 mx-auto text-green-400 mb-4" />
+                <p className="text-sm text-slate-400 mb-2">Employee Work Mode PIN</p>
+                <p className="text-4xl font-mono font-bold tracking-[0.5em] text-white">
+                  {generatedPin}
+                </p>
+              </div>
+
+              {enableFaceId && (
+                <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-center gap-3">
+                  <ScanFace className="h-8 w-8 text-blue-400" />
+                  <div className="text-left">
+                    <p className="font-medium text-blue-400">Face ID Enabled</p>
+                    <p className="text-xs text-slate-400">Employee can use biometric login as alternative to PIN</p>
                   </div>
                 </div>
-                <Checkbox
-                  checked={enableFaceId}
-                  onCheckedChange={(checked) => setEnableFaceId(!!checked)}
-                  className="border-blue-500"
-                />
-              </CardContent>
-            </Card>
+              )}
 
-            <div className="flex justify-between pt-4">
-              <Button variant="outline" onClick={() => setStep(1)} className="border-slate-600">
-                <ArrowLeft className="mr-2 h-4 w-4" /> Back
-              </Button>
-              <Button onClick={generatePin} className="bg-green-600 hover:bg-green-700">
-                <ShieldCheck className="mr-2 h-4 w-4" /> Generate PIN
-              </Button>
-            </div>
-          </div>
-        )}
+              <div className="space-y-2">
+                <Button 
+                  onClick={copyPin} 
+                  variant="outline" 
+                  className="w-full border-slate-600 bg-slate-800 text-white hover:bg-slate-700 hover:text-white"
+                >
+                  {pinCopied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
+                  {pinCopied ? "Copied!" : "Copy PIN"}
+                </Button>
+                <p className="text-xs text-slate-400">
+                  Share this PIN securely with {selectedUser?.displayName}. They'll use it to access Work Mode.
+                </p>
+              </div>
 
-        {/* Step 3: PIN */}
-        {step === 3 && (
-          <div className="space-y-6 text-center">
-            <div className="p-6 rounded-xl bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-500/30">
-              <ShieldCheck className="h-12 w-12 mx-auto text-green-400 mb-4" />
-              <p className="text-sm text-slate-400 mb-2">Employee Work Mode PIN</p>
-              <p className="text-4xl font-mono font-bold tracking-[0.5em] text-white">
-                {generatedPin}
-              </p>
-            </div>
-
-            {enableFaceId && (
-              <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-center gap-3">
-                <ScanFace className="h-8 w-8 text-blue-400" />
-                <div className="text-left">
-                  <p className="font-medium text-blue-400">Face ID Enabled</p>
-                  <p className="text-xs text-slate-400">Employee can use biometric login as alternative to PIN</p>
+              <div className="bg-slate-800 rounded-lg p-4 text-left">
+                <p className="font-medium mb-2 text-white">Summary</p>
+                <div className="text-sm text-slate-400 space-y-1">
+                  <p><span className="text-white">Employee:</span> {selectedUser?.displayName}</p>
+                  <p><span className="text-white">Role:</span> {roleOptions.find(r => r.value === selectedRole)?.label}</p>
+                  <p><span className="text-white">Face ID:</span> {enableFaceId ? "Enabled" : "Disabled"}</p>
+                  <p><span className="text-white">Permissions:</span> {Object.entries(permissions).filter(([,v]) => v).map(([k]) => k).join(", ")}</p>
                 </div>
               </div>
-            )}
 
-            <div className="space-y-2">
-              <Button 
-                onClick={copyPin} 
-                variant="outline" 
-                className="w-full border-slate-600"
-              >
-                {pinCopied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
-                {pinCopied ? "Copied!" : "Copy PIN"}
-              </Button>
-              <p className="text-xs text-slate-400">
-                Share this PIN securely with {selectedUser?.displayName}. They'll use it to access Work Mode.
-              </p>
-            </div>
-
-            <div className="bg-slate-800 rounded-lg p-4 text-left">
-              <p className="font-medium mb-2">Summary</p>
-              <div className="text-sm text-slate-400 space-y-1">
-                <p><span className="text-white">Employee:</span> {selectedUser?.displayName}</p>
-                <p><span className="text-white">Role:</span> {roleOptions.find(r => r.value === selectedRole)?.label}</p>
-                <p><span className="text-white">Face ID:</span> {enableFaceId ? "Enabled" : "Disabled"}</p>
-                <p><span className="text-white">Permissions:</span> {Object.entries(permissions).filter(([,v]) => v).map(([k]) => k).join(", ")}</p>
+              <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4">
+                <p className="text-sm text-orange-400">
+                  <strong>Important:</strong> When on shift, employee will be in Work Mode only — no social features available.
+                </p>
               </div>
-            </div>
 
-            <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4">
-              <p className="text-sm text-orange-400">
-                <strong>Important:</strong> When on shift, employee will be in Work Mode only — no social features available.
-              </p>
+              <Button onClick={handleComplete} className="w-full bg-primary">
+                Complete Setup
+              </Button>
             </div>
-
-            <Button onClick={handleComplete} className="w-full bg-primary">
-              Complete Setup
-            </Button>
-          </div>
-        )}
+          )}
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );
