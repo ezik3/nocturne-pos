@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { 
@@ -15,34 +15,17 @@ import VenueNotificationToast from "@/components/Venue/VenueNotificationToast";
 import GoLiveVideoPopup from "@/components/Venue/GoLiveVideoPopup";
 import DealCreatorModal from "@/components/Venue/DealCreatorModal";
 import TablesPopup from "@/components/Venue/TablesPopup";
+import { useVenueOrders } from "@/hooks/useVenueOrders";
+import { formatDistanceToNow } from "date-fns";
 
 const venueData = {
   name: "The Electric Lounge",
   vibeLevel: "🔥 Lit",
   currentOccupancy: 156,
   maxCapacity: 250,
-  activeOrders: 23,
-  pendingOrders: 8,
-  revenue: 4280,
   avgWaitTime: 12,
   rating: 4.8,
 };
-
-const controlOrbs = [
-  { id: "orders", icon: ShoppingCart, label: "Live Orders", color: "from-orange-500 to-red-500", count: 23 },
-  { id: "kitchen", icon: Utensils, label: "Kitchen", color: "from-green-500 to-emerald-500", count: 8 },
-  { id: "tables", icon: Users, label: "Tables", color: "from-blue-500 to-cyan-500", count: 18 },
-  { id: "dj", icon: Radio, label: "DJ Booth", color: "from-purple-500 to-pink-500", count: null },
-  { id: "chat", icon: MessageCircle, label: "Messages", color: "from-yellow-500 to-orange-500", count: 5 },
-  { id: "ai", icon: Bot, label: "AI Waiter", color: "from-cyan-500 to-blue-500", count: null },
-];
-
-const recentActivity = [
-  { time: "2 min ago", action: "New order #1234 received", type: "order", user: "Sarah M." },
-  { time: "5 min ago", action: "Table 4 checked out", type: "checkout", user: "Mike J." },
-  { time: "12 min ago", action: "Staff member John clocked in", type: "staff", user: "John D." },
-  { time: "18 min ago", action: "New reservation for 8 PM", type: "reservation", user: "Emma W." },
-];
 
 const peopleAtVenue = [
   { id: "1", name: "Sarah M.", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100", table: "4" },
@@ -53,7 +36,7 @@ const peopleAtVenue = [
   { id: "6", name: "Tom H.", avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100", table: "1" },
 ];
 
-const FloatingOrb = ({ orb, index, onClick }: { orb: typeof controlOrbs[0]; index: number; onClick: () => void }) => {
+const FloatingOrb = ({ orb, index, onClick }: { orb: { id: string; icon: any; label: string; color: string; count: number | null }; index: number; onClick: () => void }) => {
   const positions = [
     { top: "15%", left: "15%" },
     { top: "15%", right: "15%" },
@@ -118,7 +101,30 @@ export default function VenueHome() {
   const [isLive, setIsLive] = useState(false);
   const [showDealCreator, setShowDealCreator] = useState(false);
   const [showTablesPopup, setShowTablesPopup] = useState(false);
+  const { orders, stats, getRecentOrders } = useVenueOrders();
+  
   const occupancyPercent = (venueData.currentOccupancy / venueData.maxCapacity) * 100;
+  const todayRevenue = orders.filter(o => o.status === "served").reduce((sum, o) => sum + o.total, 0);
+  const activeOrders = stats.pending + stats.preparing;
+
+  // Dynamic control orbs with live counts
+  const controlOrbs = [
+    { id: "orders", icon: ShoppingCart, label: "Live Orders", color: "from-orange-500 to-red-500", count: activeOrders },
+    { id: "kitchen", icon: Utensils, label: "Kitchen", color: "from-green-500 to-emerald-500", count: stats.pending },
+    { id: "tables", icon: Users, label: "Tables", color: "from-blue-500 to-cyan-500", count: 18 },
+    { id: "dj", icon: Radio, label: "DJ Booth", color: "from-purple-500 to-pink-500", count: null },
+    { id: "chat", icon: MessageCircle, label: "Messages", color: "from-yellow-500 to-orange-500", count: 5 },
+    { id: "ai", icon: Bot, label: "AI Waiter", color: "from-cyan-500 to-blue-500", count: null },
+  ];
+
+  // Live activity from real orders
+  const recentOrders = getRecentOrders(4);
+  const recentActivity = recentOrders.map(order => ({
+    time: formatDistanceToNow(new Date(order.createdAt), { addSuffix: true }),
+    action: `Order #${order.orderNumber} - ${order.status}`,
+    type: "order",
+    user: order.tableNumber
+  }));
 
   const handleOrbClick = (orbId: string) => {
     if (orbId === 'chat') setShowChat(true);
@@ -190,14 +196,14 @@ export default function VenueHome() {
               <div className="text-center">
                 <div className="flex items-center justify-center gap-2">
                   <ShoppingCart className="w-5 h-5 text-orange-400" />
-                  <span className="text-2xl font-bold text-white">{venueData.activeOrders}</span>
+                  <span className="text-2xl font-bold text-white">{activeOrders}</span>
                 </div>
                 <p className="text-sm text-slate-400 mt-1">Active Orders</p>
               </div>
               <div className="text-center">
                 <div className="flex items-center justify-center gap-2">
                   <DollarSign className="w-5 h-5 text-green-400" />
-                  <span className="text-2xl font-bold text-white">${venueData.revenue.toLocaleString()}</span>
+                  <span className="text-2xl font-bold text-white">${todayRevenue.toLocaleString()}</span>
                 </div>
                 <p className="text-sm text-slate-400 mt-1">Today's Revenue</p>
               </div>
