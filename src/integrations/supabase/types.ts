@@ -97,6 +97,209 @@ export type Database = {
         }
         Relationships: []
       }
+      employee_invitations: {
+        Row: {
+          accepted_at: string | null
+          created_at: string | null
+          employee_email: string
+          expires_at: string | null
+          id: string
+          invitation_token: string | null
+          invited_by: string
+          permissions: Json | null
+          role: string
+          status: string | null
+          venue_id: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string | null
+          employee_email: string
+          expires_at?: string | null
+          id?: string
+          invitation_token?: string | null
+          invited_by: string
+          permissions?: Json | null
+          role?: string
+          status?: string | null
+          venue_id: string
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string | null
+          employee_email?: string
+          expires_at?: string | null
+          id?: string
+          invitation_token?: string | null
+          invited_by?: string
+          permissions?: Json | null
+          role?: string
+          status?: string | null
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_invitations_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_roster: {
+        Row: {
+          created_at: string | null
+          day_of_week: string
+          employee_id: string
+          end_time: string
+          id: string
+          is_recurring: boolean | null
+          specific_date: string | null
+          start_time: string
+          station: string | null
+          updated_at: string | null
+          venue_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          day_of_week: string
+          employee_id: string
+          end_time: string
+          id?: string
+          is_recurring?: boolean | null
+          specific_date?: string | null
+          start_time: string
+          station?: string | null
+          updated_at?: string | null
+          venue_id: string
+        }
+        Update: {
+          created_at?: string | null
+          day_of_week?: string
+          employee_id?: string
+          end_time?: string
+          id?: string
+          is_recurring?: boolean | null
+          specific_date?: string | null
+          start_time?: string
+          station?: string | null
+          updated_at?: string | null
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_roster_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_shifts: {
+        Row: {
+          clock_in_location: Json | null
+          clock_in_time: string | null
+          clock_out_location: Json | null
+          clock_out_time: string | null
+          created_at: string | null
+          employee_id: string
+          id: string
+          notes: string | null
+          orders_served: number | null
+          status: string | null
+          total_sales: number | null
+          venue_id: string
+        }
+        Insert: {
+          clock_in_location?: Json | null
+          clock_in_time?: string | null
+          clock_out_location?: Json | null
+          clock_out_time?: string | null
+          created_at?: string | null
+          employee_id: string
+          id?: string
+          notes?: string | null
+          orders_served?: number | null
+          status?: string | null
+          total_sales?: number | null
+          venue_id: string
+        }
+        Update: {
+          clock_in_location?: Json | null
+          clock_in_time?: string | null
+          clock_out_location?: Json | null
+          clock_out_time?: string | null
+          created_at?: string | null
+          employee_id?: string
+          id?: string
+          notes?: string | null
+          orders_served?: number | null
+          status?: string | null
+          total_sales?: number | null
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_shifts_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_venue_links: {
+        Row: {
+          created_at: string | null
+          hired_date: string | null
+          id: string
+          is_active: boolean | null
+          permissions: Json | null
+          pin_hash: string | null
+          role: string
+          terminated_date: string | null
+          updated_at: string | null
+          user_id: string
+          venue_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          hired_date?: string | null
+          id?: string
+          is_active?: boolean | null
+          permissions?: Json | null
+          pin_hash?: string | null
+          role?: string
+          terminated_date?: string | null
+          updated_at?: string | null
+          user_id: string
+          venue_id: string
+        }
+        Update: {
+          created_at?: string | null
+          hired_date?: string | null
+          id?: string
+          is_active?: boolean | null
+          permissions?: Json | null
+          pin_hash?: string | null
+          role?: string
+          terminated_date?: string | null
+          updated_at?: string | null
+          user_id?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_venue_links_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       floorplans: {
         Row: {
           canvas_height: number | null
