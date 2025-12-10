@@ -50,6 +50,7 @@ import Top10 from "./pages/Customer/Top10";
 import Notifications from "./pages/Customer/Notifications";
 const ImmersiveVenue = lazy(() => import("./pages/Customer/ImmersiveVenue"));
 const ImmersiveFeed = lazy(() => import("./pages/Customer/ImmersiveFeed"));
+const Maps = lazy(() => import("./pages/Customer/Maps"));
 
 // Venue Management imports
 import VenueLayout from "./components/Venue/VenueLayout";
@@ -173,7 +174,9 @@ const App = () => (
           <Route path="/app/maps" element={
             <ProtectedRoute>
               <CustomerLayout>
-                <div className="min-h-screen bg-black p-8 text-white">Maps Coming Soon</div>
+                <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center text-white">Loading Maps...</div>}>
+                  <Maps />
+                </Suspense>
               </CustomerLayout>
             </ProtectedRoute>
           } />
