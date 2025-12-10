@@ -3,6 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 
+// Transaction fee in USD (flat $0.10 per transaction)
+export const TRANSACTION_FEE_USD = 0.10;
+
 interface WalletBalance {
   jvc: number;
   usd: number;
@@ -16,12 +19,19 @@ interface DepositResult {
   jv_tokens?: number;
   payment_url?: string;
   client_secret?: string;
+  status?: string;
   instructions?: {
     payid?: string;
     address?: string;
     reference?: string;
     message?: string;
   };
+  error?: string;
+}
+
+interface TransferResult {
+  success: boolean;
+  transaction?: any;
   error?: string;
 }
 
@@ -64,7 +74,7 @@ export const useJVCoinWallet = () => {
     }
   }, [user]);
 
-  // Initialize or get XRP wallet
+  // Initialize or get XRP wallet - Creates actual XRP address for user
   const initializeXRPWallet = useCallback(async (): Promise<string | null> => {
     if (!user) return null;
 
@@ -88,14 +98,28 @@ export const useJVCoinWallet = () => {
         localStorage.setItem(`jv_xrp_address_${user.id}`, address);
         setXrpAddress(address);
         
-        // Setup trustline for JVC
+        // Setup trustline for JVC (1 million limit)
         await supabase.functions.invoke('xrp-service', {
           body: { 
             action: 'setup_trustline', 
             userAddress: address,
-            limit: 1000000
+            limit: 1000000  // Max JVC holding
           }
         });
+
+        // Create wallet record in database if not exists
+        const { error: walletError } = await supabase
+          .from('user_wallets')
+          .upsert({
+            user_id: user.id,
+            balance_jv_token: 0,
+            balance_usd: 0,
+            reward_points: 0
+          }, { onConflict: 'user_id' });
+
+        if (walletError) {
+          console.error('Wallet creation error:', walletError);
+        }
 
         return address;
       }
@@ -103,12 +127,17 @@ export const useJVCoinWallet = () => {
       return null;
     } catch (error) {
       console.error('XRP wallet initialization error:', error);
+      toast({
+        title: 'Wallet Error',
+        description: 'Failed to initialize wallet. Please try again.',
+        variant: 'destructive'
+      });
       return null;
     }
   }, [user]);
 
-  // Deposit with card
-  const depositWithCard = async (amount: number, paymentMethodId?: string): Promise<DepositResult> => {
+  // Deposit with card (Stripe)
+  const depositWithCard = async (amountUsd: number, paymentMethodId?: string): Promise<DepositResult> => {
     if (!user) {
       return { success: false, error: 'Not authenticated' };
     }
@@ -117,7 +146,7 @@ export const useJVCoinWallet = () => {
       const { data, error } = await supabase.functions.invoke('bank-deposit', {
         body: {
           deposit_type: 'card',
-          amount,
+          amount: amountUsd,
           currency: 'usd',
           payment_method_id: paymentMethodId
         }
@@ -140,8 +169,8 @@ export const useJVCoinWallet = () => {
     }
   };
 
-  // Deposit with bank transfer
-  const depositWithBankTransfer = async (amount: number): Promise<DepositResult> => {
+  // Deposit with bank transfer (ACH/BECS - NO FEES)
+  const depositWithBankTransfer = async (amountUsd: number): Promise<DepositResult> => {
     if (!user) {
       return { success: false, error: 'Not authenticated' };
     }
@@ -150,7 +179,7 @@ export const useJVCoinWallet = () => {
       const { data, error } = await supabase.functions.invoke('bank-deposit', {
         body: {
           deposit_type: 'bank_transfer',
-          amount,
+          amount: amountUsd,
           currency: 'usd',
           return_url: window.location.origin + '/app/wallet'
         }
@@ -170,8 +199,8 @@ export const useJVCoinWallet = () => {
     }
   };
 
-  // Deposit with PayID
-  const depositWithPayID = async (amount: number): Promise<DepositResult> => {
+  // Deposit with PayID (Australian instant transfer - NO FEES)
+  const depositWithPayID = async (amountUsd: number): Promise<DepositResult> => {
     if (!user) {
       return { success: false, error: 'Not authenticated' };
     }
@@ -180,7 +209,7 @@ export const useJVCoinWallet = () => {
       const { data, error } = await supabase.functions.invoke('bank-deposit', {
         body: {
           deposit_type: 'payid',
-          amount
+          amount: amountUsd
         }
       });
 
@@ -192,8 +221,8 @@ export const useJVCoinWallet = () => {
     }
   };
 
-  // Deposit with crypto
-  const depositWithCrypto = async (amount: number): Promise<DepositResult> => {
+  // Deposit with crypto (XRP)
+  const depositWithCrypto = async (amountUsd: number): Promise<DepositResult> => {
     if (!user) {
       return { success: false, error: 'Not authenticated' };
     }
@@ -205,7 +234,7 @@ export const useJVCoinWallet = () => {
       const { data, error } = await supabase.functions.invoke('bank-deposit', {
         body: {
           deposit_type: 'crypto',
-          amount
+          amount: amountUsd
         }
       });
 
@@ -217,36 +246,45 @@ export const useJVCoinWallet = () => {
     }
   };
 
-  // Transfer JVC to another user
+  // Transfer JVC to another user - INCLUDES $0.10 FEE
   const transferJVC = async (recipientAddress: string, amount: number): Promise<boolean> => {
     if (!user || !xrpAddress) {
       toast({ title: 'Error', description: 'Wallet not initialized', variant: 'destructive' });
       return false;
     }
 
-    if (amount > balance.jvc) {
-      toast({ title: 'Insufficient Balance', description: 'You don\'t have enough JVC', variant: 'destructive' });
+    const totalRequired = amount + TRANSACTION_FEE_USD;
+    
+    if (totalRequired > balance.jvc) {
+      toast({ 
+        title: 'Insufficient Balance', 
+        description: `Need ${totalRequired.toFixed(2)} JVC (${amount} + $0.10 fee)`, 
+        variant: 'destructive' 
+      });
       return false;
     }
 
     try {
+      // Call XRP service to transfer
       const { data, error } = await supabase.functions.invoke('xrp-service', {
         body: {
           action: 'transfer_jvc',
           senderAddress: xrpAddress,
           receiverAddress: recipientAddress,
-          amount
+          amount: amount,
+          fee: TRANSACTION_FEE_USD
         }
       });
 
       if (error) throw error;
 
       if (data?.success) {
-        // Update local balance
+        // Deduct amount + fee from sender's wallet
         const { error: updateError } = await supabase
           .from('user_wallets')
           .update({ 
-            balance_jv_token: balance.jvc - amount 
+            balance_jv_token: balance.jvc - totalRequired,
+            balance_usd: balance.usd - totalRequired
           })
           .eq('user_id', user.id);
 
@@ -254,7 +292,7 @@ export const useJVCoinWallet = () => {
           await fetchBalance();
           toast({
             title: 'Transfer Successful!',
-            description: `${amount} JVC sent to ${recipientAddress.slice(0, 8)}...`,
+            description: `Sent ${amount} JVC to ${recipientAddress.slice(0, 8)}... (Fee: $0.10)`,
           });
           return true;
         }
@@ -274,7 +312,7 @@ export const useJVCoinWallet = () => {
       const { data, error } = await supabase.functions.invoke('xrp-service', {
         body: {
           action: 'verify_balance',
-          requiredAmount
+          requiredAmount: requiredAmount + TRANSACTION_FEE_USD
         }
       });
 
@@ -282,6 +320,65 @@ export const useJVCoinWallet = () => {
       return data?.verified || false;
     } catch (error) {
       console.error('Balance verification error:', error);
+      return false;
+    }
+  };
+
+  // Process payment at venue (for ordering food/drinks)
+  const processPayment = async (venueAddress: string, amount: number, orderId: string): Promise<boolean> => {
+    if (!user || !xrpAddress) {
+      toast({ title: 'Error', description: 'Wallet not initialized', variant: 'destructive' });
+      return false;
+    }
+
+    const totalRequired = amount + TRANSACTION_FEE_USD;
+
+    if (totalRequired > balance.jvc) {
+      toast({ 
+        title: 'Insufficient Balance', 
+        description: `Need ${totalRequired.toFixed(2)} JVC. Please deposit more funds.`, 
+        variant: 'destructive' 
+      });
+      return false;
+    }
+
+    try {
+      const { data, error } = await supabase.functions.invoke('xrp-service', {
+        body: {
+          action: 'process_payment',
+          senderAddress: xrpAddress,
+          venueAddress: venueAddress,
+          amount: amount,
+          fee: TRANSACTION_FEE_USD,
+          orderId: orderId,
+          type: 'venue_payment'
+        }
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        // Deduct from wallet
+        await supabase
+          .from('user_wallets')
+          .update({ 
+            balance_jv_token: balance.jvc - totalRequired,
+            balance_usd: balance.usd - totalRequired
+          })
+          .eq('user_id', user.id);
+
+        await fetchBalance();
+        toast({
+          title: 'Payment Successful!',
+          description: `Paid ${amount} JVC + $0.10 fee`,
+        });
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error('Payment error:', error);
+      toast({ title: 'Payment Failed', description: 'Please try again', variant: 'destructive' });
       return false;
     }
   };
@@ -311,6 +408,8 @@ export const useJVCoinWallet = () => {
     depositWithPayID,
     depositWithCrypto,
     transferJVC,
-    verifyBalance
+    verifyBalance,
+    processPayment,
+    TRANSACTION_FEE_USD
   };
 };
