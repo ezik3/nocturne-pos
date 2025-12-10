@@ -78,7 +78,7 @@ const Maps = () => {
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/dark-v11',
+      style: 'mapbox://styles/mapbox/navigation-night-v1', // Colorful night style with roads highlighted
       center: [153.0251, -27.4698], // Brisbane default
       zoom: 13,
       pitch: 45,
