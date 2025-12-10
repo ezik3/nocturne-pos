@@ -298,7 +298,7 @@ const CreatePostModal = ({
           {/* Submit Button */}
           <Button
             onClick={handleSubmit}
-            disabled={!content.trim() || isSubmitting}
+            disabled={(!content.trim() && !selectedImage && !selectedVideo) || isSubmitting}
             className={`w-full h-12 font-bold text-base transition-all duration-300 ${
               isGold
                 ? "bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-500 hover:to-amber-600 text-black shadow-[0_0_30px_rgba(255,215,0,0.4)]"
