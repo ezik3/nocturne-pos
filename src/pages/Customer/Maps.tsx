@@ -67,6 +67,9 @@ const Maps = () => {
   // Route visualization
   const [routeCoordinates, setRouteCoordinates] = useState<[number, number][]>([]);
 
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const geolocateControlRef = useRef<mapboxgl.GeolocateControl | null>(null);
+
   // Initialize map
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
@@ -82,33 +85,25 @@ const Maps = () => {
     });
 
     map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
-    map.current.addControl(new mapboxgl.GeolocateControl({
+    
+    // Create geolocate control and store ref
+    const geolocateControl = new mapboxgl.GeolocateControl({
       positionOptions: { enableHighAccuracy: true },
       trackUserLocation: true,
       showUserHeading: true
-    }), 'top-right');
+    });
+    geolocateControlRef.current = geolocateControl;
+    map.current.addControl(geolocateControl, 'top-right');
 
-    // Get user location
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { latitude, longitude } = pos.coords;
-        setUserLocation({ lat: latitude, lng: longitude });
-        map.current?.flyTo({ center: [longitude, latitude], zoom: 14 });
-        
-        // Add user marker
-        new mapboxgl.Marker({ color: '#00FFFF' })
-          .setLngLat([longitude, latitude])
-          .setPopup(new mapboxgl.Popup().setHTML('<strong>You are here</strong>'))
-          .addTo(map.current!);
-      },
-      () => {
-        toast.error('Could not get your location');
-      }
-    );
-
-    // Add route layer when map loads
+    // Auto-trigger geolocation when map loads
     map.current.on('load', () => {
       if (!map.current) return;
+      setMapLoaded(true);
+      
+      // Trigger geolocation automatically
+      setTimeout(() => {
+        geolocateControl.trigger();
+      }, 500);
       
       // Add route source
       map.current.addSource('route', {
@@ -155,6 +150,25 @@ const Maps = () => {
         }
       }, 'route');
     });
+
+    // Get user location and add marker
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        setUserLocation({ lat: latitude, lng: longitude });
+        map.current?.flyTo({ center: [longitude, latitude], zoom: 14 });
+        
+        // Add user marker
+        new mapboxgl.Marker({ color: '#00FFFF' })
+          .setLngLat([longitude, latitude])
+          .setPopup(new mapboxgl.Popup().setHTML('<strong>You are here</strong>'))
+          .addTo(map.current!);
+      },
+      (error) => {
+        console.log('Geolocation error:', error);
+        toast.error('Could not get your location - using default');
+      }
+    );
 
     return () => {
       map.current?.remove();
@@ -303,8 +317,22 @@ const Maps = () => {
     <div className="min-h-screen bg-black">
       <Web3FeedHeader />
 
-      {/* Map Container */}
-      <div ref={mapContainer} className="fixed inset-0 top-14 z-0" />
+      {/* Map Container - Full screen with explicit dimensions */}
+      <div 
+        ref={mapContainer} 
+        className="fixed inset-0 top-14 z-0 w-full"
+        style={{ height: 'calc(100vh - 56px)' }}
+      />
+      
+      {/* Loading Indicator */}
+      {!mapLoaded && (
+        <div className="fixed inset-0 top-14 z-5 flex items-center justify-center bg-black/50">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-10 h-10 border-4 border-cyan/30 border-t-cyan rounded-full animate-spin" />
+            <span className="text-white/70 text-sm">Loading map...</span>
+          </div>
+        </div>
+      )}
 
       {/* Overlay Controls */}
       <div className="fixed top-20 left-4 right-4 z-10">
