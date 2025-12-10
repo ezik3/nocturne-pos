@@ -1,13 +1,16 @@
 project_id = "fctchotvtulopafnhohn"
 
-[functions.process-payment]
-verify_jwt = true
-
 [functions.ai-chat]
 verify_jwt = true
 
+[functions.deposit-funds]
+verify_jwt = true
+
 [functions.process-payment]
 verify_jwt = true
 
-[functions.deposit-funds]
+[functions.xrp-service]
+verify_jwt = false
+
+[functions.bank-deposit]
 verify_jwt = true

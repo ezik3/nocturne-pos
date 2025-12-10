@@ -1,24 +1,33 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Coins, ArrowUpRight, ArrowDownLeft, History, Wifi, WifiOff } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { Coins, ArrowUpRight, ArrowDownLeft, History, Wifi, WifiOff, Wallet as WalletIcon, Copy, Check, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
+import { useJVCoinWallet } from "@/hooks/useJVCoinWallet";
+import { DepositModal } from "@/components/Customer/DepositModal";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export default function Wallet() {
-  const [balance, setBalance] = useState({ jv_token: 0, usd: 0, rewards: 0 });
-  const [amount, setAmount] = useState("");
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [pendingTransactions, setPendingTransactions] = useState<any[]>([]);
-  const { user } = useAuth();
+  const [showDepositModal, setShowDepositModal] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [transferAddress, setTransferAddress] = useState("");
+  const [transferAmount, setTransferAmount] = useState("");
+  const [copied, setCopied] = useState(false);
+  
   const { toast } = useToast();
+  const { 
+    balance, 
+    loading, 
+    xrpAddress, 
+    fetchBalance, 
+    initializeXRPWallet,
+    transferJVC 
+  } = useJVCoinWallet();
 
   useEffect(() => {
-    fetchBalance();
-    
     // Load pending offline transactions
     const queue = JSON.parse(localStorage.getItem('offline_transactions') || '[]');
     setPendingTransactions(queue);
@@ -34,301 +43,254 @@ export default function Wallet() {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [user]);
+  }, []);
 
-  const fetchBalance = async () => {
-    if (!user) return;
-    
-    const { data, error } = await supabase
-      .from("user_wallets")
-      .select("*")
-      .eq("user_id", user.id)
-      .single();
-
-    if (data) {
-      setBalance({
-        jv_token: Number(data.balance_jv_token) || 0,
-        usd: Number(data.balance_usd) || 0,
-        rewards: data.reward_points || 0
+  const handleInitializeWallet = async () => {
+    const address = await initializeXRPWallet();
+    if (address) {
+      toast({
+        title: "Wallet Created!",
+        description: "Your XRP wallet has been initialized",
       });
-    }
-
-    if (error && error.code !== "PGRST116") {
-      console.error("Error fetching balance:", error);
     }
   };
 
-  const handleDeposit = async (type: "fiat" | "crypto") => {
-    if (!amount || parseFloat(amount) <= 0) {
-      toast({ title: "Invalid Amount", description: "Please enter a valid amount", variant: "destructive" });
+  const copyAddress = () => {
+    if (xrpAddress) {
+      navigator.clipboard.writeText(xrpAddress);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      toast({ title: "Copied!", description: "Wallet address copied to clipboard" });
+    }
+  };
+
+  const handleTransfer = async () => {
+    if (!transferAddress || !transferAmount) {
+      toast({ title: "Error", description: "Please fill in all fields", variant: "destructive" });
       return;
     }
 
-    if (!isOnline) {
-      // Queue offline transaction
-      const transaction = {
-        type: 'deposit',
-        payment_type: type,
-        amount: parseFloat(amount),
-        timestamp: Date.now(),
-        status: 'pending'
-      };
-      queueOfflineTransaction(transaction);
-      toast({
-        title: "Offline Mode",
-        description: "Transaction queued. Will process when online.",
-      });
-      setAmount("");
-      return;
-    }
-
-    toast({
-      title: "Processing Payment",
-      description: `Converting ${amount} ${type === "fiat" ? "USD" : "crypto"} to JV Tokens...`,
-    });
-
-    try {
-      const { data, error } = await supabase.functions.invoke('deposit-funds', {
-        body: {
-          payment_type: type,
-          amount: parseFloat(amount),
-          currency: 'usd'
-        }
-      });
-
-      if (error) throw error;
-
-      if (data.success) {
-        toast({
-          title: "Success!",
-          description: `Deposited ${data.jv_tokens} JV Tokens`,
-        });
-        setAmount("");
-        fetchBalance();
-      }
-    } catch (error) {
-      console.error("Payment error:", error);
-      toast({
-        title: "Payment Failed",
-        description: "There was an error processing your payment. Please try again.",
-        variant: "destructive"
-      });
+    const success = await transferJVC(transferAddress, parseFloat(transferAmount));
+    if (success) {
+      setShowTransferModal(false);
+      setTransferAddress("");
+      setTransferAmount("");
     }
   };
-
-  // TODO: Implement offline transaction queue
-  // This would store transactions locally when offline and sync when back online
-  const queueOfflineTransaction = (transaction: any) => {
-    const queue = JSON.parse(localStorage.getItem('offline_transactions') || '[]');
-    queue.push({ ...transaction, timestamp: Date.now(), status: 'pending' });
-    localStorage.setItem('offline_transactions', JSON.stringify(queue));
-    setPendingTransactions(queue);
-  };
-
-  const syncOfflineTransactions = async () => {
-    const queue = JSON.parse(localStorage.getItem('offline_transactions') || '[]');
-    
-    if (queue.length === 0) return;
-
-    toast({
-      title: "Syncing Transactions",
-      description: `Processing ${queue.length} pending transaction(s)...`,
-    });
-
-    const successfulTxs: number[] = [];
-    
-    for (let i = 0; i < queue.length; i++) {
-      const tx = queue[i];
-      try {
-        if (tx.type === 'deposit') {
-          const { data, error } = await supabase.functions.invoke('deposit-funds', {
-            body: {
-              payment_type: tx.payment_type,
-              amount: tx.amount,
-              currency: 'usd'
-            }
-          });
-
-          if (!error && data.success) {
-            successfulTxs.push(i);
-          }
-        }
-      } catch (error) {
-        console.error(`Failed to sync transaction ${i}:`, error);
-      }
-    }
-
-    // Remove successful transactions from queue
-    const remainingQueue = queue.filter((_: any, index: number) => !successfulTxs.includes(index));
-    localStorage.setItem('offline_transactions', JSON.stringify(remainingQueue));
-    setPendingTransactions(remainingQueue);
-
-    if (successfulTxs.length > 0) {
-      toast({
-        title: "Sync Complete",
-        description: `Successfully processed ${successfulTxs.length} transaction(s)`,
-      });
-      fetchBalance();
-    }
-  };
-
-  // Auto-sync when coming back online
-  useEffect(() => {
-    if (isOnline && pendingTransactions.length > 0) {
-      syncOfflineTransactions();
-    }
-  }, [isOnline]);
 
   return (
-    <div className="container max-w-4xl mx-auto p-4 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Wallet</h1>
-        <div className={`flex items-center gap-2 px-3 py-1 rounded-full ${isOnline ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
-          {isOnline ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
-          <span className="text-sm font-medium">{isOnline ? 'Online' : 'Offline'}</span>
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+      <div className="container max-w-4xl mx-auto p-4 space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+              JV Wallet
+            </h1>
+            <p className="text-muted-foreground text-sm">Manage your JV Coins</p>
+          </div>
+          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${
+            isOnline 
+              ? 'bg-green-500/10 text-green-500 border border-green-500/20' 
+              : 'bg-red-500/10 text-red-500 border border-red-500/20'
+          }`}>
+            {isOnline ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
+            <span>{isOnline ? 'Online' : 'Offline'}</span>
+          </div>
         </div>
-      </div>
 
-      {/* Balance Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground">
+        {/* XRP Wallet Address */}
+        {xrpAddress ? (
+          <Card className="bg-muted/30 border-border/50">
+            <CardContent className="pt-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <WalletIcon className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase">Your XRP Address</p>
+                    <p className="font-mono text-sm">{xrpAddress.slice(0, 12)}...{xrpAddress.slice(-8)}</p>
+                  </div>
+                </div>
+                <Button variant="ghost" size="sm" onClick={copyAddress}>
+                  {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="border-dashed border-2 border-primary/30 bg-primary/5">
+            <CardContent className="pt-6 text-center">
+              <WalletIcon className="h-12 w-12 mx-auto text-primary/50 mb-3" />
+              <h3 className="font-semibold mb-1">No Wallet Connected</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Initialize your XRP wallet to receive and send JV Coins
+              </p>
+              <Button onClick={handleInitializeWallet} className="bg-primary text-primary-foreground">
+                Initialize Wallet
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Balance Cards */}
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card className="bg-gradient-to-br from-primary to-primary/70 text-primary-foreground border-0 shadow-lg shadow-primary/20">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Coins className="h-5 w-5" />
+                JV Coins
+              </CardTitle>
+              <CardDescription className="text-primary-foreground/70">1 JVC = $1 USD</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-4xl font-bold">{loading ? '...' : balance.jvc.toFixed(2)}</p>
+              <p className="text-sm text-primary-foreground/60 mt-1">
+                ≈ ${balance.jvc.toFixed(2)} USD
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-card border-border/50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">USD Deposited</CardTitle>
+              <CardDescription>Total Fiat Value</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-4xl font-bold">${loading ? '...' : balance.usd.toFixed(2)}</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-card border-border/50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Reward Points</CardTitle>
+              <CardDescription>Loyalty Rewards</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-4xl font-bold">{loading ? '...' : balance.rewards}</p>
+              <p className="text-sm text-muted-foreground mt-1">Redeem for perks</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Offline Transaction Warning */}
+        {!isOnline && pendingTransactions.length > 0 && (
+          <Card className="border-orange-500/50 bg-orange-500/5">
+            <CardHeader className="py-4">
+              <CardTitle className="text-orange-500 text-base flex items-center gap-2">
+                <WifiOff className="h-4 w-4" />
+                {pendingTransactions.length} Pending Transaction(s)
+              </CardTitle>
+              <CardDescription className="text-orange-500/70">
+                Will sync automatically when back online
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        )}
+
+        {/* Action Buttons */}
+        <div className="grid grid-cols-2 gap-4">
+          <Button 
+            size="lg" 
+            className="h-14 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold"
+            onClick={() => setShowDepositModal(true)}
+          >
+            <ArrowDownLeft className="h-5 w-5 mr-2" />
+            Deposit
+          </Button>
+          <Button 
+            size="lg" 
+            variant="outline"
+            className="h-14 border-2 font-semibold"
+            onClick={() => setShowTransferModal(true)}
+            disabled={!xrpAddress || balance.jvc <= 0}
+          >
+            <Send className="h-5 w-5 mr-2" />
+            Send JVC
+          </Button>
+        </div>
+
+        {/* Quick Stats */}
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Coins className="h-5 w-5" />
-              JV Tokens
+              <History className="h-5 w-5" />
+              Transaction History
             </CardTitle>
-            <CardDescription className="text-primary-foreground/80">Primary Currency</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-4xl font-bold">{balance.jv_token.toFixed(2)}</p>
-            <p className="text-sm text-primary-foreground/60 mt-1">≈ ${(balance.jv_token / 10).toFixed(2)} USD</p>
+            <div className="text-center py-8 text-muted-foreground">
+              <Coins className="h-12 w-12 mx-auto mb-3 opacity-30" />
+              <p className="text-sm">No transactions yet</p>
+              <p className="text-xs mt-1">Start by depositing funds to your wallet!</p>
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>USD Balance</CardTitle>
-            <CardDescription>Fiat Currency</CardDescription>
+        {/* Info Card */}
+        <Card className="bg-muted/30 border-border/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">About JV Coin</CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-4xl font-bold">${balance.usd.toFixed(2)}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Reward Points</CardTitle>
-            <CardDescription>Loyalty Rewards</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-4xl font-bold">{balance.rewards}</p>
+          <CardContent className="text-sm text-muted-foreground space-y-2">
+            <p>• <strong>1 JVC = $1 USD</strong> - Stablecoin backed by platform treasury</p>
+            <p>• Built on <strong>XRP Ledger</strong> for fast, low-cost transactions</p>
+            <p>• <strong>Offline payments</strong> supported - transactions sync when online</p>
+            <p>• Use JVC at all venues for food, drinks, and experiences</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Offline Transaction Warning */}
-      {!isOnline && pendingTransactions.length > 0 && (
-        <Card className="border-orange-500 bg-orange-500/10">
-          <CardHeader>
-            <CardTitle className="text-orange-500">Pending Transactions</CardTitle>
-            <CardDescription>
-              You have {pendingTransactions.length} transaction(s) waiting to sync when back online.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      )}
+      {/* Deposit Modal */}
+      <DepositModal 
+        open={showDepositModal} 
+        onClose={() => {
+          setShowDepositModal(false);
+          fetchBalance();
+        }} 
+      />
 
-      {/* Deposit/Withdraw */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Manage Funds</CardTitle>
-          <CardDescription>Add or withdraw JV Tokens</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="fiat" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="fiat">Fiat Deposit</TabsTrigger>
-              <TabsTrigger value="crypto">Crypto Exchange</TabsTrigger>
-            </TabsList>
-            <TabsContent value="fiat" className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Amount (USD)</label>
-                <Input
-                  type="number"
-                  placeholder="0.00"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  You'll receive {(parseFloat(amount || "0") * 10).toFixed(2)} JV Tokens
-                </p>
-              </div>
-              <Button onClick={() => handleDeposit("fiat")} className="w-full" disabled={!isOnline}>
-                <ArrowDownLeft className="h-4 w-4 mr-2" />
-                Deposit via Card
-              </Button>
-              <p className="text-xs text-muted-foreground text-center">
-                Conversion Rate: 1 USD = 10 JV Tokens
+      {/* Transfer Modal */}
+      <Dialog open={showTransferModal} onOpenChange={setShowTransferModal}>
+        <DialogContent className="bg-background/95 backdrop-blur-xl border-border/50">
+          <DialogHeader>
+            <DialogTitle>Send JV Coins</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm text-muted-foreground">Recipient XRP Address</label>
+              <Input
+                placeholder="rXXXXXXXXXXXXXXXXXX"
+                value={transferAddress}
+                onChange={(e) => setTransferAddress(e.target.value)}
+                className="mt-1 font-mono"
+              />
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground">Amount (JVC)</label>
+              <Input
+                type="number"
+                placeholder="0.00"
+                value={transferAmount}
+                onChange={(e) => setTransferAmount(e.target.value)}
+                className="mt-1"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Available: {balance.jvc.toFixed(2)} JVC
               </p>
-            </TabsContent>
-            <TabsContent value="crypto" className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Amount (Crypto)</label>
-                <Input
-                  type="number"
-                  placeholder="0.00"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Exchange crypto for JV Tokens at market rate
-                </p>
-              </div>
-              <Button onClick={() => handleDeposit("crypto")} className="w-full" variant="secondary" disabled={!isOnline}>
-                <ArrowDownLeft className="h-4 w-4 mr-2" />
-                Exchange Crypto
-              </Button>
-              <p className="text-xs text-muted-foreground text-center">
-                Supports BTC, ETH, XRP and other major cryptocurrencies
-              </p>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
-
-      {/* Transaction History */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <History className="h-5 w-5" />
-            Recent Transactions
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground text-center py-8">
-            No transactions yet. Start by adding funds to your wallet!
-          </p>
-          {/* TODO: Implement transaction history from database */}
-        </CardContent>
-      </Card>
-
-      {/* Offline Payment Info */}
-      <Card className="bg-muted/50">
-        <CardHeader>
-          <CardTitle>Offline Payments</CardTitle>
-          <CardDescription>
-            JV Tokens support offline transactions. Payments made without internet will be queued and processed automatically when you're back online.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          <ul className="list-disc list-inside space-y-1">
-            <li>Transactions are securely stored locally</li>
-            <li>Auto-sync when connection restored</li>
-            <li>Venues accept offline payments with JV Tokens</li>
-            <li>No transaction is lost</li>
-          </ul>
-        </CardContent>
-      </Card>
+            </div>
+            <Button 
+              onClick={handleTransfer} 
+              className="w-full"
+              disabled={!transferAddress || !transferAmount || parseFloat(transferAmount) > balance.jvc}
+            >
+              <Send className="h-4 w-4 mr-2" />
+              Send {transferAmount || '0'} JVC
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
