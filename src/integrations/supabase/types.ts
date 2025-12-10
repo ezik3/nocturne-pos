@@ -97,6 +97,105 @@ export type Database = {
         }
         Relationships: []
       }
+      driver_profiles: {
+        Row: {
+          average_rating: number | null
+          created_at: string | null
+          current_latitude: number | null
+          current_longitude: number | null
+          drivers_license_id: string | null
+          id: string
+          is_available: boolean | null
+          last_location_update: string | null
+          license_verified: boolean | null
+          total_deliveries: number | null
+          total_rides: number | null
+          updated_at: string | null
+          user_id: string
+          vehicle_make: string | null
+          vehicle_model: string | null
+          vehicle_plate: string | null
+          vehicle_type: string | null
+        }
+        Insert: {
+          average_rating?: number | null
+          created_at?: string | null
+          current_latitude?: number | null
+          current_longitude?: number | null
+          drivers_license_id?: string | null
+          id?: string
+          is_available?: boolean | null
+          last_location_update?: string | null
+          license_verified?: boolean | null
+          total_deliveries?: number | null
+          total_rides?: number | null
+          updated_at?: string | null
+          user_id: string
+          vehicle_make?: string | null
+          vehicle_model?: string | null
+          vehicle_plate?: string | null
+          vehicle_type?: string | null
+        }
+        Update: {
+          average_rating?: number | null
+          created_at?: string | null
+          current_latitude?: number | null
+          current_longitude?: number | null
+          drivers_license_id?: string | null
+          id?: string
+          is_available?: boolean | null
+          last_location_update?: string | null
+          license_verified?: boolean | null
+          total_deliveries?: number | null
+          total_rides?: number | null
+          updated_at?: string | null
+          user_id?: string
+          vehicle_make?: string | null
+          vehicle_model?: string | null
+          vehicle_plate?: string | null
+          vehicle_type?: string | null
+        }
+        Relationships: []
+      }
+      driver_shifts: {
+        Row: {
+          created_at: string | null
+          deliveries_completed: number | null
+          driver_id: string
+          earnings: number | null
+          ended_at: string | null
+          id: string
+          rides_completed: number | null
+          shift_type: string
+          started_at: string | null
+          status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          deliveries_completed?: number | null
+          driver_id: string
+          earnings?: number | null
+          ended_at?: string | null
+          id?: string
+          rides_completed?: number | null
+          shift_type: string
+          started_at?: string | null
+          status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          deliveries_completed?: number | null
+          driver_id?: string
+          earnings?: number | null
+          ended_at?: string | null
+          id?: string
+          rides_completed?: number | null
+          shift_type?: string
+          started_at?: string | null
+          status?: string | null
+        }
+        Relationships: []
+      }
       employee_invitations: {
         Row: {
           accepted_at: string | null
@@ -331,6 +430,84 @@ export type Database = {
           id?: string
           items?: Json | null
           name?: string
+          updated_at?: string | null
+          venue_id?: string
+        }
+        Relationships: []
+      }
+      food_delivery_orders: {
+        Row: {
+          actual_delivery_time: string | null
+          actual_pickup_time: string | null
+          created_at: string | null
+          customer_id: string
+          customer_rating: number | null
+          delivery_address: string
+          delivery_fee: number | null
+          delivery_latitude: number | null
+          delivery_longitude: number | null
+          driver_id: string | null
+          driver_rating: number | null
+          estimated_delivery_time: string | null
+          estimated_pickup_time: string | null
+          id: string
+          order_id: string | null
+          pickup_address: string | null
+          pickup_latitude: number | null
+          pickup_longitude: number | null
+          platform_fee: number | null
+          special_instructions: string | null
+          status: string | null
+          updated_at: string | null
+          venue_id: string
+        }
+        Insert: {
+          actual_delivery_time?: string | null
+          actual_pickup_time?: string | null
+          created_at?: string | null
+          customer_id: string
+          customer_rating?: number | null
+          delivery_address: string
+          delivery_fee?: number | null
+          delivery_latitude?: number | null
+          delivery_longitude?: number | null
+          driver_id?: string | null
+          driver_rating?: number | null
+          estimated_delivery_time?: string | null
+          estimated_pickup_time?: string | null
+          id?: string
+          order_id?: string | null
+          pickup_address?: string | null
+          pickup_latitude?: number | null
+          pickup_longitude?: number | null
+          platform_fee?: number | null
+          special_instructions?: string | null
+          status?: string | null
+          updated_at?: string | null
+          venue_id: string
+        }
+        Update: {
+          actual_delivery_time?: string | null
+          actual_pickup_time?: string | null
+          created_at?: string | null
+          customer_id?: string
+          customer_rating?: number | null
+          delivery_address?: string
+          delivery_fee?: number | null
+          delivery_latitude?: number | null
+          delivery_longitude?: number | null
+          driver_id?: string | null
+          driver_rating?: number | null
+          estimated_delivery_time?: string | null
+          estimated_pickup_time?: string | null
+          id?: string
+          order_id?: string | null
+          pickup_address?: string | null
+          pickup_latitude?: number | null
+          pickup_longitude?: number | null
+          platform_fee?: number | null
+          special_instructions?: string | null
+          status?: string | null
           updated_at?: string | null
           venue_id?: string
         }
@@ -621,6 +798,78 @@ export type Database = {
           id?: string
           updated_at?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      ride_bookings: {
+        Row: {
+          actual_duration_minutes: number | null
+          actual_fare: number | null
+          created_at: string | null
+          customer_id: string
+          customer_rating: number | null
+          destination_address: string
+          destination_latitude: number | null
+          destination_longitude: number | null
+          distance_km: number | null
+          driver_id: string | null
+          driver_rating: number | null
+          estimated_duration_minutes: number | null
+          estimated_fare: number | null
+          id: string
+          payment_status: string | null
+          pickup_address: string
+          pickup_latitude: number | null
+          pickup_longitude: number | null
+          platform_fee: number | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          actual_duration_minutes?: number | null
+          actual_fare?: number | null
+          created_at?: string | null
+          customer_id: string
+          customer_rating?: number | null
+          destination_address: string
+          destination_latitude?: number | null
+          destination_longitude?: number | null
+          distance_km?: number | null
+          driver_id?: string | null
+          driver_rating?: number | null
+          estimated_duration_minutes?: number | null
+          estimated_fare?: number | null
+          id?: string
+          payment_status?: string | null
+          pickup_address: string
+          pickup_latitude?: number | null
+          pickup_longitude?: number | null
+          platform_fee?: number | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          actual_duration_minutes?: number | null
+          actual_fare?: number | null
+          created_at?: string | null
+          customer_id?: string
+          customer_rating?: number | null
+          destination_address?: string
+          destination_latitude?: number | null
+          destination_longitude?: number | null
+          distance_km?: number | null
+          driver_id?: string | null
+          driver_rating?: number | null
+          estimated_duration_minutes?: number | null
+          estimated_fare?: number | null
+          id?: string
+          payment_status?: string | null
+          pickup_address?: string
+          pickup_latitude?: number | null
+          pickup_longitude?: number | null
+          platform_fee?: number | null
+          status?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }

@@ -24,7 +24,7 @@ interface Post {
   visibility?: string;
   post_type?: string;
   customer_profiles?: {
-    display_name: string;
+    display_name?: string;
     avatar_url?: string;
   } | null;
   venues?: {
@@ -77,7 +77,7 @@ const ImmersiveFeed = () => {
         .from("customer_profiles")
         .select("display_name, avatar_url")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
 
       if (profile) {
         setCurrentUserProfile({
@@ -108,7 +108,7 @@ const ImmersiveFeed = () => {
             .from("customer_profiles")
             .select("display_name, avatar_url")
             .eq("user_id", post.user_id)
-            .single();
+            .maybeSingle();
           return { ...post, customer_profiles: profile };
         })
       );
@@ -139,7 +139,7 @@ const ImmersiveFeed = () => {
 
     // Subscribe to real-time updates
     const channel = supabase
-      .channel("posts")
+      .channel("posts-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, () => {
         fetchPosts();
       })
@@ -155,7 +155,6 @@ const ImmersiveFeed = () => {
     navigate("/app/city-view", { state: { city: storyUser.city || "Brisbane" } });
   };
 
-  // Handle post actions
   // Handle comment click
   const handleCommentClick = (post: Post) => {
     setSelectedPost(post);
@@ -171,7 +170,6 @@ const ImmersiveFeed = () => {
         post_id: data.postId,
         user_id: user.id,
         content: data.content,
-        // TODO: Add is_private field to database schema
       });
 
       if (error) throw error;
@@ -197,21 +195,51 @@ const ImmersiveFeed = () => {
     }
   };
 
-  const handleCreatePost = async (data: { content: string; visibility: "private" | "public"; isGold: boolean }) => {
+  const handleCreatePost = async (data: { 
+    content: string; 
+    visibility: "private" | "public"; 
+    isGold: boolean;
+    imageUrl?: string;
+    videoUrl?: string;
+  }) => {
     if (!user) return;
 
-    const { error } = await supabase.from("posts").insert({
+    // Optimistically add the post to the feed immediately
+    const optimisticPost: Post = {
+      id: `temp-${Date.now()}`,
       user_id: user.id,
       content: data.content,
       visibility: data.visibility,
       post_type: data.isGold ? "gold" : "standard",
-    });
+      image_url: data.imageUrl,
+      video_url: data.videoUrl,
+      pounds_count: 0,
+      comments_count: 0,
+      created_at: new Date().toISOString(),
+      customer_profiles: currentUserProfile,
+    };
+
+    // Add to beginning of feed immediately
+    setPosts(prev => [optimisticPost, ...prev]);
+
+    const { data: newPost, error } = await supabase.from("posts").insert({
+      user_id: user.id,
+      content: data.content,
+      visibility: data.visibility,
+      post_type: data.isGold ? "gold" : "standard",
+      image_url: data.imageUrl,
+      video_url: data.videoUrl,
+    }).select().single();
 
     if (error) {
       toast.error("Failed to create post");
+      // Remove optimistic post on error
+      setPosts(prev => prev.filter(p => p.id !== optimisticPost.id));
     } else {
       toast.success(data.isGold ? "⭐ Gold post published!" : "Post published!");
       if (data.isGold) setCanUseGold(false);
+      // Replace optimistic post with real post
+      setPosts(prev => prev.map(p => p.id === optimisticPost.id ? { ...newPost, customer_profiles: currentUserProfile } : p));
     }
   };
 
