@@ -151,12 +151,16 @@ serve(async (req) => {
 
       case 'transfer_jvc': {
         // Simulate JVC transfer between users
-        const { senderAddress, receiverAddress, amount } = params;
+        // INCLUDES $0.10 platform fee on ALL transactions
+        const { senderAddress, receiverAddress, amount, fee = 0.10 } = params;
         
         if (!senderAddress || !receiverAddress || !amount || amount <= 0) {
           throw new Error('Invalid transfer parameters');
         }
 
+        const totalAmount = amount + fee;
+
+        // Main transfer transaction
         const tx: XRPTransaction = {
           id: crypto.randomUUID(),
           type: 'transfer',
@@ -169,12 +173,81 @@ serve(async (req) => {
           timestamp: new Date().toISOString()
         };
 
+        // Platform fee transaction (goes to JV treasury)
+        const feeTx: XRPTransaction = {
+          id: crypto.randomUUID(),
+          type: 'transfer',
+          from: senderAddress,
+          to: Deno.env.get('XRP_ISSUER_ADDRESS') || 'rJVTreasuryAddress',
+          amount: fee,
+          currency: 'JVC',
+          status: 'validated',
+          hash: generateTxHash(),
+          timestamp: new Date().toISOString()
+        };
+
         console.log(`[XRP-SERVICE] JVC transferred:`, tx);
+        console.log(`[XRP-SERVICE] Platform fee collected: $${fee}`);
 
         result = {
           success: true,
           transaction: tx,
-          message: `Successfully transferred ${amount} JVC`
+          feeTransaction: feeTx,
+          totalDeducted: totalAmount,
+          platformFee: fee,
+          message: `Successfully transferred ${amount} JVC (Fee: $${fee})`
+        };
+        break;
+      }
+
+      case 'process_payment': {
+        // Process venue payment - $0.10 flat fee
+        const { senderAddress, venueAddress, amount, fee = 0.10, orderId, type } = params;
+        
+        if (!senderAddress || !venueAddress || !amount || amount <= 0) {
+          throw new Error('Invalid payment parameters');
+        }
+
+        const totalAmount = amount + fee;
+
+        // Payment to venue
+        const paymentTx: XRPTransaction = {
+          id: crypto.randomUUID(),
+          type: 'transfer',
+          from: senderAddress,
+          to: venueAddress,
+          amount: amount,
+          currency: 'JVC',
+          status: 'validated',
+          hash: generateTxHash(),
+          timestamp: new Date().toISOString()
+        };
+
+        // Platform fee (goes to JV)
+        const feeTx: XRPTransaction = {
+          id: crypto.randomUUID(),
+          type: 'transfer',
+          from: senderAddress,
+          to: Deno.env.get('XRP_ISSUER_ADDRESS') || 'rJVTreasuryAddress',
+          amount: fee,
+          currency: 'JVC',
+          status: 'validated',
+          hash: generateTxHash(),
+          timestamp: new Date().toISOString()
+        };
+
+        console.log(`[XRP-SERVICE] Venue payment processed:`, paymentTx);
+        console.log(`[XRP-SERVICE] Order: ${orderId}, Type: ${type}`);
+        console.log(`[XRP-SERVICE] Platform fee: $${fee}`);
+
+        result = {
+          success: true,
+          paymentTransaction: paymentTx,
+          feeTransaction: feeTx,
+          orderId,
+          totalDeducted: totalAmount,
+          platformFee: fee,
+          message: `Payment of ${amount} JVC processed for order ${orderId}`
         };
         break;
       }

@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Coins, ArrowUpRight, ArrowDownLeft, History, Wifi, WifiOff, Wallet as WalletIcon, Copy, Check, Send } from "lucide-react";
+import { Coins, ArrowDownLeft, History, Wifi, WifiOff, Wallet as WalletIcon, Copy, Check, Send, Globe, ChevronDown, Info, Zap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useJVCoinWallet } from "@/hooks/useJVCoinWallet";
+import { useCurrency, CURRENCIES } from "@/hooks/useCurrency";
 import { DepositModal } from "@/components/Customer/DepositModal";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
 
 export default function Wallet() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -27,12 +30,22 @@ export default function Wallet() {
     transferJVC 
   } = useJVCoinWallet();
 
+  const {
+    userCurrency,
+    jvcToLocal,
+    formatCurrency,
+    formatJVC,
+    setDisplayCurrency,
+    getCurrencyInfo,
+    getTransactionFeeLocal,
+    TRANSACTION_FEE_USD,
+    availableCurrencies,
+  } = useCurrency();
+
   useEffect(() => {
-    // Load pending offline transactions
     const queue = JSON.parse(localStorage.getItem('offline_transactions') || '[]');
     setPendingTransactions(queue);
     
-    // Monitor online/offline status
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
     
@@ -50,7 +63,7 @@ export default function Wallet() {
     if (address) {
       toast({
         title: "Wallet Created!",
-        description: "Your XRP wallet has been initialized",
+        description: "Your XRP wallet has been initialized with JVC trustline",
       });
     }
   };
@@ -70,7 +83,19 @@ export default function Wallet() {
       return;
     }
 
-    const success = await transferJVC(transferAddress, parseFloat(transferAmount));
+    const amount = parseFloat(transferAmount);
+    const totalWithFee = amount + TRANSACTION_FEE_USD;
+
+    if (totalWithFee > balance.jvc) {
+      toast({ 
+        title: "Insufficient Balance", 
+        description: `Need ${totalWithFee.toFixed(2)} JVC (including $0.10 fee)`, 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    const success = await transferJVC(transferAddress, amount);
     if (success) {
       setShowTransferModal(false);
       setTransferAddress("");
@@ -78,10 +103,15 @@ export default function Wallet() {
     }
   };
 
+  // Calculate local currency equivalents
+  const localBalance = jvcToLocal(balance.jvc);
+  const localFee = getTransactionFeeLocal();
+  const currencyInfo = getCurrencyInfo();
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
       <div className="container max-w-4xl mx-auto p-4 space-y-6">
-        {/* Header */}
+        {/* Header with Currency Selector */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
@@ -89,13 +119,38 @@ export default function Wallet() {
             </h1>
             <p className="text-muted-foreground text-sm">Manage your JV Coins</p>
           </div>
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${
-            isOnline 
-              ? 'bg-green-500/10 text-green-500 border border-green-500/20' 
-              : 'bg-red-500/10 text-red-500 border border-red-500/20'
-          }`}>
-            {isOnline ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
-            <span>{isOnline ? 'Online' : 'Offline'}</span>
+          <div className="flex items-center gap-2">
+            {/* Currency Selector */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1">
+                  <Globe className="h-4 w-4" />
+                  {userCurrency}
+                  <ChevronDown className="h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="max-h-64 overflow-y-auto">
+                {availableCurrencies.map((code) => (
+                  <DropdownMenuItem 
+                    key={code} 
+                    onClick={() => setDisplayCurrency(code)}
+                    className={userCurrency === code ? 'bg-primary/10' : ''}
+                  >
+                    {CURRENCIES[code].symbol} {code} - {CURRENCIES[code].name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Online Status */}
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${
+              isOnline 
+                ? 'bg-green-500/10 text-green-500 border border-green-500/20' 
+                : 'bg-red-500/10 text-red-500 border border-red-500/20'
+            }`}>
+              {isOnline ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
+              <span>{isOnline ? 'Online' : 'Offline'}</span>
+            </div>
           </div>
         </div>
 
@@ -109,7 +164,7 @@ export default function Wallet() {
                     <WalletIcon className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground uppercase">Your XRP Address</p>
+                    <p className="text-xs text-muted-foreground uppercase">Your XRP Address (JVC Wallet)</p>
                     <p className="font-mono text-sm">{xrpAddress.slice(0, 12)}...{xrpAddress.slice(-8)}</p>
                   </div>
                 </div>
@@ -134,34 +189,52 @@ export default function Wallet() {
           </Card>
         )}
 
-        {/* Balance Cards */}
+        {/* Balance Cards - Showing BOTH JVC and Local Currency */}
         <div className="grid gap-4 md:grid-cols-3">
+          {/* JVC Balance with Local Currency */}
           <Card className="bg-gradient-to-br from-primary to-primary/70 text-primary-foreground border-0 shadow-lg shadow-primary/20">
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Coins className="h-5 w-5" />
                 JV Coins
               </CardTitle>
-              <CardDescription className="text-primary-foreground/70">1 JVC = $1 USD</CardDescription>
+              <CardDescription className="text-primary-foreground/70">
+                Pegged to USDT (1 JVC = $1 USD)
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-4xl font-bold">{loading ? '...' : balance.jvc.toFixed(2)}</p>
-              <p className="text-sm text-primary-foreground/60 mt-1">
-                ≈ ${balance.jvc.toFixed(2)} USD
+              <div className="mt-2 space-y-1">
+                <p className="text-sm text-primary-foreground/80">
+                  ≈ ${balance.jvc.toFixed(2)} USD
+                </p>
+                {userCurrency !== 'USD' && (
+                  <p className="text-sm text-primary-foreground/60 flex items-center gap-1">
+                    <Globe className="h-3 w-3" />
+                    ≈ {formatCurrency(localBalance)}
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Deposited Value */}
+          <Card className="bg-card border-border/50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Total Deposited</CardTitle>
+              <CardDescription>Your deposits in {currencyInfo.name}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-4xl font-bold">
+                {loading ? '...' : formatCurrency(localBalance)}
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">
+                = ${balance.usd.toFixed(2)} USD
               </p>
             </CardContent>
           </Card>
 
-          <Card className="bg-card border-border/50">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">USD Deposited</CardTitle>
-              <CardDescription>Total Fiat Value</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-4xl font-bold">${loading ? '...' : balance.usd.toFixed(2)}</p>
-            </CardContent>
-          </Card>
-
+          {/* Reward Points */}
           <Card className="bg-card border-border/50">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg">Reward Points</CardTitle>
@@ -173,6 +246,29 @@ export default function Wallet() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Transaction Fee Info */}
+        <Card className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border-amber-500/20">
+          <CardContent className="py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-amber-500" />
+              <div>
+                <p className="font-medium text-sm">Platform Transaction Fee</p>
+                <p className="text-xs text-muted-foreground">Flat fee on all transactions</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30">
+                $0.10 USD
+              </Badge>
+              {userCurrency !== 'USD' && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  ≈ {formatCurrency(localFee)}
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Offline Transaction Warning */}
         {!isOnline && pendingTransactions.length > 0 && (
@@ -211,7 +307,7 @@ export default function Wallet() {
           </Button>
         </div>
 
-        {/* Quick Stats */}
+        {/* Transaction History */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -228,16 +324,21 @@ export default function Wallet() {
           </CardContent>
         </Card>
 
-        {/* Info Card */}
+        {/* JVC Info Card */}
         <Card className="bg-muted/30 border-border/50">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">About JV Coin</CardTitle>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Info className="h-4 w-4" />
+              About JV Coin
+            </CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground space-y-2">
-            <p>• <strong>1 JVC = $1 USD</strong> - Stablecoin backed by platform treasury</p>
+            <p>• <strong>1 JVC = $1 USD</strong> - Pegged to USDT stablecoin</p>
             <p>• Built on <strong>XRP Ledger</strong> for fast, low-cost transactions</p>
+            <p>• <strong>$0.10 flat fee</strong> per transaction (99% cheaper than card fees)</p>
             <p>• <strong>Offline payments</strong> supported - transactions sync when online</p>
-            <p>• Use JVC at all venues for food, drinks, and experiences</p>
+            <p>• <strong>Multi-currency display</strong> - See balance in your local currency</p>
+            <p>• Use JVC at all venues for food, drinks, rides, and deliveries</p>
           </CardContent>
         </Card>
       </div>
@@ -256,6 +357,9 @@ export default function Wallet() {
         <DialogContent className="bg-background/95 backdrop-blur-xl border-border/50">
           <DialogHeader>
             <DialogTitle>Send JV Coins</DialogTitle>
+            <DialogDescription>
+              Transfer JVC to another wallet. A flat $0.10 USD fee applies.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -280,13 +384,37 @@ export default function Wallet() {
                 Available: {balance.jvc.toFixed(2)} JVC
               </p>
             </div>
+
+            {/* Fee Breakdown */}
+            {transferAmount && parseFloat(transferAmount) > 0 && (
+              <div className="bg-muted/50 rounded-lg p-3 space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Amount:</span>
+                  <span>{parseFloat(transferAmount).toFixed(2)} JVC</span>
+                </div>
+                <div className="flex justify-between text-amber-500">
+                  <span>Platform Fee:</span>
+                  <span>0.10 JVC</span>
+                </div>
+                <div className="flex justify-between font-bold border-t border-border/50 pt-1 mt-1">
+                  <span>Total:</span>
+                  <span>{(parseFloat(transferAmount) + 0.10).toFixed(2)} JVC</span>
+                </div>
+                {userCurrency !== 'USD' && (
+                  <p className="text-xs text-muted-foreground text-right">
+                    ≈ {formatCurrency(jvcToLocal(parseFloat(transferAmount) + 0.10))}
+                  </p>
+                )}
+              </div>
+            )}
+
             <Button 
               onClick={handleTransfer} 
               className="w-full"
-              disabled={!transferAddress || !transferAmount || parseFloat(transferAmount) > balance.jvc}
+              disabled={!transferAddress || !transferAmount || (parseFloat(transferAmount) + 0.10) > balance.jvc}
             >
               <Send className="h-4 w-4 mr-2" />
-              Send {transferAmount || '0'} JVC
+              Send {transferAmount || '0'} JVC + $0.10 fee
             </Button>
           </div>
         </DialogContent>

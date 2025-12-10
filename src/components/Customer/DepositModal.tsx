@@ -1,34 +1,52 @@
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CreditCard, Building2, Smartphone, Bitcoin, Copy, Check, Loader2 } from 'lucide-react';
+import { CreditCard, Building2, Smartphone, Bitcoin, Copy, Check, Loader2, Globe, ArrowRight, Info } from 'lucide-react';
 import { useJVCoinWallet } from '@/hooks/useJVCoinWallet';
+import { useCurrency } from '@/hooks/useCurrency';
 import { toast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
 
 interface DepositModalProps {
   open: boolean;
   onClose: () => void;
 }
 
-const QUICK_AMOUNTS = [10, 25, 50, 100, 500];
+const QUICK_AMOUNTS_USD = [10, 25, 50, 100, 500];
 
 export const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => {
-  const [amount, setAmount] = useState<number>(0);
+  const [amountLocal, setAmountLocal] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [depositMethod, setDepositMethod] = useState<'card' | 'bank' | 'payid' | 'crypto'>('card');
   const [instructions, setInstructions] = useState<any>(null);
   const [copied, setCopied] = useState(false);
 
   const { depositWithCard, depositWithBankTransfer, depositWithPayID, depositWithCrypto } = useJVCoinWallet();
+  const { 
+    userCurrency, 
+    localToJvc, 
+    usdToLocal, 
+    formatCurrency, 
+    getCurrencyInfo,
+    JVC_TO_USD 
+  } = useCurrency();
+
+  // Quick amounts in local currency
+  const quickAmountsLocal = QUICK_AMOUNTS_USD.map(usd => Math.round(usdToLocal(usd)));
+
+  // Calculate JVC the user will receive
+  const jvcAmount = localToJvc(amountLocal);
+  const usdEquivalent = jvcAmount * JVC_TO_USD;
+  const currencyInfo = getCurrencyInfo();
 
   const handleQuickAmount = (quickAmount: number) => {
-    setAmount(prev => prev + quickAmount);
+    setAmountLocal(prev => prev + quickAmount);
   };
 
   const handleDeposit = async () => {
-    if (amount <= 0) {
+    if (amountLocal <= 0) {
       toast({ title: 'Invalid Amount', description: 'Please enter a valid amount', variant: 'destructive' });
       return;
     }
@@ -37,36 +55,46 @@ export const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => 
     setInstructions(null);
 
     try {
+      // Convert local amount to USD for the backend
+      const amountUsd = usdEquivalent;
       let result;
 
       switch (depositMethod) {
         case 'card':
-          result = await depositWithCard(amount);
+          result = await depositWithCard(amountUsd);
           if (result.success && result.client_secret) {
-            // For card payments without saved payment method, we'd show Stripe Elements here
-            // For now, simulate success
-            toast({ title: 'Card Payment', description: 'Card payment processing... Please complete on Stripe' });
+            toast({ title: 'Card Payment', description: 'Processing... Complete payment to receive JVC' });
           }
           break;
 
         case 'bank':
-          result = await depositWithBankTransfer(amount);
+          result = await depositWithBankTransfer(amountUsd);
           if (result.success && result.payment_url) {
             toast({ title: 'Bank Transfer', description: 'Redirecting to complete bank transfer...' });
           }
           break;
 
         case 'payid':
-          result = await depositWithPayID(amount);
+          result = await depositWithPayID(amountUsd);
           if (result.success && result.instructions) {
-            setInstructions(result.instructions);
+            setInstructions({
+              ...result.instructions,
+              jvcAmount: jvcAmount,
+              localAmount: amountLocal,
+              localCurrency: userCurrency,
+            });
           }
           break;
 
         case 'crypto':
-          result = await depositWithCrypto(amount);
+          result = await depositWithCrypto(amountUsd);
           if (result.success && result.instructions) {
-            setInstructions(result.instructions);
+            setInstructions({
+              ...result.instructions,
+              jvcAmount: jvcAmount,
+              localAmount: amountLocal,
+              localCurrency: userCurrency,
+            });
           }
           break;
       }
@@ -94,7 +122,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => 
   };
 
   const resetModal = () => {
-    setAmount(0);
+    setAmountLocal(0);
     setInstructions(null);
     setCopied(false);
   };
@@ -104,45 +132,67 @@ export const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => 
       <DialogContent className="bg-background/95 backdrop-blur-xl border-border/50 max-w-md">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold text-foreground">Deposit to Wallet</DialogTitle>
+          <DialogDescription className="flex items-center gap-1">
+            <Globe className="h-3 w-3" />
+            Paying in {currencyInfo.name} ({userCurrency})
+          </DialogDescription>
         </DialogHeader>
 
         {!instructions ? (
           <div className="space-y-6">
             {/* Amount Input */}
             <div className="space-y-3">
-              <label className="text-sm text-muted-foreground">Amount (USD)</label>
+              <label className="text-sm text-muted-foreground flex items-center gap-2">
+                Amount ({userCurrency})
+                <Badge variant="outline" className="text-xs">
+                  {currencyInfo.symbol}
+                </Badge>
+              </label>
               <Input
                 type="number"
-                value={amount || ''}
-                onChange={(e) => setAmount(Number(e.target.value))}
-                placeholder="Enter amount"
+                value={amountLocal || ''}
+                onChange={(e) => setAmountLocal(Number(e.target.value))}
+                placeholder={`Enter amount in ${userCurrency}`}
                 className="text-2xl h-14 text-center font-bold bg-background/50 border-border/50"
               />
 
               {/* Quick Amount Buttons */}
               <div className="flex gap-2 flex-wrap">
-                {QUICK_AMOUNTS.map((quickAmount) => (
+                {quickAmountsLocal.map((quickAmount, idx) => (
                   <Button
-                    key={quickAmount}
+                    key={idx}
                     variant="outline"
                     size="sm"
                     onClick={() => handleQuickAmount(quickAmount)}
                     className="flex-1 min-w-[60px] border-primary/30 hover:bg-primary/10 hover:border-primary"
                   >
-                    +${quickAmount}
+                    +{currencyInfo.symbol}{quickAmount}
                   </Button>
                 ))}
               </div>
             </div>
 
             {/* Conversion Preview */}
-            {amount > 0 && (
+            {amountLocal > 0 && (
               <div className="bg-primary/10 rounded-lg p-4 border border-primary/20">
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">You'll receive:</span>
-                  <span className="text-xl font-bold text-primary">{amount} JVC</span>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-muted-foreground">You pay:</span>
+                  <span className="font-bold">{formatCurrency(amountLocal)}</span>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">1 USD = 1 JVC (Stablecoin)</p>
+                <div className="flex items-center justify-center text-muted-foreground">
+                  <ArrowRight className="h-4 w-4" />
+                </div>
+                <div className="flex items-center justify-between mt-2">
+                  <span className="text-muted-foreground">You receive:</span>
+                  <span className="text-xl font-bold text-primary">{jvcAmount.toFixed(2)} JVC</span>
+                </div>
+                <div className="mt-3 pt-2 border-t border-primary/20 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1">
+                    <Info className="h-3 w-3" />
+                    <span>1 JVC = $1 USD = {formatCurrency(usdToLocal(1))}</span>
+                  </div>
+                  <p className="mt-1">JVC is pegged to USDT stablecoin</p>
+                </div>
               </div>
             )}
 
@@ -172,15 +222,15 @@ export const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => 
 
               <TabsContent value="bank" className="mt-4">
                 <div className="text-center text-sm text-muted-foreground">
-                  <p>Direct bank transfer via ACH</p>
-                  <p className="text-xs mt-1">1-3 business days • No fees</p>
+                  <p>Direct bank transfer (ACH/BECS)</p>
+                  <p className="text-xs mt-1 text-green-500 font-medium">1-3 business days • NO FEES</p>
                 </div>
               </TabsContent>
 
               <TabsContent value="payid" className="mt-4">
                 <div className="text-center text-sm text-muted-foreground">
-                  <p>Australian instant bank transfer</p>
-                  <p className="text-xs mt-1">Usually within minutes • No fees</p>
+                  <p>Australian instant bank transfer via PayID</p>
+                  <p className="text-xs mt-1 text-green-500 font-medium">Usually within minutes • NO FEES</p>
                 </div>
               </TabsContent>
 
@@ -195,7 +245,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => 
             {/* Deposit Button */}
             <Button
               onClick={handleDeposit}
-              disabled={amount <= 0 || loading}
+              disabled={amountLocal <= 0 || loading}
               className="w-full h-12 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground font-semibold"
             >
               {loading ? (
@@ -204,7 +254,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => 
                   Processing...
                 </>
               ) : (
-                `Deposit $${amount || 0}`
+                `Deposit ${formatCurrency(amountLocal)} → ${jvcAmount.toFixed(2)} JVC`
               )}
             </Button>
           </div>
@@ -246,7 +296,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => 
 
               {instructions.reference && (
                 <div>
-                  <label className="text-xs text-muted-foreground uppercase">Reference</label>
+                  <label className="text-xs text-muted-foreground uppercase">Reference (IMPORTANT)</label>
                   <div className="flex items-center justify-between bg-background/50 rounded p-3 mt-1">
                     <span className="font-mono font-bold">{instructions.reference}</span>
                     <Button
@@ -260,9 +310,12 @@ export const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => 
                 </div>
               )}
 
-              <div>
-                <label className="text-xs text-muted-foreground uppercase">Amount</label>
-                <p className="text-xl font-bold text-primary mt-1">${amount} USD = {amount} JVC</p>
+              <div className="border-t border-border/50 pt-3">
+                <label className="text-xs text-muted-foreground uppercase">You Will Receive</label>
+                <p className="text-2xl font-bold text-primary mt-1">{instructions.jvcAmount.toFixed(2)} JVC</p>
+                <p className="text-sm text-muted-foreground">
+                  After depositing {formatCurrency(instructions.localAmount)}
+                </p>
               </div>
 
               {instructions.message && (
