@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Camera, MapPin, Users, Sparkles, Globe, Lock, X } from "lucide-react";
+import { Camera, MapPin, Users, Sparkles, Globe, Lock, X, Image, Video, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 interface CreatePostModalProps {
@@ -16,6 +16,8 @@ interface CreatePostModalProps {
     content: string;
     visibility: "private" | "public";
     isGold: boolean;
+    imageUrl?: string;
+    videoUrl?: string;
     venue?: string;
   }) => void;
 }
@@ -34,6 +36,11 @@ const CreatePostModal = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [displayName, setDisplayName] = useState(userName);
   const [displayAvatar, setDisplayAvatar] = useState(userAvatar);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
+  const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
   // Get user data from localStorage (from ID verification) if not provided
   useEffect(() => {
@@ -52,9 +59,49 @@ const CreatePostModal = ({
     }
   }, [userName, userAvatar]);
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error("Image must be less than 10MB");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        setSelectedImage(reader.result as string);
+        setSelectedVideo(null);
+        setMediaType('image');
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 50 * 1024 * 1024) {
+        toast.error("Video must be less than 50MB");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        setSelectedVideo(reader.result as string);
+        setSelectedImage(null);
+        setMediaType('video');
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const clearMedia = () => {
+    setSelectedImage(null);
+    setSelectedVideo(null);
+    setMediaType(null);
+  };
+
   const handleSubmit = async () => {
-    if (!content.trim()) {
-      toast.error("Please write something to share!");
+    if (!content.trim() && !selectedImage && !selectedVideo) {
+      toast.error("Please write something or add media!");
       return;
     }
 
@@ -67,10 +114,17 @@ const CreatePostModal = ({
     }
 
     setIsSubmitting(true);
-    await onSubmit({ content, visibility, isGold });
+    await onSubmit({ 
+      content, 
+      visibility, 
+      isGold,
+      imageUrl: selectedImage || undefined,
+      videoUrl: selectedVideo || undefined,
+    });
     setIsSubmitting(false);
     setContent("");
     setIsGold(false);
+    clearMedia();
     onClose();
   };
 
@@ -181,15 +235,60 @@ const CreatePostModal = ({
             />
           </div>
 
+          {/* Media Preview */}
+          {(selectedImage || selectedVideo) && (
+            <div className="relative rounded-xl overflow-hidden bg-black/30">
+              {selectedImage && (
+                <img src={selectedImage} alt="Selected" className="w-full max-h-48 object-cover" />
+              )}
+              {selectedVideo && (
+                <video src={selectedVideo} className="w-full max-h-48 object-cover" controls />
+              )}
+              <button
+                onClick={clearMedia}
+                className="absolute top-2 right-2 p-1.5 bg-black/60 rounded-full hover:bg-black/80 transition-colors"
+              >
+                <X className="w-4 h-4 text-white" />
+              </button>
+            </div>
+          )}
+
           {/* Action Buttons */}
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="text-neon-cyan hover:bg-neon-cyan/10">
-              <Camera className="w-5 h-5" />
+            <input
+              type="file"
+              ref={imageInputRef}
+              accept="image/*"
+              onChange={handleImageSelect}
+              className="hidden"
+            />
+            <input
+              type="file"
+              ref={videoInputRef}
+              accept="video/*"
+              onChange={handleVideoSelect}
+              className="hidden"
+            />
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="text-neon-cyan hover:bg-neon-cyan/10"
+              onClick={() => imageInputRef.current?.click()}
+            >
+              <Image className="w-5 h-5" />
             </Button>
-            <Button variant="ghost" size="icon" className="text-neon-purple hover:bg-neon-purple/10">
-              <Users className="w-5 h-5" />
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="text-neon-purple hover:bg-neon-purple/10"
+              onClick={() => videoInputRef.current?.click()}
+            >
+              <Video className="w-5 h-5" />
             </Button>
             <Button variant="ghost" size="icon" className="text-neon-pink hover:bg-neon-pink/10">
+              <Users className="w-5 h-5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="text-yellow-400 hover:bg-yellow-400/10">
               <MapPin className="w-5 h-5" />
             </Button>
             <div className="flex-1" />
