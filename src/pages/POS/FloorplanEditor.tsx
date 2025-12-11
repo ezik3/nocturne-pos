@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { useNavigate, useBlocker } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -6,8 +7,18 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { 
   Save, Trash2, 
-  Upload, Eye, Edit, Image as ImageIcon, Camera,
+  Upload, Eye, Edit, Image as ImageIcon, Camera, Video,
   MapPin, X, Settings, Layers, Maximize2, Minimize2,
   MessageSquare, Bot, ChevronRight, Menu, PanelLeftClose, PanelLeft, AlertTriangle
 } from "lucide-react";
@@ -90,7 +101,9 @@ const getVideoOrientation = (file: File): Promise<Orientation> => {
 };
 
 export default function FloorplanEditor() {
+  const navigate = useNavigate();
   const viewerRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const pannellumViewer = useRef<any>(null);
   
   const [floorplanMode, setFloorplanMode] = useState<FloorplanMode>('upload');
@@ -98,7 +111,10 @@ export default function FloorplanEditor() {
   const [isFullscreen, setIsFullscreen] = useState(true);
   const [showAIChat, setShowAIChat] = useState(false);
   const [orientation, setOrientation] = useState<Orientation>('landscape');
-  const [showSidebar, setShowSidebar] = useState(false); // Hide sidebar by default in editor
+  const [showSidebar, setShowSidebar] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showExitDialog, setShowExitDialog] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
   
   // Scenes for multi-room tours
   const [scenes, setScenes] = useState<VenueScene[]>([]);
@@ -115,9 +131,56 @@ export default function FloorplanEditor() {
   // Get current scene
   const currentScene = scenes.find(s => s.id === currentSceneId);
 
-  // Initialize Pannellum viewer for 360° content
-  const initViewer = useCallback((scene: VenueScene) => {
-    if (!viewerRef.current || !window.pannellum || !scene.is360) return;
+  // Navigation blocker for unsaved changes
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      hasUnsavedChanges && currentLocation.pathname !== nextLocation.pathname
+  );
+
+  // Handle blocker state
+  useEffect(() => {
+    if (blocker.state === "blocked") {
+      setShowExitDialog(true);
+      setPendingNavigation(blocker.location.pathname);
+    }
+  }, [blocker.state]);
+
+  // Browser beforeunload handler
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  // Track changes to scenes
+  useEffect(() => {
+    if (scenes.length > 0) {
+      setHasUnsavedChanges(true);
+    }
+  }, [scenes]);
+
+  // Initialize Pannellum viewer for 360° content (images only - video handled separately)
+  const initViewer = useCallback((scene: VenueScene, preserveView: boolean = false) => {
+    if (!viewerRef.current || !window.pannellum || !scene.is360 || scene.isVideo) return;
+    
+    // Store current view position if preserving
+    let currentYaw = 0;
+    let currentPitch = 0;
+    let currentHfov = 100;
+    if (preserveView && pannellumViewer.current) {
+      try {
+        currentYaw = pannellumViewer.current.getYaw();
+        currentPitch = pannellumViewer.current.getPitch();
+        currentHfov = pannellumViewer.current.getHfov();
+      } catch (e) {
+        // Viewer may not be ready
+      }
+    }
     
     // Destroy existing viewer
     if (pannellumViewer.current) {
@@ -164,7 +227,7 @@ export default function FloorplanEditor() {
       };
     });
 
-    // Create viewer
+    // Create viewer with preserved or default view
     pannellumViewer.current = window.pannellum.viewer(viewerRef.current, {
       type: "equirectangular",
       panorama: scene.panoramaUrl,
@@ -172,36 +235,72 @@ export default function FloorplanEditor() {
       showControls: true,
       compass: true,
       hotSpots: pannellumHotspots,
-      hotSpotDebug: isAddingHotspot,
+      hotSpotDebug: false,
       mouseZoom: true,
       draggable: true,
       friction: 0.15,
-      yaw: 0,
-      pitch: 0,
-      hfov: 100,
+      yaw: preserveView ? currentYaw : 0,
+      pitch: preserveView ? currentPitch : 0,
+      hfov: preserveView ? currentHfov : 100,
       minHfov: 50,
       maxHfov: 120,
     });
 
-    // Click handler for adding hotspots
-    if (isAddingHotspot) {
-      pannellumViewer.current.on('mousedown', function(event: MouseEvent) {
-        if (event.button === 0) {
-          const coords = pannellumViewer.current.mouseEventToCoords(event);
-          if (coords) {
-            addHotspot(coords[0], coords[1]);
-          }
+    // Click handler for adding hotspots - use 'click' event instead of 'mousedown'
+    pannellumViewer.current.on('mouseup', function(event: MouseEvent) {
+      if (isAddingHotspot && event.button === 0) {
+        const coords = pannellumViewer.current.mouseEventToCoords(event);
+        if (coords) {
+          addHotspotAt360(coords[0], coords[1]);
         }
-      });
-    }
-  }, [isAddingHotspot, scenes]);
+      }
+    });
+  }, [scenes]);
 
-  // Re-init viewer when scene changes
-  useEffect(() => {
-    if (currentScene && floorplanMode !== 'upload' && currentScene.is360) {
-      initViewer(currentScene);
+  // Separate function for adding hotspot at 360 coords without causing re-render loop
+  const addHotspotAt360 = useCallback((pitch: number, yaw: number) => {
+    if (!currentSceneId) return;
+
+    const config = HOTSPOT_CONFIG[hotspotTypeToAdd];
+    const newHotspot: VenueHotspot = {
+      id: uuidv4(),
+      type: hotspotTypeToAdd,
+      pitch,
+      yaw,
+      text: hotspotTypeToAdd === 'table' ? `Table ${tableCounter}` : config.label,
+      capacity: hotspotTypeToAdd === 'table' ? 4 : undefined,
+      tableNumber: hotspotTypeToAdd === 'table' ? `T${tableCounter}` : undefined,
+      status: hotspotTypeToAdd === 'table' ? 'available' : undefined,
+    };
+
+    if (hotspotTypeToAdd === 'table') {
+      setTableCounter(prev => prev + 1);
     }
-  }, [currentSceneId, currentScene, floorplanMode, initViewer]);
+
+    setScenes(prev => prev.map(scene => 
+      scene.id === currentSceneId 
+        ? { ...scene, hotspots: [...scene.hotspots, newHotspot] }
+        : scene
+    ));
+
+    setSelectedHotspot(newHotspot);
+    setIsAddingHotspot(false);
+    toast.success(`${config.label} added!`);
+  }, [currentSceneId, hotspotTypeToAdd, tableCounter]);
+
+  // Re-init viewer when scene changes (full re-init)
+  useEffect(() => {
+    if (currentScene && floorplanMode !== 'upload' && currentScene.is360 && !currentScene.isVideo) {
+      initViewer(currentScene, false);
+    }
+  }, [currentSceneId, floorplanMode]);
+
+  // Refresh viewer with preserved view when hotspots change
+  useEffect(() => {
+    if (currentScene && floorplanMode !== 'upload' && currentScene.is360 && !currentScene.isVideo) {
+      initViewer(currentScene, true);
+    }
+  }, [currentScene?.hotspots.length, isAddingHotspot]);
 
   // Handle file upload with validation
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, is360: boolean = true) => {
@@ -434,7 +533,27 @@ export default function FloorplanEditor() {
       }
     }
     
+    setHasUnsavedChanges(false);
     toast.success(`Tour saved! ${allTables.length} tables synced.`);
+  };
+
+  // Handle navigation after save/discard
+  const handleExitConfirm = async (save: boolean) => {
+    if (save) {
+      await saveFloorplan();
+    }
+    setHasUnsavedChanges(false);
+    setShowExitDialog(false);
+    if (blocker.state === "blocked") {
+      blocker.proceed();
+    }
+  };
+
+  const handleExitCancel = () => {
+    setShowExitDialog(false);
+    if (blocker.state === "blocked") {
+      blocker.reset();
+    }
   };
 
   // Load floorplan
@@ -551,6 +670,35 @@ export default function FloorplanEditor() {
           </CardContent>
         </Card>
 
+        {/* 360 Video Option */}
+        <Card className="border-dashed border-2 border-violet-500/50 bg-violet-500/5 hover:bg-violet-500/10 transition-colors">
+          <CardContent className="p-8">
+            <div 
+              className="text-center cursor-pointer"
+              onClick={() => document.getElementById('media-upload-360-video')?.click()}
+            >
+              <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-violet-500/20 flex items-center justify-center">
+                <Video className="w-10 h-10 text-violet-400" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">360° Video</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Upload equirectangular 360° video for immersive experience
+              </p>
+              <Button size="lg" className="bg-violet-500 hover:bg-violet-600">
+                <Upload className="w-5 h-5 mr-2" />
+                Upload 360° Video
+              </Button>
+            </div>
+            <input 
+              id="media-upload-360-video" 
+              type="file" 
+              accept="video/*" 
+              className="hidden" 
+              onChange={(e) => handleFileUpload(e, true)}
+            />
+          </CardContent>
+        </Card>
+
         <Card className="border-dashed border-2 border-secondary/50 bg-secondary/5 hover:bg-secondary/10 transition-colors">
           <CardContent className="p-8">
             <div 
@@ -560,19 +708,19 @@ export default function FloorplanEditor() {
               <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-secondary/20 flex items-center justify-center">
                 <ImageIcon className="w-10 h-10 text-secondary-foreground" />
               </div>
-              <h3 className="text-lg font-semibold mb-2">Regular Photo</h3>
+              <h3 className="text-lg font-semibold mb-2">Regular Photo/Video</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Upload standard photos of your venue
+                Upload standard photos or videos of your venue
               </p>
               <Button size="lg" variant="secondary">
                 <Upload className="w-5 h-5 mr-2" />
-                Upload Regular Image
+                Upload Regular Media
               </Button>
             </div>
             <input 
               id="media-upload-regular" 
               type="file" 
-              accept="image/*" 
+              accept="image/*,video/*" 
               className="hidden" 
               onChange={(e) => handleFileUpload(e, false)}
             />
@@ -715,8 +863,52 @@ export default function FloorplanEditor() {
         </div>
 
         {/* Viewer Area - Fits content properly */}
-        <div className="flex-1 p-4 overflow-auto flex items-center justify-center bg-background/50">
-          {currentScene?.is360 ? (
+        <div className="flex-1 p-4 overflow-auto flex items-center justify-center bg-background/50 relative">
+          {currentScene?.is360 && currentScene?.isVideo ? (
+            // 360 Video Player
+            <div className="relative rounded-lg overflow-hidden bg-black"
+              style={{ 
+                maxHeight: 'calc(100vh - 220px)',
+                width: '100%',
+                maxWidth: orientation === 'landscape' ? '1200px' : '400px',
+                aspectRatio: orientation === 'landscape' ? '16/9' : '9/16'
+              }}
+            >
+              <video 
+                ref={videoRef}
+                src={currentScene.panoramaUrl}
+                className="w-full h-full object-cover"
+                controls
+                loop
+                playsInline
+              />
+              <div className="absolute top-2 left-2">
+                <Badge className="bg-violet-500">360° Video</Badge>
+              </div>
+              <p className="absolute bottom-2 left-2 text-xs text-white/70 bg-black/50 px-2 py-1 rounded">
+                Note: Full 360° video playback requires VR headset or mobile device
+              </p>
+              {/* Hotspots overlay for video */}
+              {currentScene?.hotspots.map((hs) => (
+                <div
+                  key={hs.id}
+                  className={`absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer ${
+                    selectedHotspot?.id === hs.id ? 'scale-125 z-10' : ''
+                  }`}
+                  style={{ left: `${hs.yaw}%`, top: `${hs.pitch}%` }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedHotspot(hs);
+                  }}
+                >
+                  <div className={`${HOTSPOT_CONFIG[hs.type].color} rounded-full w-12 h-12 flex items-center justify-center text-2xl shadow-lg border-2 border-white animate-pulse`}>
+                    {HOTSPOT_CONFIG[hs.type].icon}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : currentScene?.is360 ? (
+            // 360 Image via Pannellum
             <div 
               ref={viewerRef}
               className="w-full h-full rounded-lg overflow-hidden"
@@ -725,7 +917,45 @@ export default function FloorplanEditor() {
                 aspectRatio: orientation === 'landscape' ? '16/9' : '9/16'
               }}
             />
+          ) : currentScene?.isVideo ? (
+            // Regular Video
+            <div 
+              className="relative rounded-lg overflow-hidden bg-black"
+              style={{ 
+                maxHeight: 'calc(100vh - 220px)',
+                maxWidth: '100%'
+              }}
+              onClick={handleRegularImageClick}
+            >
+              <video 
+                src={currentScene?.panoramaUrl}
+                className="max-w-full max-h-full object-contain"
+                style={{ maxHeight: 'calc(100vh - 220px)' }}
+                controls
+                loop
+                playsInline
+              />
+              {/* Hotspots overlay */}
+              {currentScene?.hotspots.map((hs) => (
+                <div
+                  key={hs.id}
+                  className={`absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer ${
+                    selectedHotspot?.id === hs.id ? 'scale-125 z-10' : ''
+                  }`}
+                  style={{ left: `${hs.yaw}%`, top: `${hs.pitch}%` }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedHotspot(hs);
+                  }}
+                >
+                  <div className={`${HOTSPOT_CONFIG[hs.type].color} rounded-full w-12 h-12 flex items-center justify-center text-2xl shadow-lg border-2 border-white animate-pulse`}>
+                    {HOTSPOT_CONFIG[hs.type].icon}
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : (
+            // Regular Image
             <div 
               className="relative rounded-lg overflow-hidden cursor-crosshair bg-black"
               style={{ 
@@ -764,7 +994,7 @@ export default function FloorplanEditor() {
           )}
           
           {isAddingHotspot && (
-            <div className="absolute top-20 left-1/2 -translate-x-1/2 z-10">
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
               <Badge className="bg-primary text-primary-foreground px-4 py-2 text-sm">
                 {HOTSPOT_CONFIG[hotspotTypeToAdd].icon} Click to place {HOTSPOT_CONFIG[hotspotTypeToAdd].label}
               </Badge>
@@ -1208,9 +1438,40 @@ export default function FloorplanEditor() {
         </div>
       </div>
 
+      {/* Fullscreen button when in editor/preview but not fullscreen */}
+      {floorplanMode !== 'upload' && (
+        <Button 
+          className="fixed bottom-6 right-6 z-40"
+          onClick={() => setIsFullscreen(true)}
+        >
+          <Maximize2 className="w-4 h-4 mr-2" /> Go Fullscreen
+        </Button>
+      )}
+
       {floorplanMode === 'upload' && renderUploadMode()}
       {floorplanMode === 'editor' && renderEditorMode()}
       {floorplanMode === 'preview' && renderPreviewMode()}
+
+      {/* Unsaved Changes Dialog */}
+      <AlertDialog open={showExitDialog} onOpenChange={setShowExitDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes to your floorplan. Would you like to save before leaving?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleExitCancel}>Cancel</AlertDialogCancel>
+            <Button variant="destructive" onClick={() => handleExitConfirm(false)}>
+              Discard Changes
+            </Button>
+            <AlertDialogAction onClick={() => handleExitConfirm(true)}>
+              Save & Leave
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
