@@ -10,11 +10,13 @@ import {
   Square, Circle as CircleIcon, Save, Download, Trash2, 
   Upload, Eye, Edit, RotateCcw, Image as ImageIcon, Video, Camera,
   Plus, Users, ChevronRight, MapPin, Coffee, DoorOpen, Pointer,
-  Utensils, Music, Navigation, X, Settings, Layers
+  Utensils, Music, Navigation, X, Settings, Layers, Maximize2, Minimize2,
+  MessageSquare, Bot
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import AIChat from "@/components/Customer/AIChat";
 
 // Declare Pannellum global
 declare global {
@@ -32,8 +34,8 @@ interface VenueHotspot {
   pitch: number;
   yaw: number;
   text: string;
-  targetScene?: string; // For 'goto' type - links to another scene
-  capacity?: number; // For tables
+  targetScene?: string;
+  capacity?: number;
   tableNumber?: string;
   status?: 'available' | 'occupied' | 'reserved';
 }
@@ -44,10 +46,11 @@ interface VenueScene {
   panoramaUrl: string;
   hotspots: VenueHotspot[];
   isDefault?: boolean;
+  is360?: boolean; // Track if this is a 360° or regular image
 }
 
 type FloorplanMode = 'upload' | 'editor' | 'preview';
-type MediaType = '360photo' | '360video';
+type MediaType = '360photo' | '360video' | 'regular';
 
 const HOTSPOT_CONFIG: Record<HotspotType, { icon: string; label: string; color: string; description: string }> = {
   table: { icon: '🪑', label: 'Table', color: 'bg-green-500', description: 'Seating area with ordering' },
@@ -68,6 +71,8 @@ export default function FloorplanEditor() {
   const [floorplanMode, setFloorplanMode] = useState<FloorplanMode>('upload');
   const [mediaType, setMediaType] = useState<MediaType>('360photo');
   const [tourName, setTourName] = useState("My Venue Tour");
+  const [isFullscreen, setIsFullscreen] = useState(true); // Default to fullscreen
+  const [showAIChat, setShowAIChat] = useState(false);
   
   // Scenes for multi-room tours
   const [scenes, setScenes] = useState<VenueScene[]>([]);
@@ -84,9 +89,9 @@ export default function FloorplanEditor() {
   // Get current scene
   const currentScene = scenes.find(s => s.id === currentSceneId);
 
-  // Initialize Pannellum viewer
+  // Initialize Pannellum viewer for 360° content
   const initViewer = useCallback((scene: VenueScene) => {
-    if (!viewerRef.current || !window.pannellum) return;
+    if (!viewerRef.current || !window.pannellum || !scene.is360) return;
     
     // Destroy existing viewer
     if (pannellumViewer.current) {
@@ -125,7 +130,6 @@ export default function FloorplanEditor() {
         },
         clickHandlerFunc: () => {
           if (hs.type === 'goto' && hs.targetScene) {
-            // Navigate to target scene
             setCurrentSceneId(hs.targetScene);
           } else {
             setSelectedHotspot(hs);
@@ -142,7 +146,7 @@ export default function FloorplanEditor() {
       showControls: true,
       compass: true,
       hotSpots: pannellumHotspots,
-      hotSpotDebug: isAddingHotspot, // Show coordinates when adding
+      hotSpotDebug: isAddingHotspot,
       mouseZoom: true,
       draggable: true,
       friction: 0.15,
@@ -156,7 +160,7 @@ export default function FloorplanEditor() {
     // Click handler for adding hotspots
     if (isAddingHotspot) {
       pannellumViewer.current.on('mousedown', function(event: MouseEvent) {
-        if (event.button === 0) { // Left click
+        if (event.button === 0) {
           const coords = pannellumViewer.current.mouseEventToCoords(event);
           if (coords) {
             addHotspot(coords[0], coords[1]);
@@ -168,13 +172,13 @@ export default function FloorplanEditor() {
 
   // Re-init viewer when scene changes
   useEffect(() => {
-    if (currentScene && floorplanMode !== 'upload') {
+    if (currentScene && floorplanMode !== 'upload' && currentScene.is360) {
       initViewer(currentScene);
     }
   }, [currentSceneId, currentScene, floorplanMode, initViewer]);
 
   // Handle file upload
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>, is360: boolean = true) => {
     const file = event.target.files?.[0];
     if (file) {
       const fileURL = URL.createObjectURL(file);
@@ -184,16 +188,17 @@ export default function FloorplanEditor() {
         panoramaUrl: fileURL,
         hotspots: [],
         isDefault: scenes.length === 0,
+        is360: is360,
       };
       setScenes(prev => [...prev, newScene]);
       setCurrentSceneId(newScene.id);
       setFloorplanMode('editor');
-      toast.success("360° media uploaded! Click anywhere to add hotspots.");
+      toast.success(`${is360 ? '360°' : 'Regular'} media uploaded! Click anywhere to add hotspots.`);
     }
   };
 
   // Add a new scene
-  const addNewScene = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const addNewScene = (event: React.ChangeEvent<HTMLInputElement>, is360: boolean = true) => {
     const file = event.target.files?.[0];
     if (file) {
       const fileURL = URL.createObjectURL(file);
@@ -202,6 +207,7 @@ export default function FloorplanEditor() {
         name: `Area ${scenes.length + 1}`,
         panoramaUrl: fileURL,
         hotspots: [],
+        is360: is360,
       };
       setScenes(prev => [...prev, newScene]);
       setCurrentSceneId(newScene.id);
@@ -238,6 +244,17 @@ export default function FloorplanEditor() {
     setSelectedHotspot(newHotspot);
     setIsAddingHotspot(false);
     toast.success(`${config.label} added!`);
+  };
+
+  // Add hotspot for regular images (click position based)
+  const handleRegularImageClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!isAddingHotspot || !currentScene || currentScene.is360) return;
+    
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = ((event.clientX - rect.left) / rect.width) * 100;
+    const y = ((event.clientY - rect.top) / rect.height) * 100;
+    
+    addHotspot(y, x); // Using pitch/yaw as y/x percentages for regular images
   };
 
   // Update hotspot
@@ -284,19 +301,50 @@ export default function FloorplanEditor() {
     toast.success("Scene deleted");
   };
 
-  // Save floorplan
+  // Save floorplan - syncs to Tables, VenueHome, and EndUser views
   const saveFloorplan = async () => {
+    // Extract all tables from all scenes
+    const allTables = scenes.flatMap(scene => 
+      scene.hotspots
+        .filter(hs => hs.type === 'table')
+        .map(hs => ({
+          id: hs.id,
+          tableNumber: hs.tableNumber || hs.text,
+          capacity: hs.capacity || 4,
+          status: hs.status || 'available',
+          sceneId: scene.id,
+          sceneName: scene.name,
+          pitch: hs.pitch,
+          yaw: hs.yaw,
+        }))
+    );
+
     const floorplanData = {
       name: tourName,
       mediaType,
       scenes,
       tableCounter,
-      createdAt: new Date().toISOString()
+      tables: allTables, // Include extracted tables for sync
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
     
+    // Save to localStorage for all views to access
     localStorage.setItem('venue_floorplan_360', JSON.stringify(floorplanData));
     
-    // Also save to Supabase
+    // Also save tables in format expected by Tables page
+    const tablesForPOS = allTables.map((t, i) => ({
+      id: t.id,
+      number: t.tableNumber?.replace('T', '') || String(i + 1),
+      capacity: t.capacity,
+      status: t.status,
+      section: t.sceneName,
+      x: t.yaw,
+      y: t.pitch,
+    }));
+    localStorage.setItem('venue_tables_sync', JSON.stringify(tablesForPOS));
+    
+    // Save to Supabase
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       const { error } = await supabase.from("floorplans").upsert({
@@ -304,7 +352,7 @@ export default function FloorplanEditor() {
         venue_id: "default",
         canvas_width: 0,
         canvas_height: 0,
-        items: JSON.parse(JSON.stringify({ scenes, tableCounter })),
+        items: JSON.parse(JSON.stringify({ scenes, tableCounter, tables: allTables })),
         created_by: user.id,
       });
       if (error) {
@@ -313,7 +361,7 @@ export default function FloorplanEditor() {
       }
     }
     
-    toast.success("360° Tour saved successfully!");
+    toast.success(`360° Tour saved! ${allTables.length} tables synced to all views.`);
   };
 
   // Load floorplan
@@ -347,7 +395,7 @@ export default function FloorplanEditor() {
 
   // Render upload mode
   const renderUploadMode = () => (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6 max-w-4xl mx-auto p-8">
       {/* Tour Name */}
       <Card className="border-border">
         <CardContent className="p-6">
@@ -361,37 +409,66 @@ export default function FloorplanEditor() {
         </CardContent>
       </Card>
 
-      {/* Upload Area */}
-      <Card className="border-dashed border-2 border-primary/50 bg-primary/5">
-        <CardContent className="p-12">
-          <div 
-            className="text-center cursor-pointer"
-            onClick={() => document.getElementById('media-upload-360')?.click()}
-          >
-            <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-primary/20 flex items-center justify-center">
-              <Upload className="w-12 h-12 text-primary" />
+      {/* Upload Options - 360° or Regular */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* 360° Upload */}
+        <Card className="border-dashed border-2 border-primary/50 bg-primary/5 hover:bg-primary/10 transition-colors">
+          <CardContent className="p-8">
+            <div 
+              className="text-center cursor-pointer"
+              onClick={() => document.getElementById('media-upload-360')?.click()}
+            >
+              <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-primary/20 flex items-center justify-center">
+                <Camera className="w-10 h-10 text-primary" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">360° Photo/Video</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Upload equirectangular 360° media for immersive experience
+              </p>
+              <Button size="lg" className="bg-primary hover:bg-primary/90">
+                <Upload className="w-5 h-5 mr-2" />
+                Upload 360°
+              </Button>
             </div>
-            <h3 className="text-xl font-semibold mb-2">Drag a 360° image here or browse</h3>
-            <p className="text-muted-foreground mb-6">
-              for an image to upload.
-            </p>
-            <p className="text-sm text-muted-foreground mb-4">
-              Supports: Equirectangular 360° JPG, PNG, WebP (recommended: 4096x2048 or higher)
-            </p>
-            <Button size="lg" className="bg-primary hover:bg-primary/90">
-              <Upload className="w-5 h-5 mr-2" />
-              Choose 360° File
-            </Button>
-          </div>
-          <input 
-            id="media-upload-360" 
-            type="file" 
-            accept="image/*" 
-            className="hidden" 
-            onChange={handleFileUpload}
-          />
-        </CardContent>
-      </Card>
+            <input 
+              id="media-upload-360" 
+              type="file" 
+              accept="image/*,video/*" 
+              className="hidden" 
+              onChange={(e) => handleFileUpload(e, true)}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Regular Upload */}
+        <Card className="border-dashed border-2 border-secondary/50 bg-secondary/5 hover:bg-secondary/10 transition-colors">
+          <CardContent className="p-8">
+            <div 
+              className="text-center cursor-pointer"
+              onClick={() => document.getElementById('media-upload-regular')?.click()}
+            >
+              <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-secondary/20 flex items-center justify-center">
+                <ImageIcon className="w-10 h-10 text-secondary-foreground" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">Regular Photo/Video</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Upload standard photos or videos of your venue
+              </p>
+              <Button size="lg" variant="secondary">
+                <Upload className="w-5 h-5 mr-2" />
+                Upload Regular
+              </Button>
+            </div>
+            <input 
+              id="media-upload-regular" 
+              type="file" 
+              accept="image/*,video/*" 
+              className="hidden" 
+              onChange={(e) => handleFileUpload(e, false)}
+            />
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Pro Tips */}
       <Card className="bg-gradient-to-r from-cyan-500/10 to-purple-500/10 border-cyan-500/30">
@@ -423,7 +500,7 @@ export default function FloorplanEditor() {
       {/* Load Existing */}
       <div className="flex justify-center">
         <Button variant="outline" onClick={loadFloorplan} size="lg">
-          Load Existing 360° Tour
+          Load Existing Tour
         </Button>
       </div>
     </div>
@@ -431,7 +508,7 @@ export default function FloorplanEditor() {
 
   // Render editor mode
   const renderEditorMode = () => (
-    <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 h-[calc(100vh-200px)]">
+    <div className={`grid grid-cols-1 lg:grid-cols-5 gap-4 ${isFullscreen ? 'h-screen p-4' : 'h-[calc(100vh-200px)]'}`}>
       {/* Left Toolbar - Hotspot Types */}
       <Card className="glass border-border lg:col-span-1 overflow-y-auto">
         <CardHeader className="pb-2">
@@ -441,7 +518,7 @@ export default function FloorplanEditor() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 pb-4">
-          <Label className="text-xs text-muted-foreground">Click to select, then click on 360° view</Label>
+          <Label className="text-xs text-muted-foreground">Click to select, then click on view</Label>
           
           <div className="grid grid-cols-2 gap-2">
             {(Object.entries(HOTSPOT_CONFIG) as [HotspotType, typeof HOTSPOT_CONFIG[HotspotType]][]).map(([type, config]) => (
@@ -464,7 +541,7 @@ export default function FloorplanEditor() {
           {isAddingHotspot && (
             <div className="p-3 bg-primary/20 rounded-lg border border-primary/50">
               <p className="text-xs text-center">
-                <strong>Click anywhere on the 360° view</strong> to place a {HOTSPOT_CONFIG[hotspotTypeToAdd].label}
+                <strong>Click anywhere on the view</strong> to place a {HOTSPOT_CONFIG[hotspotTypeToAdd].label}
               </p>
               <Button 
                 variant="ghost" 
@@ -488,28 +565,77 @@ export default function FloorplanEditor() {
         </CardContent>
       </Card>
 
-      {/* Main 360 Viewer */}
+      {/* Main Viewer */}
       <Card className="glass border-border lg:col-span-3 flex flex-col">
         <CardHeader className="pb-2 flex-shrink-0">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm flex items-center gap-2">
               <Camera className="w-4 h-4" />
-              {currentScene?.name || "360° Viewer"}
+              {currentScene?.name || "Viewer"}
+              {currentScene?.is360 ? (
+                <Badge variant="secondary" className="text-xs">360°</Badge>
+              ) : (
+                <Badge variant="outline" className="text-xs">Regular</Badge>
+              )}
             </CardTitle>
-            <Input 
-              value={currentScene?.name || ''} 
-              onChange={(e) => currentSceneId && updateSceneName(currentSceneId, e.target.value)}
-              className="w-48 h-8 text-sm"
-              placeholder="Scene name..."
-            />
+            <div className="flex items-center gap-2">
+              <Input 
+                value={currentScene?.name || ''} 
+                onChange={(e) => currentSceneId && updateSceneName(currentSceneId, e.target.value)}
+                className="w-36 h-8 text-sm"
+                placeholder="Scene name..."
+              />
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-8 w-8"
+                onClick={() => setIsFullscreen(!isFullscreen)}
+              >
+                {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+              </Button>
+            </div>
           </div>
         </CardHeader>
-        <CardContent className="p-2 flex-1 min-h-0">
-          <div 
-            ref={viewerRef}
-            className="w-full h-full rounded-lg overflow-hidden"
-            style={{ minHeight: '400px' }}
-          />
+        <CardContent className="p-2 flex-1 min-h-0 relative">
+          {currentScene?.is360 ? (
+            // 360° Viewer
+            <div 
+              ref={viewerRef}
+              className="w-full h-full rounded-lg overflow-hidden"
+              style={{ minHeight: '400px' }}
+            />
+          ) : (
+            // Regular Image Viewer with hotspot overlay
+            <div 
+              className="w-full h-full rounded-lg overflow-hidden relative cursor-crosshair"
+              style={{ minHeight: '400px' }}
+              onClick={handleRegularImageClick}
+            >
+              <img 
+                src={currentScene?.panoramaUrl} 
+                alt={currentScene?.name}
+                className="w-full h-full object-cover"
+              />
+              {/* Render hotspots on regular image */}
+              {currentScene?.hotspots.map((hs) => (
+                <div
+                  key={hs.id}
+                  className={`absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer ${
+                    selectedHotspot?.id === hs.id ? 'scale-125 z-10' : ''
+                  }`}
+                  style={{ left: `${hs.yaw}%`, top: `${hs.pitch}%` }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedHotspot(hs);
+                  }}
+                >
+                  <div className={`${HOTSPOT_CONFIG[hs.type].color} rounded-full w-12 h-12 flex items-center justify-center text-2xl shadow-lg border-2 border-white animate-pulse`}>
+                    {HOTSPOT_CONFIG[hs.type].icon}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
           
           {/* Instructions Overlay */}
           {isAddingHotspot && (
@@ -541,6 +667,9 @@ export default function FloorplanEditor() {
                 <div className="absolute inset-0 bg-black/40 flex items-end p-1">
                   <span className="text-xs text-white truncate w-full">{scene.name}</span>
                 </div>
+                {scene.is360 && (
+                  <Badge className="absolute top-1 left-1 text-[8px] px-1 py-0">360°</Badge>
+                )}
                 {scenes.length > 1 && (
                   <button
                     className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center hover:bg-red-600"
@@ -555,19 +684,36 @@ export default function FloorplanEditor() {
               </div>
             ))}
             
-            {/* Add Scene Button */}
-            <div 
-              className="flex-shrink-0 w-24 h-16 rounded-lg border-2 border-dashed border-border hover:border-primary cursor-pointer flex items-center justify-center"
-              onClick={() => document.getElementById('add-scene-upload')?.click()}
-            >
-              <Plus className="w-6 h-6 text-muted-foreground" />
+            {/* Add Scene Buttons */}
+            <div className="flex gap-2 flex-shrink-0">
+              <div 
+                className="w-20 h-16 rounded-lg border-2 border-dashed border-primary/50 hover:border-primary cursor-pointer flex flex-col items-center justify-center text-xs text-primary"
+                onClick={() => document.getElementById('add-scene-360')?.click()}
+              >
+                <Camera className="w-4 h-4 mb-1" />
+                +360°
+              </div>
+              <div 
+                className="w-20 h-16 rounded-lg border-2 border-dashed border-border hover:border-primary cursor-pointer flex flex-col items-center justify-center text-xs"
+                onClick={() => document.getElementById('add-scene-regular')?.click()}
+              >
+                <ImageIcon className="w-4 h-4 mb-1" />
+                +Regular
+              </div>
             </div>
             <input 
-              id="add-scene-upload" 
+              id="add-scene-360" 
               type="file" 
-              accept="image/*" 
+              accept="image/*,video/*" 
               className="hidden" 
-              onChange={addNewScene}
+              onChange={(e) => addNewScene(e, true)}
+            />
+            <input 
+              id="add-scene-regular" 
+              type="file" 
+              accept="image/*,video/*" 
+              className="hidden" 
+              onChange={(e) => addNewScene(e, false)}
             />
           </div>
         </div>
@@ -722,25 +868,70 @@ export default function FloorplanEditor() {
 
   // Render preview mode (customer view)
   const renderPreviewMode = () => (
-    <div className="space-y-4">
+    <div className={`space-y-4 ${isFullscreen ? 'h-screen p-4' : ''}`}>
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">{tourName} - Customer Preview</h2>
           <p className="text-muted-foreground">This is how customers will experience your venue when checked-in</p>
         </div>
-        <Button onClick={() => setFloorplanMode('editor')}>
-          <Edit className="w-4 h-4 mr-2" /> Back to Editor
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowAIChat(true)}>
+            <Bot className="w-4 h-4 mr-2" /> AI Waiter
+          </Button>
+          <Button onClick={() => setFloorplanMode('editor')}>
+            <Edit className="w-4 h-4 mr-2" /> Back to Editor
+          </Button>
+        </div>
       </div>
 
-      <Card className="glass border-border">
+      <Card className="glass border-border relative">
         <CardContent className="p-2">
-          <div 
-            ref={viewerRef}
-            className="w-full rounded-lg overflow-hidden"
-            style={{ height: '70vh' }}
-          />
+          {currentScene?.is360 ? (
+            <div 
+              ref={viewerRef}
+              className="w-full rounded-lg overflow-hidden"
+              style={{ height: isFullscreen ? 'calc(100vh - 200px)' : '70vh' }}
+            />
+          ) : (
+            <div 
+              className="w-full rounded-lg overflow-hidden relative"
+              style={{ height: isFullscreen ? 'calc(100vh - 200px)' : '70vh' }}
+            >
+              <img 
+                src={currentScene?.panoramaUrl} 
+                alt={currentScene?.name}
+                className="w-full h-full object-cover"
+              />
+              {/* Render hotspots */}
+              {currentScene?.hotspots.map((hs) => (
+                <div
+                  key={hs.id}
+                  className="absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer hover:scale-110 transition-transform"
+                  style={{ left: `${hs.yaw}%`, top: `${hs.pitch}%` }}
+                  onClick={() => {
+                    if (hs.type === 'goto' && hs.targetScene) {
+                      setCurrentSceneId(hs.targetScene);
+                    } else {
+                      toast.info(`${HOTSPOT_CONFIG[hs.type].label}: ${hs.text}`);
+                    }
+                  }}
+                >
+                  <div className={`${HOTSPOT_CONFIG[hs.type].color} rounded-full w-12 h-12 flex items-center justify-center text-2xl shadow-lg border-2 border-white animate-pulse`}>
+                    {HOTSPOT_CONFIG[hs.type].icon}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
+
+        {/* AI Chat Floating Button */}
+        <Button
+          className="absolute bottom-4 right-4 rounded-full w-14 h-14 bg-gradient-to-r from-cyan-500 to-purple-500 shadow-lg"
+          onClick={() => setShowAIChat(true)}
+        >
+          <MessageSquare className="w-6 h-6" />
+        </Button>
       </Card>
 
       {/* Legend */}
@@ -763,12 +954,71 @@ export default function FloorplanEditor() {
               onClick={() => setCurrentSceneId(scene.id)}
             >
               {scene.name}
+              {scene.is360 && <Badge variant="secondary" className="ml-2 text-xs">360°</Badge>}
             </Button>
           ))}
         </div>
       )}
+
+      {/* AI Chat Modal */}
+      {showAIChat && (
+        <AIChat
+          context="ai_waiter"
+          onClose={() => setShowAIChat(false)}
+        />
+      )}
     </div>
   );
+
+  // Fullscreen wrapper
+  if (isFullscreen && floorplanMode !== 'upload') {
+    return (
+      <div className="fixed inset-0 z-50 bg-background">
+        {/* Add custom styles for hotspots */}
+        <style>{`
+          .venue-hotspot {
+            cursor: pointer !important;
+          }
+          .venue-hotspot .hotspot-marker {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s ease;
+          }
+          .venue-hotspot:hover .hotspot-marker {
+            transform: scale(1.2);
+          }
+          .pnlm-container {
+            background: #1a1a2e !important;
+          }
+        `}</style>
+
+        {/* Minimal header for fullscreen */}
+        <div className="absolute top-4 left-4 z-10 flex items-center gap-4">
+          <h1 className="text-xl font-bold">{tourName}</h1>
+          <Badge>{floorplanMode === 'editor' ? 'Editor' : 'Preview'}</Badge>
+        </div>
+
+        <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setIsFullscreen(false)}
+          >
+            <Minimize2 className="w-4 h-4 mr-2" /> Exit Fullscreen
+          </Button>
+          {floorplanMode === 'editor' && (
+            <Button size="sm" onClick={() => setFloorplanMode('upload')}>
+              <Upload className="w-4 h-4 mr-2" /> New Upload
+            </Button>
+          )}
+        </div>
+
+        {floorplanMode === 'editor' && renderEditorMode()}
+        {floorplanMode === 'preview' && renderPreviewMode()}
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">

@@ -3,7 +3,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Users, Clock, MapPin, ChevronRight, Edit2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Users, Clock, MapPin, ChevronRight, Edit2, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 interface Table {
@@ -16,6 +17,7 @@ interface Table {
   currentGuests?: number;
   duration?: string;
   reservationTime?: string;
+  sceneName?: string;
 }
 
 interface TablesPopupProps {
@@ -28,15 +30,46 @@ export default function TablesPopup({ isOpen, onClose }: TablesPopupProps) {
   const [tables, setTables] = useState<Table[]>([]);
   const [selectedTable, setSelectedTable] = useState<Table | null>(null);
   const [floorplanMedia, setFloorplanMedia] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'grid' | 'immersive'>('grid');
 
   useEffect(() => {
-    // Load tables from localStorage (saved from FloorplanEditor)
+    // First try to load from 360 floorplan
+    const saved360 = localStorage.getItem('venue_floorplan_360');
+    if (saved360) {
+      const data = JSON.parse(saved360);
+      
+      // Get first scene panorama as background
+      if (data.scenes?.length > 0) {
+        setFloorplanMedia(data.scenes[0].panoramaUrl);
+      }
+      
+      // Load tables from synced tables
+      const syncedTables = localStorage.getItem('venue_tables_sync');
+      if (syncedTables) {
+        const parsed = JSON.parse(syncedTables);
+        const loadedTables = parsed.map((t: any) => ({
+          id: t.id,
+          tableNumber: `T${t.number}`,
+          capacity: t.capacity,
+          status: t.status as "available" | "occupied" | "reserved",
+          x: t.x || 50,
+          y: t.y || 50,
+          sceneName: t.section,
+          currentGuests: t.status === 'occupied' ? Math.floor(Math.random() * t.capacity) + 1 : undefined,
+          duration: t.status === 'occupied' ? `${Math.floor(Math.random() * 60) + 10}m` : undefined,
+          reservationTime: t.status === 'reserved' ? "8:30 PM" : undefined,
+        }));
+        setTables(loadedTables);
+        return;
+      }
+    }
+
+    // Fallback to old floorplan format
     const savedFloorplan = localStorage.getItem("venue_floorplan");
     if (savedFloorplan) {
       const data = JSON.parse(savedFloorplan);
       setFloorplanMedia(data.mediaURL || null);
       
-      // Convert floorplan tables to our format with mock status data
       const loadedTables = (data.tables || []).map((t: any, i: number) => ({
         id: t.id || `table-${i}`,
         tableNumber: t.meta?.tableNumber || `T${i + 1}`,
@@ -50,7 +83,7 @@ export default function TablesPopup({ isOpen, onClose }: TablesPopupProps) {
       }));
       setTables(loadedTables);
     } else {
-      // Default mock tables if no floorplan exists
+      // Default mock tables
       setTables([
         { id: "1", tableNumber: "T1", capacity: 4, status: "available", x: 20, y: 30 },
         { id: "2", tableNumber: "T2", capacity: 2, status: "occupied", x: 40, y: 30, currentGuests: 2, duration: "45m" },
@@ -91,7 +124,7 @@ export default function TablesPopup({ isOpen, onClose }: TablesPopupProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-hidden bg-slate-900 border-slate-700 text-white">
+      <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-hidden bg-slate-900 border-slate-700 text-white">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold flex items-center justify-between">
             <span className="flex items-center gap-2">
@@ -131,6 +164,14 @@ export default function TablesPopup({ isOpen, onClose }: TablesPopupProps) {
           </Card>
         </div>
 
+        {/* View Mode Tabs */}
+        <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'grid' | 'immersive')} className="mb-4">
+          <TabsList className="bg-slate-800">
+            <TabsTrigger value="grid">Grid View</TabsTrigger>
+            <TabsTrigger value="immersive">Immersive View</TabsTrigger>
+          </TabsList>
+        </Tabs>
+
         {/* Legend */}
         <div className="flex items-center gap-4 mb-4 text-sm">
           <span className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-green-500" /> Available</span>
@@ -139,63 +180,100 @@ export default function TablesPopup({ isOpen, onClose }: TablesPopupProps) {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Visual Map */}
+          {/* Visual Map or Grid */}
           <div className="lg:col-span-2">
-            <Card className="bg-slate-800 border-slate-700 overflow-hidden">
-              <CardContent className="p-0">
-                <div className="relative aspect-video min-h-[300px]">
-                  {/* Background - Floorplan Media or Grid */}
-                  {floorplanMedia ? (
-                    <img 
-                      src={floorplanMedia} 
-                      alt="Venue Floorplan" 
-                      className="absolute inset-0 w-full h-full object-cover opacity-40"
-                    />
-                  ) : (
-                    <div 
-                      className="absolute inset-0"
-                      style={{
-                        backgroundImage: `
-                          linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
-                          linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px)
-                        `,
-                        backgroundSize: '40px 40px'
-                      }}
-                    />
-                  )}
-
-                  {/* Table Hotspots */}
-                  {tables.map((table) => (
-                    <div
-                      key={table.id}
-                      className={`absolute cursor-pointer transform -translate-x-1/2 -translate-y-1/2 transition-all hover:scale-110 ${
-                        selectedTable?.id === table.id ? "scale-110 z-10" : ""
-                      }`}
-                      style={{ left: `${table.x}%`, top: `${table.y}%` }}
-                      onClick={() => setSelectedTable(table)}
-                    >
-                      <div className={`relative w-14 h-14 rounded-full ${getStatusColor(table.status)} 
-                        bg-opacity-80 border-4 border-white shadow-xl flex items-center justify-center
-                        ${selectedTable?.id === table.id ? "ring-4 ring-primary" : ""}`}
+            {viewMode === 'grid' ? (
+              // Grid View
+              <Card className="bg-slate-800 border-slate-700">
+                <CardContent className="p-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {tables.map((table) => (
+                      <Card
+                        key={table.id}
+                        className={`bg-slate-700 cursor-pointer transition-all hover:scale-105 ${
+                          selectedTable?.id === table.id ? "ring-2 ring-primary" : ""
+                        }`}
+                        onClick={() => setSelectedTable(table)}
                       >
-                        <div className="text-center text-white">
-                          <div className="font-bold text-sm">{table.tableNumber}</div>
-                          <div className="text-xs flex items-center justify-center">
-                            <Users className="w-3 h-3 mr-0.5" />
-                            {table.capacity}
+                        <CardContent className="p-3 text-center">
+                          <div className="text-2xl font-bold mb-1">{table.tableNumber}</div>
+                          <Badge className={getStatusBadgeColor(table.status)}>
+                            {table.status}
+                          </Badge>
+                          <div className="flex items-center justify-center gap-1 mt-2 text-sm text-slate-400">
+                            <Users className="h-3 w-3" />
+                            <span>{table.capacity}</span>
+                          </div>
+                          {table.status === "occupied" && table.duration && (
+                            <div className="flex items-center justify-center gap-1 mt-1 text-xs text-primary">
+                              <Clock className="h-3 w-3" />
+                              <span>{table.duration}</span>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              // Immersive View
+              <Card className="bg-slate-800 border-slate-700 overflow-hidden">
+                <CardContent className="p-0">
+                  <div className="relative aspect-video min-h-[300px]">
+                    {/* Background */}
+                    {floorplanMedia ? (
+                      <img 
+                        src={floorplanMedia} 
+                        alt="Venue Floorplan" 
+                        className="absolute inset-0 w-full h-full object-cover opacity-40"
+                      />
+                    ) : (
+                      <div 
+                        className="absolute inset-0"
+                        style={{
+                          backgroundImage: `
+                            linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
+                            linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px)
+                          `,
+                          backgroundSize: '40px 40px'
+                        }}
+                      />
+                    )}
+
+                    {/* Table Hotspots */}
+                    {tables.map((table) => (
+                      <div
+                        key={table.id}
+                        className={`absolute cursor-pointer transform -translate-x-1/2 -translate-y-1/2 transition-all hover:scale-110 ${
+                          selectedTable?.id === table.id ? "scale-110 z-10" : ""
+                        }`}
+                        style={{ left: `${table.x}%`, top: `${table.y}%` }}
+                        onClick={() => setSelectedTable(table)}
+                      >
+                        <div className={`relative w-14 h-14 rounded-full ${getStatusColor(table.status)} 
+                          bg-opacity-80 border-4 border-white shadow-xl flex items-center justify-center
+                          ${selectedTable?.id === table.id ? "ring-4 ring-primary" : ""}`}
+                        >
+                          <div className="text-center text-white">
+                            <div className="font-bold text-sm">{table.tableNumber}</div>
+                            <div className="text-xs flex items-center justify-center">
+                              <Users className="w-3 h-3 mr-0.5" />
+                              {table.capacity}
+                            </div>
                           </div>
                         </div>
+                        {table.status === "occupied" && (
+                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center animate-pulse border-2 border-white">
+                            <Clock className="w-3 h-3 text-white" />
+                          </div>
+                        )}
                       </div>
-                      {table.status === "occupied" && (
-                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center animate-pulse border-2 border-white">
-                          <Clock className="w-3 h-3 text-white" />
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Selected Table Info */}
@@ -221,6 +299,13 @@ export default function TablesPopup({ isOpen, onClose }: TablesPopupProps) {
                         <Users className="w-4 h-4" /> {selectedTable.capacity} seats
                       </span>
                     </div>
+
+                    {selectedTable.sceneName && (
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Area</span>
+                        <span className="font-medium">{selectedTable.sceneName}</span>
+                      </div>
+                    )}
 
                     {selectedTable.status === "occupied" && (
                       <>
