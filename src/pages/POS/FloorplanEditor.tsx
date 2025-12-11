@@ -4,14 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
-  Square, Circle as CircleIcon, Save, Download, Trash2, 
-  Upload, Eye, Edit, RotateCcw, Image as ImageIcon, Video, Camera,
-  Plus, Users, ChevronRight, MapPin, Coffee, DoorOpen, Pointer,
-  Utensils, Music, Navigation, X, Settings, Layers, Maximize2, Minimize2,
-  MessageSquare, Bot
+  Save, Trash2, 
+  Upload, Eye, Edit, Image as ImageIcon, Camera,
+  MapPin, X, Settings, Layers, Maximize2, Minimize2,
+  MessageSquare, Bot, ChevronRight, Menu, PanelLeftClose, PanelLeft, AlertTriangle
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "@/integrations/supabase/client";
@@ -46,11 +44,11 @@ interface VenueScene {
   panoramaUrl: string;
   hotspots: VenueHotspot[];
   isDefault?: boolean;
-  is360?: boolean; // Track if this is a 360° or regular image
+  is360?: boolean;
+  isVideo?: boolean;
 }
 
 type FloorplanMode = 'upload' | 'editor' | 'preview';
-type MediaType = '360photo' | '360video' | 'regular';
 type Orientation = 'portrait' | 'landscape';
 
 const HOTSPOT_CONFIG: Record<HotspotType, { icon: string; label: string; color: string; description: string }> = {
@@ -65,16 +63,42 @@ const HOTSPOT_CONFIG: Record<HotspotType, { icon: string; label: string; color: 
   vip: { icon: '⭐', label: 'VIP', color: 'bg-amber-500', description: 'VIP section' },
 };
 
+// Helper to check image orientation
+const getImageOrientation = (file: File): Promise<Orientation> => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(img.src);
+      resolve(img.width >= img.height ? 'landscape' : 'portrait');
+    };
+    img.onerror = () => resolve('landscape');
+    img.src = URL.createObjectURL(file);
+  });
+};
+
+// Helper to check video orientation  
+const getVideoOrientation = (file: File): Promise<Orientation> => {
+  return new Promise((resolve) => {
+    const video = document.createElement('video');
+    video.onloadedmetadata = () => {
+      URL.revokeObjectURL(video.src);
+      resolve(video.videoWidth >= video.videoHeight ? 'landscape' : 'portrait');
+    };
+    video.onerror = () => resolve('landscape');
+    video.src = URL.createObjectURL(file);
+  });
+};
+
 export default function FloorplanEditor() {
   const viewerRef = useRef<HTMLDivElement>(null);
   const pannellumViewer = useRef<any>(null);
   
   const [floorplanMode, setFloorplanMode] = useState<FloorplanMode>('upload');
-  const [mediaType, setMediaType] = useState<MediaType>('360photo');
   const [tourName, setTourName] = useState("My Venue Tour");
-  const [isFullscreen, setIsFullscreen] = useState(true); // Default to fullscreen
+  const [isFullscreen, setIsFullscreen] = useState(true);
   const [showAIChat, setShowAIChat] = useState(false);
-  const [orientation, setOrientation] = useState<Orientation>('landscape'); // Orientation for entire tour
+  const [orientation, setOrientation] = useState<Orientation>('landscape');
+  const [showSidebar, setShowSidebar] = useState(false); // Hide sidebar by default in editor
   
   // Scenes for multi-room tours
   const [scenes, setScenes] = useState<VenueScene[]>([]);
@@ -179,42 +203,93 @@ export default function FloorplanEditor() {
     }
   }, [currentSceneId, currentScene, floorplanMode, initViewer]);
 
-  // Handle file upload
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>, is360: boolean = true) => {
+  // Handle file upload with validation
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, is360: boolean = true) => {
     const file = event.target.files?.[0];
-    if (file) {
-      const fileURL = URL.createObjectURL(file);
-      const newScene: VenueScene = {
-        id: uuidv4(),
-        name: scenes.length === 0 ? "Main Area" : `Area ${scenes.length + 1}`,
-        panoramaUrl: fileURL,
-        hotspots: [],
-        isDefault: scenes.length === 0,
-        is360: is360,
-      };
-      setScenes(prev => [...prev, newScene]);
-      setCurrentSceneId(newScene.id);
-      setFloorplanMode('editor');
-      toast.success(`${is360 ? '360°' : 'Regular'} media uploaded! Click anywhere to add hotspots.`);
+    if (!file) return;
+
+    const isVideo = file.type.startsWith('video/');
+    const isImage = file.type.startsWith('image/');
+
+    // Validate file type
+    if (!isVideo && !isImage) {
+      toast.error("Please upload an image or video file");
+      return;
     }
+
+    // Check orientation
+    let fileOrientation: Orientation;
+    if (isImage) {
+      fileOrientation = await getImageOrientation(file);
+    } else {
+      fileOrientation = await getVideoOrientation(file);
+    }
+
+    // If this is not the first scene, validate orientation matches
+    if (scenes.length > 0 && fileOrientation !== orientation) {
+      toast.error(`This ${isVideo ? 'video' : 'image'} is ${fileOrientation}. Your tour is set to ${orientation}. Please upload ${orientation} media only.`);
+      return;
+    }
+
+    // If first scene, set orientation based on file
+    if (scenes.length === 0) {
+      setOrientation(fileOrientation);
+    }
+
+    const fileURL = URL.createObjectURL(file);
+    const newScene: VenueScene = {
+      id: uuidv4(),
+      name: scenes.length === 0 ? "Main Area" : `Area ${scenes.length + 1}`,
+      panoramaUrl: fileURL,
+      hotspots: [],
+      isDefault: scenes.length === 0,
+      is360: is360,
+      isVideo: isVideo,
+    };
+    setScenes(prev => [...prev, newScene]);
+    setCurrentSceneId(newScene.id);
+    setFloorplanMode('editor');
+    toast.success(`${is360 ? '360°' : 'Regular'} ${isVideo ? 'video' : 'image'} uploaded!`);
   };
 
-  // Add a new scene
-  const addNewScene = (event: React.ChangeEvent<HTMLInputElement>, is360: boolean = true) => {
+  // Add a new scene with validation
+  const addNewScene = async (event: React.ChangeEvent<HTMLInputElement>, is360: boolean = true) => {
     const file = event.target.files?.[0];
-    if (file) {
-      const fileURL = URL.createObjectURL(file);
-      const newScene: VenueScene = {
-        id: uuidv4(),
-        name: `Area ${scenes.length + 1}`,
-        panoramaUrl: fileURL,
-        hotspots: [],
-        is360: is360,
-      };
-      setScenes(prev => [...prev, newScene]);
-      setCurrentSceneId(newScene.id);
-      toast.success(`Scene "${newScene.name}" added!`);
+    if (!file) return;
+
+    const isVideo = file.type.startsWith('video/');
+    const isImage = file.type.startsWith('image/');
+
+    if (!isVideo && !isImage) {
+      toast.error("Please upload an image or video file");
+      return;
     }
+
+    // Check orientation matches tour orientation
+    let fileOrientation: Orientation;
+    if (isImage) {
+      fileOrientation = await getImageOrientation(file);
+    } else {
+      fileOrientation = await getVideoOrientation(file);
+    }
+
+    if (fileOrientation !== orientation) {
+      toast.error(`This ${isVideo ? 'video' : 'image'} is ${fileOrientation}. Your tour is set to ${orientation}. Please upload ${orientation} media only.`);
+      return;
+    }
+
+    const fileURL = URL.createObjectURL(file);
+    const newScene: VenueScene = {
+      id: uuidv4(),
+      name: `Area ${scenes.length + 1}`,
+      panoramaUrl: fileURL,
+      hotspots: [],
+      is360: is360,
+      isVideo: isVideo,
+    };
+    setScenes(prev => [...prev, newScene]);
+    setCurrentSceneId(newScene.id);
+    toast.success(`Scene "${newScene.name}" added!`);
   };
 
   // Add hotspot at coordinates
@@ -256,7 +331,7 @@ export default function FloorplanEditor() {
     const x = ((event.clientX - rect.left) / rect.width) * 100;
     const y = ((event.clientY - rect.top) / rect.height) * 100;
     
-    addHotspot(y, x); // Using pitch/yaw as y/x percentages for regular images
+    addHotspot(y, x);
   };
 
   // Update hotspot
@@ -303,9 +378,8 @@ export default function FloorplanEditor() {
     toast.success("Scene deleted");
   };
 
-  // Save floorplan - syncs to Tables, VenueHome, and EndUser views
+  // Save floorplan
   const saveFloorplan = async () => {
-    // Extract all tables from all scenes
     const allTables = scenes.flatMap(scene => 
       scene.hotspots
         .filter(hs => hs.type === 'table')
@@ -323,19 +397,16 @@ export default function FloorplanEditor() {
 
     const floorplanData = {
       name: tourName,
-      mediaType,
-      orientation, // Save orientation setting
+      orientation,
       scenes,
       tableCounter,
-      tables: allTables, // Include extracted tables for sync
+      tables: allTables,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
     
-    // Save to localStorage for all views to access
     localStorage.setItem('venue_floorplan_360', JSON.stringify(floorplanData));
     
-    // Also save tables in format expected by Tables page
     const tablesForPOS = allTables.map((t, i) => ({
       id: t.id,
       number: t.tableNumber?.replace('T', '') || String(i + 1),
@@ -347,7 +418,6 @@ export default function FloorplanEditor() {
     }));
     localStorage.setItem('venue_tables_sync', JSON.stringify(tablesForPOS));
     
-    // Save to Supabase
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       const { error } = await supabase.from("floorplans").upsert({
@@ -355,7 +425,7 @@ export default function FloorplanEditor() {
         venue_id: "default",
         canvas_width: 0,
         canvas_height: 0,
-        items: JSON.parse(JSON.stringify({ scenes, tableCounter, tables: allTables })),
+        items: JSON.parse(JSON.stringify({ scenes, tableCounter, tables: allTables, orientation })),
         created_by: user.id,
       });
       if (error) {
@@ -364,7 +434,7 @@ export default function FloorplanEditor() {
       }
     }
     
-    toast.success(`360° Tour saved! ${allTables.length} tables synced to all views.`);
+    toast.success(`Tour saved! ${allTables.length} tables synced.`);
   };
 
   // Load floorplan
@@ -373,7 +443,6 @@ export default function FloorplanEditor() {
     if (saved) {
       const data = JSON.parse(saved);
       setTourName(data.name || "My Venue Tour");
-      setMediaType(data.mediaType || '360photo');
       setOrientation(data.orientation || 'landscape');
       setScenes(data.scenes || []);
       setTableCounter(data.tableCounter || 1);
@@ -381,9 +450,9 @@ export default function FloorplanEditor() {
         setCurrentSceneId(data.scenes.find((s: VenueScene) => s.isDefault)?.id || data.scenes[0].id);
         setFloorplanMode('editor');
       }
-      toast.success("360° Tour loaded");
+      toast.success("Tour loaded");
     } else {
-      toast("No saved 360° tour found");
+      toast("No saved tour found");
     }
   };
 
@@ -400,7 +469,6 @@ export default function FloorplanEditor() {
   // Render upload mode
   const renderUploadMode = () => (
     <div className="space-y-6 max-w-4xl mx-auto p-8">
-      {/* Tour Name */}
       <Card className="border-border">
         <CardContent className="p-6">
           <Label className="text-lg font-semibold mb-3 block">Tour Name</Label>
@@ -413,12 +481,12 @@ export default function FloorplanEditor() {
         </CardContent>
       </Card>
 
-      {/* Orientation Selection - IMPORTANT: Choose once for entire tour */}
+      {/* Orientation Selection */}
       <Card className="border-primary/50 bg-primary/5">
         <CardContent className="p-6">
           <Label className="text-lg font-semibold mb-3 block">Tour Orientation</Label>
           <p className="text-sm text-muted-foreground mb-4">
-            Choose the orientation for your entire tour. This ensures a consistent experience for visitors.
+            All media you upload must match this orientation.
           </p>
           <div className="grid grid-cols-2 gap-4">
             <div 
@@ -432,7 +500,7 @@ export default function FloorplanEditor() {
               <div className="w-full h-20 bg-slate-700 rounded-lg mb-3 flex items-center justify-center">
                 <div className="w-16 h-10 bg-primary/50 rounded border-2 border-primary" />
               </div>
-              <h4 className="font-semibold text-center">Landscape</h4>
+              <h4 className="font-semibold text-center">Landscape (Horizontal)</h4>
               <p className="text-xs text-muted-foreground text-center">Best for tablets & desktops</p>
             </div>
             <div 
@@ -446,16 +514,15 @@ export default function FloorplanEditor() {
               <div className="w-full h-20 bg-slate-700 rounded-lg mb-3 flex items-center justify-center">
                 <div className="w-10 h-16 bg-primary/50 rounded border-2 border-primary" />
               </div>
-              <h4 className="font-semibold text-center">Portrait</h4>
+              <h4 className="font-semibold text-center">Portrait (Vertical)</h4>
               <p className="text-xs text-muted-foreground text-center">Best for mobile phones</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Upload Options - 360° or Regular */}
+      {/* Upload Options */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* 360° Upload */}
         <Card className="border-dashed border-2 border-primary/50 bg-primary/5 hover:bg-primary/10 transition-colors">
           <CardContent className="p-8">
             <div 
@@ -465,26 +532,25 @@ export default function FloorplanEditor() {
               <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-primary/20 flex items-center justify-center">
                 <Camera className="w-10 h-10 text-primary" />
               </div>
-              <h3 className="text-lg font-semibold mb-2">360° Photo/Video</h3>
+              <h3 className="text-lg font-semibold mb-2">360° Photo</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Upload equirectangular 360° media for immersive experience
+                Upload equirectangular 360° image for immersive experience
               </p>
               <Button size="lg" className="bg-primary hover:bg-primary/90">
                 <Upload className="w-5 h-5 mr-2" />
-                Upload 360°
+                Upload 360° Image
               </Button>
             </div>
             <input 
               id="media-upload-360" 
               type="file" 
-              accept="image/*,video/*" 
+              accept="image/*" 
               className="hidden" 
               onChange={(e) => handleFileUpload(e, true)}
             />
           </CardContent>
         </Card>
 
-        {/* Regular Upload */}
         <Card className="border-dashed border-2 border-secondary/50 bg-secondary/5 hover:bg-secondary/10 transition-colors">
           <CardContent className="p-8">
             <div 
@@ -494,19 +560,19 @@ export default function FloorplanEditor() {
               <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-secondary/20 flex items-center justify-center">
                 <ImageIcon className="w-10 h-10 text-secondary-foreground" />
               </div>
-              <h3 className="text-lg font-semibold mb-2">Regular Photo/Video</h3>
+              <h3 className="text-lg font-semibold mb-2">Regular Photo</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Upload standard photos or videos of your venue
+                Upload standard photos of your venue
               </p>
               <Button size="lg" variant="secondary">
                 <Upload className="w-5 h-5 mr-2" />
-                Upload Regular
+                Upload Regular Image
               </Button>
             </div>
             <input 
               id="media-upload-regular" 
               type="file" 
-              accept="image/*,video/*" 
+              accept="image/*" 
               className="hidden" 
               onChange={(e) => handleFileUpload(e, false)}
             />
@@ -523,25 +589,24 @@ export default function FloorplanEditor() {
           <ul className="text-sm text-muted-foreground space-y-2">
             <li className="flex items-start gap-2">
               <span className="text-cyan-400">1.</span>
-              Take 360° photos from different areas of your venue (main floor, bar, VIP, etc.)
+              Take 360° photos from different areas of your venue
             </li>
             <li className="flex items-start gap-2">
               <span className="text-cyan-400">2.</span>
-              Upload each area as a separate scene and connect them with "Go To" hotspots
+              Upload each area as a separate scene and connect with "Go To" hotspots
             </li>
             <li className="flex items-start gap-2">
               <span className="text-cyan-400">3.</span>
-              Add tables (with seat counts), bar areas, restrooms, entry/exit points
+              Add tables, bar areas, restrooms, entry/exit points
             </li>
             <li className="flex items-start gap-2">
               <span className="text-cyan-400">4.</span>
-              Customers experience this immersive view when they check-in at your venue!
+              Customers experience this when they check-in at your venue!
             </li>
           </ul>
         </CardContent>
       </Card>
 
-      {/* Load Existing */}
       <div className="flex justify-center">
         <Button variant="outline" onClick={loadFloorplan} size="lg">
           Load Existing Tour
@@ -550,117 +615,134 @@ export default function FloorplanEditor() {
     </div>
   );
 
-  // Render editor mode
+  // Render editor mode - FULLSCREEN WITHOUT SIDEBAR
   const renderEditorMode = () => (
-    <div className={`grid grid-cols-1 lg:grid-cols-5 gap-4 ${isFullscreen ? 'h-screen p-4' : 'h-[calc(100vh-200px)]'}`}>
+    <div className="flex h-full">
       {/* Left Toolbar - Hotspot Types */}
-      <Card className="glass border-border lg:col-span-1 overflow-y-auto">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Hotspot Tools
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3 pb-4">
-          <Label className="text-xs text-muted-foreground">Click to select, then click on view</Label>
-          
-          <div className="grid grid-cols-2 gap-2">
-            {(Object.entries(HOTSPOT_CONFIG) as [HotspotType, typeof HOTSPOT_CONFIG[HotspotType]][]).map(([type, config]) => (
-              <Button
-                key={type}
-                variant={hotspotTypeToAdd === type ? "default" : "outline"}
-                size="sm"
-                className={`h-auto py-2 px-2 flex flex-col items-center gap-1 ${hotspotTypeToAdd === type ? 'ring-2 ring-primary' : ''}`}
-                onClick={() => {
-                  setHotspotTypeToAdd(type);
-                  setIsAddingHotspot(true);
-                }}
-              >
-                <span className="text-lg">{config.icon}</span>
-                <span className="text-xs">{config.label}</span>
-              </Button>
-            ))}
-          </div>
-
-          {isAddingHotspot && (
-            <div className="p-3 bg-primary/20 rounded-lg border border-primary/50">
-              <p className="text-xs text-center">
-                <strong>Click anywhere on the view</strong> to place a {HOTSPOT_CONFIG[hotspotTypeToAdd].label}
-              </p>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="w-full mt-2"
-                onClick={() => setIsAddingHotspot(false)}
-              >
-                <X className="w-3 h-3 mr-1" /> Cancel
-              </Button>
-            </div>
-          )}
-
-          <div className="border-t pt-3 space-y-2">
-            <Button onClick={saveFloorplan} className="w-full" size="sm">
-              <Save className="h-4 w-4 mr-2" /> Save Tour
+      <div className="w-56 flex-shrink-0 bg-card border-r border-border overflow-y-auto p-4 space-y-3">
+        <div className="flex items-center gap-2 mb-2">
+          <Layers className="w-4 h-4" />
+          <span className="font-semibold text-sm">Hotspot Tools</span>
+        </div>
+        <p className="text-xs text-muted-foreground">Click to select, then click on view</p>
+        
+        <div className="grid grid-cols-2 gap-2">
+          {(Object.entries(HOTSPOT_CONFIG) as [HotspotType, typeof HOTSPOT_CONFIG[HotspotType]][]).map(([type, config]) => (
+            <Button
+              key={type}
+              variant={hotspotTypeToAdd === type ? "default" : "outline"}
+              size="sm"
+              className={`h-auto py-2 px-2 flex flex-col items-center gap-1 ${hotspotTypeToAdd === type ? 'ring-2 ring-primary' : ''}`}
+              onClick={() => {
+                setHotspotTypeToAdd(type);
+                setIsAddingHotspot(true);
+              }}
+            >
+              <span className="text-lg">{config.icon}</span>
+              <span className="text-xs">{config.label}</span>
             </Button>
-            <Button onClick={() => setFloorplanMode('preview')} variant="outline" className="w-full" size="sm">
-              <Eye className="h-4 w-4 mr-2" /> Preview
+          ))}
+        </div>
+
+        {isAddingHotspot && (
+          <div className="p-3 bg-primary/20 rounded-lg border border-primary/50">
+            <p className="text-xs text-center">
+              <strong>Click anywhere</strong> to place {HOTSPOT_CONFIG[hotspotTypeToAdd].label}
+            </p>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="w-full mt-2"
+              onClick={() => setIsAddingHotspot(false)}
+            >
+              <X className="w-3 h-3 mr-1" /> Cancel
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        )}
+
+        <div className="border-t pt-3 space-y-2">
+          <Button onClick={saveFloorplan} className="w-full" size="sm">
+            <Save className="h-4 w-4 mr-2" /> Save Tour
+          </Button>
+          <Button onClick={() => setFloorplanMode('preview')} variant="outline" className="w-full" size="sm">
+            <Eye className="h-4 w-4 mr-2" /> Preview
+          </Button>
+        </div>
+
+        {/* Orientation Indicator */}
+        <div className="border-t pt-3">
+          <div className="p-2 rounded-lg bg-secondary/30 text-center">
+            <p className="text-xs text-muted-foreground mb-1">Tour Orientation</p>
+            <Badge variant="outline" className="text-xs">
+              {orientation === 'landscape' ? '↔️ Landscape' : '↕️ Portrait'}
+            </Badge>
+            <p className="text-[10px] text-muted-foreground mt-1">
+              All scenes must be {orientation}
+            </p>
+          </div>
+        </div>
+      </div>
 
       {/* Main Viewer */}
-      <Card className="glass border-border lg:col-span-3 flex flex-col">
-        <CardHeader className="pb-2 flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Camera className="w-4 h-4" />
-              {currentScene?.name || "Viewer"}
-              {currentScene?.is360 ? (
-                <Badge variant="secondary" className="text-xs">360°</Badge>
-              ) : (
-                <Badge variant="outline" className="text-xs">Regular</Badge>
-              )}
-            </CardTitle>
-            <div className="flex items-center gap-2">
-              <Input 
-                value={currentScene?.name || ''} 
-                onChange={(e) => currentSceneId && updateSceneName(currentSceneId, e.target.value)}
-                className="w-36 h-8 text-sm"
-                placeholder="Scene name..."
-              />
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-8 w-8"
-                onClick={() => setIsFullscreen(!isFullscreen)}
-              >
-                {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-              </Button>
-            </div>
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        {/* Header Bar */}
+        <div className="flex-shrink-0 h-14 border-b border-border flex items-center justify-between px-4 bg-card">
+          <div className="flex items-center gap-3">
+            <Camera className="w-4 h-4" />
+            <span className="font-medium">{currentScene?.name || "Viewer"}</span>
+            {currentScene?.is360 ? (
+              <Badge variant="secondary" className="text-xs">360°</Badge>
+            ) : (
+              <Badge variant="outline" className="text-xs">Regular</Badge>
+            )}
           </div>
-        </CardHeader>
-        <CardContent className="p-2 flex-1 min-h-0 relative">
+          <div className="flex items-center gap-2">
+            <Input 
+              value={currentScene?.name || ''} 
+              onChange={(e) => currentSceneId && updateSceneName(currentSceneId, e.target.value)}
+              className="w-36 h-8 text-sm"
+              placeholder="Scene name..."
+            />
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8"
+              onClick={() => setIsFullscreen(!isFullscreen)}
+            >
+              {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            </Button>
+          </div>
+        </div>
+
+        {/* Viewer Area - Fits content properly */}
+        <div className="flex-1 p-4 overflow-auto flex items-center justify-center bg-background/50">
           {currentScene?.is360 ? (
-            // 360° Viewer
             <div 
               ref={viewerRef}
               className="w-full h-full rounded-lg overflow-hidden"
-              style={{ minHeight: '400px' }}
+              style={{ 
+                maxHeight: 'calc(100vh - 220px)',
+                aspectRatio: orientation === 'landscape' ? '16/9' : '9/16'
+              }}
             />
           ) : (
-            // Regular Image Viewer with hotspot overlay
             <div 
-              className="w-full h-full rounded-lg overflow-hidden relative cursor-crosshair"
-              style={{ minHeight: '400px' }}
+              className="relative rounded-lg overflow-hidden cursor-crosshair bg-black"
+              style={{ 
+                maxHeight: 'calc(100vh - 220px)',
+                maxWidth: '100%'
+              }}
               onClick={handleRegularImageClick}
             >
               <img 
                 src={currentScene?.panoramaUrl} 
                 alt={currentScene?.name}
-                className="w-full h-full object-cover"
+                className="max-w-full max-h-full object-contain"
+                style={{ 
+                  maxHeight: 'calc(100vh - 220px)'
+                }}
               />
-              {/* Render hotspots on regular image */}
+              {/* Hotspots overlay */}
               {currentScene?.hotspots.map((hs) => (
                 <div
                   key={hs.id}
@@ -681,328 +763,342 @@ export default function FloorplanEditor() {
             </div>
           )}
           
-          {/* Instructions Overlay */}
           {isAddingHotspot && (
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
+            <div className="absolute top-20 left-1/2 -translate-x-1/2 z-10">
               <Badge className="bg-primary text-primary-foreground px-4 py-2 text-sm">
                 {HOTSPOT_CONFIG[hotspotTypeToAdd].icon} Click to place {HOTSPOT_CONFIG[hotspotTypeToAdd].label}
               </Badge>
             </div>
           )}
-        </CardContent>
+        </div>
 
         {/* Scenes Bar */}
-        <div className="p-3 border-t border-border flex-shrink-0">
-          <div className="flex items-center gap-3 overflow-x-auto pb-2">
-            <Label className="text-xs text-muted-foreground whitespace-nowrap">Scenes:</Label>
-            {scenes.map((scene) => (
-              <div 
-                key={scene.id}
-                className={`relative flex-shrink-0 w-24 h-16 rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${
-                  currentSceneId === scene.id ? 'border-primary ring-2 ring-primary/30' : 'border-border hover:border-primary/50'
-                }`}
-                onClick={() => setCurrentSceneId(scene.id)}
-              >
-                <img 
-                  src={scene.panoramaUrl} 
-                  alt={scene.name}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-black/40 flex items-end p-1">
-                  <span className="text-xs text-white truncate w-full">{scene.name}</span>
-                </div>
-                {scene.is360 && (
-                  <Badge className="absolute top-1 left-1 text-[8px] px-1 py-0">360°</Badge>
-                )}
-                {scenes.length > 1 && (
-                  <button
-                    className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center hover:bg-red-600"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteScene(scene.id);
-                    }}
-                  >
-                    ×
-                  </button>
-                )}
+        <div className="flex-shrink-0 h-24 border-t border-border bg-card px-4 flex items-center gap-3 overflow-x-auto">
+          <span className="text-xs text-muted-foreground whitespace-nowrap">Scenes:</span>
+          {scenes.map((scene) => (
+            <div 
+              key={scene.id}
+              className={`relative flex-shrink-0 w-20 h-16 rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${
+                currentSceneId === scene.id ? 'border-primary ring-2 ring-primary/30' : 'border-border hover:border-primary/50'
+              }`}
+              onClick={() => setCurrentSceneId(scene.id)}
+            >
+              <img 
+                src={scene.panoramaUrl} 
+                alt={scene.name}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-black/40 flex items-end p-1">
+                <span className="text-[10px] text-white truncate w-full">{scene.name}</span>
               </div>
-            ))}
-            
-            {/* Add Scene Buttons */}
-            <div className="flex gap-2 flex-shrink-0">
-              <div 
-                className="w-20 h-16 rounded-lg border-2 border-dashed border-primary/50 hover:border-primary cursor-pointer flex flex-col items-center justify-center text-xs text-primary"
-                onClick={() => document.getElementById('add-scene-360')?.click()}
-              >
-                <Camera className="w-4 h-4 mb-1" />
-                +360°
-              </div>
-              <div 
-                className="w-20 h-16 rounded-lg border-2 border-dashed border-border hover:border-primary cursor-pointer flex flex-col items-center justify-center text-xs"
-                onClick={() => document.getElementById('add-scene-regular')?.click()}
-              >
-                <ImageIcon className="w-4 h-4 mb-1" />
-                +Regular
-              </div>
-            </div>
-            <input 
-              id="add-scene-360" 
-              type="file" 
-              accept="image/*,video/*" 
-              className="hidden" 
-              onChange={(e) => addNewScene(e, true)}
-            />
-            <input 
-              id="add-scene-regular" 
-              type="file" 
-              accept="image/*,video/*" 
-              className="hidden" 
-              onChange={(e) => addNewScene(e, false)}
-            />
-          </div>
-        </div>
-      </Card>
-
-      {/* Right Panel - Hotspot Properties */}
-      <Card className="glass border-border lg:col-span-1 overflow-y-auto">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Settings className="w-4 h-4" />
-            Properties
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {selectedHotspot ? (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-secondary/30">
-                <span className="text-2xl">{HOTSPOT_CONFIG[selectedHotspot.type].icon}</span>
-                <div>
-                  <div className="font-medium">{HOTSPOT_CONFIG[selectedHotspot.type].label}</div>
-                  <div className="text-xs text-muted-foreground">{HOTSPOT_CONFIG[selectedHotspot.type].description}</div>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-xs">Label</Label>
-                <Input 
-                  value={selectedHotspot.text || ''} 
-                  onChange={(e) => updateHotspot(selectedHotspot.id, { text: e.target.value })}
-                  placeholder="Display name..."
-                />
-              </div>
-
-              {selectedHotspot.type === 'table' && (
-                <>
-                  <div className="space-y-2">
-                    <Label className="text-xs">Table Number</Label>
-                    <Input 
-                      value={selectedHotspot.tableNumber || ''} 
-                      onChange={(e) => updateHotspot(selectedHotspot.id, { tableNumber: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-xs">Seats / Capacity</Label>
-                    <Input 
-                      type="number"
-                      min={1}
-                      max={20}
-                      value={selectedHotspot.capacity || 4} 
-                      onChange={(e) => updateHotspot(selectedHotspot.id, { capacity: parseInt(e.target.value) })}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-xs">Status</Label>
-                    <div className="flex flex-wrap gap-1">
-                      {(['available', 'occupied', 'reserved'] as const).map((status) => (
-                        <Button 
-                          key={status}
-                          variant={selectedHotspot.status === status ? 'default' : 'outline'}
-                          size="sm"
-                          className={`text-xs ${selectedHotspot.status === status ? getStatusColor(status) : ''}`}
-                          onClick={() => updateHotspot(selectedHotspot.id, { status })}
-                        >
-                          {status}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                </>
+              {scene.is360 && (
+                <Badge className="absolute top-0.5 left-0.5 text-[8px] px-1 py-0 h-4">360°</Badge>
               )}
-
-              {selectedHotspot.type === 'goto' && (
-                <div className="space-y-2">
-                  <Label className="text-xs">Navigate To Scene</Label>
-                  <Select
-                    value={selectedHotspot.targetScene || ''}
-                    onValueChange={(value) => updateHotspot(selectedHotspot.id, { targetScene: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select destination..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {scenes.filter(s => s.id !== currentSceneId).map((scene) => (
-                        <SelectItem key={scene.id} value={scene.id}>
-                          {scene.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    When clicked, user will be taken to this area
-                  </p>
-                </div>
-              )}
-
-              <div className="pt-2 space-y-2">
-                <div className="text-xs text-muted-foreground">
-                  Position: {selectedHotspot.pitch.toFixed(1)}°, {selectedHotspot.yaw.toFixed(1)}°
-                </div>
-                <Button 
-                  variant="destructive" 
-                  className="w-full"
-                  size="sm"
-                  onClick={() => deleteHotspot(selectedHotspot.id)}
+              {scenes.length > 1 && (
+                <button
+                  className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center hover:bg-red-600"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteScene(scene.id);
+                  }}
                 >
-                  <Trash2 className="w-4 h-4 mr-2" /> Delete
-                </Button>
-              </div>
+                  ×
+                </button>
+              )}
             </div>
-          ) : (
-            <div className="text-center py-8">
-              <MapPin className="w-12 h-12 mx-auto mb-3 text-muted-foreground/50" />
-              <p className="text-sm text-muted-foreground">
-                Select a hotspot to edit its properties
-              </p>
+          ))}
+          
+          <div className="flex gap-2 flex-shrink-0">
+            <div 
+              className="w-16 h-16 rounded-lg border-2 border-dashed border-primary/50 hover:border-primary cursor-pointer flex flex-col items-center justify-center text-xs text-primary"
+              onClick={() => document.getElementById('add-scene-360')?.click()}
+            >
+              <Camera className="w-4 h-4 mb-1" />
+              +360°
             </div>
-          )}
+            <div 
+              className="w-16 h-16 rounded-lg border-2 border-dashed border-border hover:border-primary cursor-pointer flex flex-col items-center justify-center text-xs"
+              onClick={() => document.getElementById('add-scene-regular')?.click()}
+            >
+              <ImageIcon className="w-4 h-4 mb-1" />
+              +Img
+            </div>
+          </div>
+          <input 
+            id="add-scene-360" 
+            type="file" 
+            accept="image/*" 
+            className="hidden" 
+            onChange={(e) => addNewScene(e, true)}
+          />
+          <input 
+            id="add-scene-regular" 
+            type="file" 
+            accept="image/*" 
+            className="hidden" 
+            onChange={(e) => addNewScene(e, false)}
+          />
+        </div>
+      </div>
 
-          {/* Hotspots List */}
-          {currentScene && currentScene.hotspots.length > 0 && (
-            <div className="mt-6 pt-4 border-t">
-              <Label className="text-xs text-muted-foreground mb-2 block">
-                All Hotspots ({currentScene.hotspots.length})
-              </Label>
-              <div className="space-y-1 max-h-48 overflow-y-auto">
-                {currentScene.hotspots.map((hs) => (
-                  <div 
-                    key={hs.id}
-                    className={`p-2 rounded-lg cursor-pointer flex items-center gap-2 text-sm transition-all ${
-                      selectedHotspot?.id === hs.id ? 'bg-primary/20 border border-primary' : 'bg-secondary/30 hover:bg-secondary/50'
-                    }`}
-                    onClick={() => setSelectedHotspot(hs)}
-                  >
-                    <span>{HOTSPOT_CONFIG[hs.type].icon}</span>
-                    <span className="truncate flex-1">{hs.text}</span>
-                    {hs.type === 'table' && (
-                      <Badge variant="secondary" className="text-xs">
-                        {hs.capacity}
-                      </Badge>
-                    )}
-                  </div>
-                ))}
+      {/* Right Panel - Properties */}
+      <div className="w-56 flex-shrink-0 bg-card border-l border-border overflow-y-auto p-4">
+        <div className="flex items-center gap-2 mb-4">
+          <Settings className="w-4 h-4" />
+          <span className="font-semibold text-sm">Properties</span>
+        </div>
+        
+        {selectedHotspot ? (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-secondary/30">
+              <span className="text-2xl">{HOTSPOT_CONFIG[selectedHotspot.type].icon}</span>
+              <div>
+                <div className="font-medium text-sm">{HOTSPOT_CONFIG[selectedHotspot.type].label}</div>
+                <div className="text-[10px] text-muted-foreground">{HOTSPOT_CONFIG[selectedHotspot.type].description}</div>
               </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
+
+            <div className="space-y-2">
+              <Label className="text-xs">Label</Label>
+              <Input 
+                value={selectedHotspot.text || ''} 
+                onChange={(e) => updateHotspot(selectedHotspot.id, { text: e.target.value })}
+                placeholder="Display name..."
+                className="h-8 text-sm"
+              />
+            </div>
+
+            {selectedHotspot.type === 'table' && (
+              <>
+                <div className="space-y-2">
+                  <Label className="text-xs">Table Number</Label>
+                  <Input 
+                    value={selectedHotspot.tableNumber || ''} 
+                    onChange={(e) => updateHotspot(selectedHotspot.id, { tableNumber: e.target.value })}
+                    className="h-8 text-sm"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs">Seats</Label>
+                  <Input 
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={selectedHotspot.capacity || 4} 
+                    onChange={(e) => updateHotspot(selectedHotspot.id, { capacity: parseInt(e.target.value) })}
+                    className="h-8 text-sm"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs">Status</Label>
+                  <div className="flex flex-wrap gap-1">
+                    {(['available', 'occupied', 'reserved'] as const).map((status) => (
+                      <Button 
+                        key={status}
+                        variant={selectedHotspot.status === status ? 'default' : 'outline'}
+                        size="sm"
+                        className={`text-[10px] h-6 px-2 ${selectedHotspot.status === status ? getStatusColor(status) : ''}`}
+                        onClick={() => updateHotspot(selectedHotspot.id, { status })}
+                      >
+                        {status}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {selectedHotspot.type === 'goto' && (
+              <div className="space-y-2">
+                <Label className="text-xs">Navigate To Scene</Label>
+                <Select
+                  value={selectedHotspot.targetScene || ''}
+                  onValueChange={(value) => updateHotspot(selectedHotspot.id, { targetScene: value })}
+                >
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue placeholder="Select destination..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {scenes.filter(s => s.id !== currentSceneId).map((scene) => (
+                      <SelectItem key={scene.id} value={scene.id}>
+                        {scene.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[10px] text-muted-foreground">
+                  When clicked, user goes to this area
+                </p>
+              </div>
+            )}
+
+            <div className="pt-2 space-y-2">
+              <div className="text-[10px] text-muted-foreground">
+                Position: {selectedHotspot.pitch.toFixed(1)}°, {selectedHotspot.yaw.toFixed(1)}°
+              </div>
+              <Button 
+                variant="destructive" 
+                className="w-full"
+                size="sm"
+                onClick={() => deleteHotspot(selectedHotspot.id)}
+              >
+                <Trash2 className="w-3 h-3 mr-1" /> Delete
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <MapPin className="w-10 h-10 mx-auto mb-3 text-muted-foreground/50" />
+            <p className="text-xs text-muted-foreground">
+              Select a hotspot to edit its properties
+            </p>
+          </div>
+        )}
+
+        {/* Hotspots List */}
+        {currentScene && currentScene.hotspots.length > 0 && (
+          <div className="mt-4 pt-4 border-t">
+            <Label className="text-xs text-muted-foreground mb-2 block">
+              All Hotspots ({currentScene.hotspots.length})
+            </Label>
+            <div className="space-y-1 max-h-40 overflow-y-auto">
+              {currentScene.hotspots.map((hs) => (
+                <div 
+                  key={hs.id}
+                  className={`p-2 rounded-lg cursor-pointer flex items-center gap-2 text-xs transition-all ${
+                    selectedHotspot?.id === hs.id ? 'bg-primary/20 border border-primary' : 'bg-secondary/30 hover:bg-secondary/50'
+                  }`}
+                  onClick={() => setSelectedHotspot(hs)}
+                >
+                  <span>{HOTSPOT_CONFIG[hs.type].icon}</span>
+                  <span className="truncate flex-1">{hs.text}</span>
+                  {hs.type === 'table' && (
+                    <Badge variant="secondary" className="text-[10px]">
+                      {hs.capacity}
+                    </Badge>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 
-  // Render preview mode (customer view)
+  // Render preview mode - FULLSCREEN with proper sizing
   const renderPreviewMode = () => (
-    <div className={`space-y-4 ${isFullscreen ? 'h-screen p-4' : ''}`}>
-      <div className="flex items-center justify-between">
+    <div className="h-full flex flex-col">
+      {/* Header */}
+      <div className="flex-shrink-0 h-16 border-b border-border flex items-center justify-between px-6 bg-card">
         <div>
-          <h2 className="text-2xl font-bold">{tourName} - Customer Preview</h2>
-          <p className="text-muted-foreground">This is how customers will experience your venue when checked-in</p>
+          <h2 className="text-lg font-bold">{tourName} - Customer Preview</h2>
+          <p className="text-xs text-muted-foreground">This is how customers experience your venue when checked-in</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setShowAIChat(true)}>
+          <Button variant="outline" size="sm" onClick={() => setShowAIChat(true)}>
             <Bot className="w-4 h-4 mr-2" /> AI Waiter
           </Button>
-          <Button onClick={() => setFloorplanMode('editor')}>
+          <Button size="sm" onClick={() => setFloorplanMode('editor')}>
             <Edit className="w-4 h-4 mr-2" /> Back to Editor
           </Button>
         </div>
       </div>
 
-      <Card className="glass border-border relative">
-        <CardContent className="p-2">
-          {currentScene?.is360 ? (
-            <div 
-              ref={viewerRef}
-              className="w-full rounded-lg overflow-hidden"
-              style={{ height: isFullscreen ? 'calc(100vh - 200px)' : '70vh' }}
+      {/* Main Preview Area - Properly sized */}
+      <div className="flex-1 p-6 overflow-auto flex items-center justify-center bg-background/50">
+        {currentScene?.is360 ? (
+          <div 
+            ref={viewerRef}
+            className="rounded-lg overflow-hidden shadow-2xl"
+            style={{ 
+              width: '100%',
+              maxWidth: orientation === 'landscape' ? '1200px' : '400px',
+              aspectRatio: orientation === 'landscape' ? '16/9' : '9/16',
+              maxHeight: 'calc(100vh - 280px)'
+            }}
+          />
+        ) : (
+          <div 
+            className="relative rounded-lg overflow-hidden shadow-2xl bg-black"
+            style={{ 
+              maxWidth: '100%',
+              maxHeight: 'calc(100vh - 280px)'
+            }}
+          >
+            <img 
+              src={currentScene?.panoramaUrl} 
+              alt={currentScene?.name}
+              className="max-w-full max-h-full object-contain"
+              style={{ maxHeight: 'calc(100vh - 280px)' }}
             />
-          ) : (
-            <div 
-              className="w-full rounded-lg overflow-hidden relative"
-              style={{ height: isFullscreen ? 'calc(100vh - 200px)' : '70vh' }}
-            >
-              <img 
-                src={currentScene?.panoramaUrl} 
-                alt={currentScene?.name}
-                className="w-full h-full object-cover"
-              />
-              {/* Render hotspots */}
-              {currentScene?.hotspots.map((hs) => (
-                <div
-                  key={hs.id}
-                  className="absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer hover:scale-110 transition-transform"
-                  style={{ left: `${hs.yaw}%`, top: `${hs.pitch}%` }}
-                  onClick={() => {
-                    if (hs.type === 'goto' && hs.targetScene) {
-                      setCurrentSceneId(hs.targetScene);
-                    } else {
-                      toast.info(`${HOTSPOT_CONFIG[hs.type].label}: ${hs.text}`);
-                    }
-                  }}
-                >
-                  <div className={`${HOTSPOT_CONFIG[hs.type].color} rounded-full w-12 h-12 flex items-center justify-center text-2xl shadow-lg border-2 border-white animate-pulse`}>
-                    {HOTSPOT_CONFIG[hs.type].icon}
-                  </div>
+            {/* Hotspots */}
+            {currentScene?.hotspots.map((hs) => (
+              <div
+                key={hs.id}
+                className="absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer hover:scale-110 transition-transform"
+                style={{ left: `${hs.yaw}%`, top: `${hs.pitch}%` }}
+                onClick={() => {
+                  if (hs.type === 'goto' && hs.targetScene) {
+                    setCurrentSceneId(hs.targetScene);
+                  } else {
+                    toast.info(`${HOTSPOT_CONFIG[hs.type].label}: ${hs.text}`);
+                  }
+                }}
+              >
+                <div className={`${HOTSPOT_CONFIG[hs.type].color} rounded-full w-12 h-12 flex items-center justify-center text-2xl shadow-lg border-2 border-white animate-pulse`}>
+                  {HOTSPOT_CONFIG[hs.type].icon}
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-
+              </div>
+            ))}
+          </div>
+        )}
+        
         {/* AI Chat Floating Button */}
         <Button
-          className="absolute bottom-4 right-4 rounded-full w-14 h-14 bg-gradient-to-r from-cyan-500 to-purple-500 shadow-lg"
+          className="fixed bottom-24 right-8 rounded-full w-14 h-14 bg-gradient-to-r from-cyan-500 to-purple-500 shadow-lg z-20"
           onClick={() => setShowAIChat(true)}
         >
           <MessageSquare className="w-6 h-6" />
         </Button>
-      </Card>
-
-      {/* Legend */}
-      <div className="flex items-center justify-center gap-6 flex-wrap">
-        {Object.entries(HOTSPOT_CONFIG).map(([type, config]) => (
-          <div key={type} className="flex items-center gap-2">
-            <span className="text-xl">{config.icon}</span>
-            <span className="text-sm">{config.label}</span>
-          </div>
-        ))}
       </div>
 
-      {/* Scenes Navigation */}
-      {scenes.length > 1 && (
-        <div className="flex items-center justify-center gap-4">
-          {scenes.map((scene) => (
-            <Button
-              key={scene.id}
-              variant={currentSceneId === scene.id ? "default" : "outline"}
-              onClick={() => setCurrentSceneId(scene.id)}
-            >
-              {scene.name}
-              {scene.is360 && <Badge variant="secondary" className="ml-2 text-xs">360°</Badge>}
-            </Button>
+      {/* Legend */}
+      <div className="flex-shrink-0 py-3 border-t border-border bg-card">
+        <div className="flex items-center justify-center gap-4 flex-wrap mb-3">
+          {Object.entries(HOTSPOT_CONFIG).map(([type, config]) => (
+            <div key={type} className="flex items-center gap-1.5">
+              <span className="text-lg">{config.icon}</span>
+              <span className="text-xs">{config.label}</span>
+            </div>
           ))}
         </div>
-      )}
+
+        {/* Scenes Navigation */}
+        {scenes.length > 1 && (
+          <div className="flex items-center justify-center gap-2">
+            {scenes.map((scene) => (
+              <Button
+                key={scene.id}
+                variant={currentSceneId === scene.id ? "default" : "outline"}
+                size="sm"
+                onClick={() => setCurrentSceneId(scene.id)}
+              >
+                {scene.name}
+              </Button>
+            ))}
+          </div>
+        )}
+
+        {/* Orientation Indicator */}
+        <div className="flex justify-center mt-2">
+          <Badge variant="outline" className="text-xs">
+            {orientation === 'landscape' ? '↔️ Landscape Mode' : '↕️ Portrait Mode'}
+          </Badge>
+        </div>
+      </div>
 
       {/* AI Chat Modal */}
       {showAIChat && (
@@ -1014,88 +1110,89 @@ export default function FloorplanEditor() {
     </div>
   );
 
-  // Fullscreen wrapper
+  // Custom styles
+  const hotspotStyles = `
+    .venue-hotspot {
+      cursor: pointer !important;
+    }
+    .venue-hotspot .hotspot-marker {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.2s ease;
+    }
+    .venue-hotspot:hover .hotspot-marker {
+      transform: scale(1.2);
+    }
+    .pnlm-container {
+      background: #1a1a2e !important;
+    }
+  `;
+
+  // FULLSCREEN MODE - Editor or Preview (no sidebar)
   if (isFullscreen && floorplanMode !== 'upload') {
     return (
-      <div className="fixed inset-0 z-50 bg-background">
-        {/* Add custom styles for hotspots */}
-        <style>{`
-          .venue-hotspot {
-            cursor: pointer !important;
-          }
-          .venue-hotspot .hotspot-marker {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: transform 0.2s ease;
-          }
-          .venue-hotspot:hover .hotspot-marker {
-            transform: scale(1.2);
-          }
-          .pnlm-container {
-            background: #1a1a2e !important;
-          }
-        `}</style>
+      <div className="fixed inset-0 z-50 bg-background flex flex-col">
+        <style>{hotspotStyles}</style>
 
-        {/* Minimal header for fullscreen */}
-        <div className="absolute top-4 left-4 z-10 flex items-center gap-4">
-          <h1 className="text-xl font-bold">{tourName}</h1>
-          <Badge>{floorplanMode === 'editor' ? 'Editor' : 'Preview'}</Badge>
-        </div>
-
-        <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => setIsFullscreen(false)}
-          >
-            <Minimize2 className="w-4 h-4 mr-2" /> Exit Fullscreen
-          </Button>
-          {floorplanMode === 'editor' && (
-            <Button size="sm" onClick={() => setFloorplanMode('upload')}>
-              <Upload className="w-4 h-4 mr-2" /> New Upload
+        {/* Top Header Bar */}
+        <div className="flex-shrink-0 h-12 border-b border-border flex items-center justify-between px-4 bg-card">
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => setShowSidebar(!showSidebar)}
+              className="h-8 w-8 p-0"
+            >
+              {showSidebar ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeft className="w-4 h-4" />}
             </Button>
-          )}
+            <h1 className="text-lg font-bold">{tourName}</h1>
+            <Badge>{floorplanMode === 'editor' ? 'Editor' : 'Preview'}</Badge>
+            <Badge variant="outline" className="text-xs">
+              {orientation === 'landscape' ? '↔️' : '↕️'} {orientation}
+            </Badge>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setIsFullscreen(false)}
+            >
+              <Minimize2 className="w-4 h-4 mr-2" /> Exit Fullscreen
+            </Button>
+            {floorplanMode === 'editor' && (
+              <Button size="sm" onClick={() => setFloorplanMode('upload')}>
+                <Upload className="w-4 h-4 mr-2" /> New Upload
+              </Button>
+            )}
+          </div>
         </div>
 
-        {floorplanMode === 'editor' && renderEditorMode()}
-        {floorplanMode === 'preview' && renderPreviewMode()}
+        {/* Main Content */}
+        <div className="flex-1 overflow-hidden">
+          {floorplanMode === 'editor' && renderEditorMode()}
+          {floorplanMode === 'preview' && renderPreviewMode()}
+        </div>
       </div>
     );
   }
 
+  // NON-FULLSCREEN MODE (with sidebar) - mostly upload mode
   return (
     <div className="p-6">
-      {/* Add custom styles for hotspots */}
-      <style>{`
-        .venue-hotspot {
-          cursor: pointer !important;
-        }
-        .venue-hotspot .hotspot-marker {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: transform 0.2s ease;
-        }
-        .venue-hotspot:hover .hotspot-marker {
-          transform: scale(1.2);
-        }
-        .pnlm-container {
-          background: #1a1a2e !important;
-        }
-      `}</style>
+      <style>{hotspotStyles}</style>
 
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold mb-1">360° Immersive Floorplan Editor</h1>
           <p className="text-muted-foreground">
-            {floorplanMode === 'upload' && 'Upload your 360° venue media to create an immersive tour'}
+            {floorplanMode === 'upload' && 'Upload your venue media to create an immersive tour'}
             {floorplanMode === 'editor' && 'Add tables, bars, entry/exit points, and navigation hotspots'}
             {floorplanMode === 'preview' && 'Experience your venue as customers will see it'}
           </p>
         </div>
         
-        {/* Mode Indicator */}
         <div className="flex items-center gap-2">
           {(['upload', 'editor', 'preview'] as FloorplanMode[]).map((mode, i) => (
             <div key={mode} className="flex items-center">
