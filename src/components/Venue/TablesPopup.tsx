@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Clock, MapPin, ChevronRight, Edit2, Eye } from "lucide-react";
+import { Users, Clock, MapPin, ChevronRight, Edit2, Eye, Maximize2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import Immersive360Viewer from "./Immersive360Viewer";
 
 interface Table {
   id: string;
@@ -31,12 +32,15 @@ export default function TablesPopup({ isOpen, onClose }: TablesPopupProps) {
   const [selectedTable, setSelectedTable] = useState<Table | null>(null);
   const [floorplanMedia, setFloorplanMedia] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'immersive'>('grid');
+  const [showImmersiveViewer, setShowImmersiveViewer] = useState(false);
+  const [has360Floorplan, setHas360Floorplan] = useState(false);
 
   useEffect(() => {
     // First try to load from 360 floorplan
     const saved360 = localStorage.getItem('venue_floorplan_360');
     if (saved360) {
       const data = JSON.parse(saved360);
+      setHas360Floorplan(true);
       
       // Get first scene panorama as background
       if (data.scenes?.length > 0) {
@@ -62,6 +66,8 @@ export default function TablesPopup({ isOpen, onClose }: TablesPopupProps) {
         setTables(loadedTables);
         return;
       }
+    } else {
+      setHas360Floorplan(false);
     }
 
     // Fallback to old floorplan format
@@ -168,8 +174,19 @@ export default function TablesPopup({ isOpen, onClose }: TablesPopupProps) {
         <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'grid' | 'immersive')} className="mb-4">
           <TabsList className="bg-slate-800">
             <TabsTrigger value="grid">Grid View</TabsTrigger>
-            <TabsTrigger value="immersive">Immersive View</TabsTrigger>
+            <TabsTrigger value="immersive" className="flex items-center gap-2">
+              <Maximize2 className="w-3 h-3" /> Immersive View
+            </TabsTrigger>
           </TabsList>
+          {viewMode === 'immersive' && has360Floorplan && (
+            <Button 
+              size="sm" 
+              className="ml-4 bg-gradient-to-r from-cyan-500 to-purple-500"
+              onClick={() => setShowImmersiveViewer(true)}
+            >
+              <Eye className="w-4 h-4 mr-2" /> Open Fullscreen 360°
+            </Button>
+          )}
         </Tabs>
 
         {/* Legend */}
@@ -366,6 +383,13 @@ export default function TablesPopup({ isOpen, onClose }: TablesPopupProps) {
           </Button>
         </div>
       </DialogContent>
+
+      {/* Fullscreen 360° Immersive Viewer */}
+      <Immersive360Viewer 
+        isOpen={showImmersiveViewer} 
+        onClose={() => setShowImmersiveViewer(false)}
+        isVenueOwner={true}
+      />
     </Dialog>
   );
 }

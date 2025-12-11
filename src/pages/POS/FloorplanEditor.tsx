@@ -51,6 +51,7 @@ interface VenueScene {
 
 type FloorplanMode = 'upload' | 'editor' | 'preview';
 type MediaType = '360photo' | '360video' | 'regular';
+type Orientation = 'portrait' | 'landscape';
 
 const HOTSPOT_CONFIG: Record<HotspotType, { icon: string; label: string; color: string; description: string }> = {
   table: { icon: '🪑', label: 'Table', color: 'bg-green-500', description: 'Seating area with ordering' },
@@ -73,6 +74,7 @@ export default function FloorplanEditor() {
   const [tourName, setTourName] = useState("My Venue Tour");
   const [isFullscreen, setIsFullscreen] = useState(true); // Default to fullscreen
   const [showAIChat, setShowAIChat] = useState(false);
+  const [orientation, setOrientation] = useState<Orientation>('landscape'); // Orientation for entire tour
   
   // Scenes for multi-room tours
   const [scenes, setScenes] = useState<VenueScene[]>([]);
@@ -322,6 +324,7 @@ export default function FloorplanEditor() {
     const floorplanData = {
       name: tourName,
       mediaType,
+      orientation, // Save orientation setting
       scenes,
       tableCounter,
       tables: allTables, // Include extracted tables for sync
@@ -371,6 +374,7 @@ export default function FloorplanEditor() {
       const data = JSON.parse(saved);
       setTourName(data.name || "My Venue Tour");
       setMediaType(data.mediaType || '360photo');
+      setOrientation(data.orientation || 'landscape');
       setScenes(data.scenes || []);
       setTableCounter(data.tableCounter || 1);
       if (data.scenes?.length > 0) {
@@ -406,6 +410,46 @@ export default function FloorplanEditor() {
             placeholder="Type your tour name here..."
             className="text-lg h-12"
           />
+        </CardContent>
+      </Card>
+
+      {/* Orientation Selection - IMPORTANT: Choose once for entire tour */}
+      <Card className="border-primary/50 bg-primary/5">
+        <CardContent className="p-6">
+          <Label className="text-lg font-semibold mb-3 block">Tour Orientation</Label>
+          <p className="text-sm text-muted-foreground mb-4">
+            Choose the orientation for your entire tour. This ensures a consistent experience for visitors.
+          </p>
+          <div className="grid grid-cols-2 gap-4">
+            <div 
+              className={`cursor-pointer rounded-xl p-6 border-2 transition-all ${
+                orientation === 'landscape' 
+                  ? 'border-primary bg-primary/20' 
+                  : 'border-border hover:border-primary/50'
+              }`}
+              onClick={() => setOrientation('landscape')}
+            >
+              <div className="w-full h-20 bg-slate-700 rounded-lg mb-3 flex items-center justify-center">
+                <div className="w-16 h-10 bg-primary/50 rounded border-2 border-primary" />
+              </div>
+              <h4 className="font-semibold text-center">Landscape</h4>
+              <p className="text-xs text-muted-foreground text-center">Best for tablets & desktops</p>
+            </div>
+            <div 
+              className={`cursor-pointer rounded-xl p-6 border-2 transition-all ${
+                orientation === 'portrait' 
+                  ? 'border-primary bg-primary/20' 
+                  : 'border-border hover:border-primary/50'
+              }`}
+              onClick={() => setOrientation('portrait')}
+            >
+              <div className="w-full h-20 bg-slate-700 rounded-lg mb-3 flex items-center justify-center">
+                <div className="w-10 h-16 bg-primary/50 rounded border-2 border-primary" />
+              </div>
+              <h4 className="font-semibold text-center">Portrait</h4>
+              <p className="text-xs text-muted-foreground text-center">Best for mobile phones</p>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
