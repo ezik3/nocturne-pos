@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { useNavigate, useBlocker } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -131,19 +131,15 @@ export default function FloorplanEditor() {
   // Get current scene
   const currentScene = scenes.find(s => s.id === currentSceneId);
 
-  // Navigation blocker for unsaved changes
-  const blocker = useBlocker(
-    ({ currentLocation, nextLocation }) =>
-      hasUnsavedChanges && currentLocation.pathname !== nextLocation.pathname
-  );
-
-  // Handle blocker state
-  useEffect(() => {
-    if (blocker.state === "blocked") {
+  // Custom navigation handler for unsaved changes
+  const handleNavigation = useCallback((path: string) => {
+    if (hasUnsavedChanges) {
+      setPendingNavigation(path);
       setShowExitDialog(true);
-      setPendingNavigation(blocker.location.pathname);
+    } else {
+      navigate(path);
     }
-  }, [blocker.state]);
+  }, [hasUnsavedChanges, navigate]);
 
   // Browser beforeunload handler
   useEffect(() => {
@@ -544,16 +540,15 @@ export default function FloorplanEditor() {
     }
     setHasUnsavedChanges(false);
     setShowExitDialog(false);
-    if (blocker.state === "blocked") {
-      blocker.proceed();
+    if (pendingNavigation) {
+      navigate(pendingNavigation);
+      setPendingNavigation(null);
     }
   };
 
   const handleExitCancel = () => {
     setShowExitDialog(false);
-    if (blocker.state === "blocked") {
-      blocker.reset();
-    }
+    setPendingNavigation(null);
   };
 
   // Load floorplan
