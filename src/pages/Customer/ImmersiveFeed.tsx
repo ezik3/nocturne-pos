@@ -280,11 +280,11 @@ const ImmersiveFeed = () => {
       <div 
         ref={containerRef}
         onScroll={handleScroll}
-        className="pt-44 h-screen overflow-y-auto snap-y-mandatory scrollbar-hide"
+        className="fixed top-[176px] left-0 right-0 bottom-0 overflow-y-auto scrollbar-hide"
         style={{ scrollSnapType: 'y mandatory' }}
       >
         {posts.length === 0 ? (
-          <div className="h-[calc(100vh-176px)] flex flex-col items-center justify-center">
+          <div className="h-full flex flex-col items-center justify-center">
             <div className="w-24 h-24 mb-6 relative">
               <div className="absolute inset-0 bg-gradient-to-br from-cyan via-purple to-pink rounded-2xl opacity-30 animate-pulse" 
                    style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }} />
@@ -306,7 +306,7 @@ const ImmersiveFeed = () => {
           posts.map((post, index) => (
             <div 
               key={post.id} 
-              className="h-[calc(100vh-176px)] snap-start"
+              className="h-full w-full"
               style={{ scrollSnapAlign: 'start' }}
             >
               <ImmersivePostCard
@@ -315,7 +315,7 @@ const ImmersiveFeed = () => {
                 authorAvatar={post.customer_profiles?.avatar_url}
                 isOnline={Math.random() > 0.5}
                 isGold={post.post_type === "gold"}
-                isAR={index % 3 === 0} // Mock AR indicator
+                isAR={index % 3 === 0}
                 content={post.content}
                 imageUrl={post.image_url}
                 videoUrl={post.video_url}
@@ -328,6 +328,15 @@ const ImmersiveFeed = () => {
                 onComment={() => handleCommentClick(post)}
                 onShare={() => toast.info("Share coming soon!")}
                 isActive={index === currentPostIndex}
+                allPosts={posts.map(p => ({ id: p.id, content: p.content, videoUrl: p.video_url, imageUrl: p.image_url }))}
+                onNavigateToSimilar={(postId) => {
+                  const targetIndex = posts.findIndex(p => p.id === postId);
+                  if (targetIndex !== -1 && containerRef.current) {
+                    const postHeight = containerRef.current.clientHeight;
+                    containerRef.current.scrollTo({ top: targetIndex * postHeight, behavior: 'smooth' });
+                    setCurrentPostIndex(targetIndex);
+                  }
+                }}
               />
             </div>
           ))
