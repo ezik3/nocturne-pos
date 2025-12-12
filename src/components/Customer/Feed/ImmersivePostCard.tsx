@@ -66,6 +66,8 @@ const ImmersivePostCard = ({
   const [showFullContent, setShowFullContent] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  const MAX_PREVIEW_LENGTH = 50;
+
   const handlePound = () => {
     setIsPounding(true);
     onPound();
@@ -87,7 +89,42 @@ const ImmersivePostCard = ({
   }, [isActive, isPlaying]);
 
   return (
-    <article className="relative w-full h-full flex flex-col immersive-post">
+    <>
+      {/* Full Content Overlay */}
+      {showFullContent && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-6"
+          onClick={() => setShowFullContent(false)}
+        >
+          <div 
+            className="max-w-lg max-h-[80vh] overflow-y-auto bg-gradient-to-br from-gray-900/95 to-black/95 rounded-2xl p-6 border border-white/10"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <Avatar className={`w-10 h-10 ring-2 ${isGold ? 'ring-gold' : 'ring-cyan'}`}>
+                <AvatarImage src={authorAvatar} alt={authorName} className="object-cover" />
+                <AvatarFallback className="bg-gradient-to-br from-purple to-pink text-white font-bold">
+                  {authorName?.[0]?.toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <span className={`font-bold ${isGold ? 'text-gold' : 'text-white'}`}>
+                @{authorName}
+              </span>
+            </div>
+            <p className="text-white text-base leading-relaxed whitespace-pre-wrap">
+              {content}
+            </p>
+            <button 
+              onClick={() => setShowFullContent(false)}
+              className="mt-4 text-cyan text-sm hover:underline"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      <article className="relative w-full h-full flex flex-col immersive-post">
       {/* Background Media - Full Screen */}
       <div className="absolute inset-0">
         {videoUrl ? (
@@ -240,19 +277,20 @@ const ImmersivePostCard = ({
         </div>
 
         {/* Post Content */}
-        <p 
-          className={`text-white text-base leading-relaxed ${!showFullContent && content.length > 100 ? 'line-clamp-2' : ''}`}
-          onClick={() => setShowFullContent(!showFullContent)}
-        >
-          {content}
-        </p>
-        {content.length > 100 && !showFullContent && (
-          <button 
-            onClick={() => setShowFullContent(true)}
-            className="text-white/60 text-sm mt-1"
-          >
-            ...more
-          </button>
+        {content.length > MAX_PREVIEW_LENGTH && !showFullContent ? (
+          <p className="text-white text-base leading-relaxed">
+            {content.slice(0, MAX_PREVIEW_LENGTH)}...
+            <button 
+              onClick={() => setShowFullContent(true)}
+              className="ml-1 text-cyan font-medium hover:underline"
+            >
+              read more
+            </button>
+          </p>
+        ) : (
+          <p className="text-white text-base leading-relaxed">
+            {content}
+          </p>
         )}
 
         {/* Venue & Time */}
@@ -276,7 +314,8 @@ const ImmersivePostCard = ({
           </div>
         )}
       </div>
-    </article>
+      </article>
+    </>
   );
 };
 
