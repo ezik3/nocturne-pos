@@ -280,9 +280,11 @@ const ImmersiveFeed = () => {
       <div 
         ref={containerRef}
         onScroll={handleScroll}
-        className="fixed top-[176px] left-0 right-0 bottom-0 overflow-y-auto scrollbar-hide"
+        className="fixed top-14 left-0 right-0 bottom-0 overflow-y-auto scrollbar-hide"
         style={{ scrollSnapType: 'y mandatory' }}
       >
+        {/* Fade overlay behind stories */}
+        <div className="h-[120px] pointer-events-none" />
         {posts.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center">
             <div className="w-24 h-24 mb-6 relative">
