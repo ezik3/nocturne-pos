@@ -4,6 +4,7 @@ import { Play, Pause, Volume2, VolumeX, MessageCircle, Share2, Sparkles, Clock, 
 import { formatDistanceToNow } from "date-fns";
 import TaggedUsersDisplay from "./TaggedUsersDisplay";
 import FistPoundIcon from "./FistPoundIcon";
+import FistBumpAnimation from "./FistBumpAnimation";
 
 interface TaggedUser {
   id: string;
@@ -30,16 +31,18 @@ interface ImmersivePostCardProps {
   poundsCount: number;
   commentsCount: number;
   createdAt: string;
-  expiresIn?: number; // hours remaining
+  expiresIn?: number;
   onPound: () => void;
   onComment: () => void;
   onShare: () => void;
   onVenueClick?: () => void;
   isActive?: boolean;
+  allPosts?: Array<{ id: string; content: string; videoUrl?: string; imageUrl?: string }>;
+  onNavigateToSimilar?: (postId: string) => void;
 }
 
 // Global state for mute preference
-let globalMutePreference = true; // Start muted
+let globalMutePreference = true;
 
 const ImmersivePostCard = ({
   id,
@@ -62,8 +65,11 @@ const ImmersivePostCard = ({
   onShare,
   onVenueClick,
   isActive = true,
+  allPosts = [],
+  onNavigateToSimilar,
 }: ImmersivePostCardProps) => {
   const [isPounding, setIsPounding] = useState(false);
+  const [showFistBump, setShowFistBump] = useState(false);
   const [isMuted, setIsMuted] = useState(globalMutePreference);
   const [showFullContent, setShowFullContent] = useState(false);
   const [showFullscreenVideo, setShowFullscreenVideo] = useState(false);
@@ -75,13 +81,50 @@ const ImmersivePostCard = ({
 
   const handlePound = () => {
     setIsPounding(true);
+    setShowFistBump(true);
     onPound();
-    setTimeout(() => setIsPounding(false), 500);
+    setTimeout(() => setIsPounding(false), 1500);
   };
+
+  const handleFistBumpComplete = useCallback(() => {
+    setShowFistBump(false);
+  }, []);
 
   // Calculate expiry percentage (0-100)
   const expiryProgress = Math.max(0, Math.min(100, (expiresIn / 24) * 100));
   const isExpiringSoon = expiresIn <= 6;
+
+  // Find similar videos based on content
+  const findSimilarVideo = useCallback(() => {
+    if (!allPosts || allPosts.length <= 1) return null;
+    
+    const currentWords = content.toLowerCase().split(/\s+/);
+    let bestMatch: { id: string; score: number } | null = null;
+    
+    for (const post of allPosts) {
+      if (post.id === id || !post.videoUrl) continue;
+      
+      const postWords = post.content.toLowerCase().split(/\s+/);
+      const commonWords = currentWords.filter(word => 
+        word.length > 3 && postWords.includes(word)
+      );
+      const score = commonWords.length;
+      
+      if (!bestMatch || score > bestMatch.score) {
+        bestMatch = { id: post.id, score };
+      }
+    }
+    
+    // If no good match, return any video post
+    if (!bestMatch || bestMatch.score === 0) {
+      const videoPosts = allPosts.filter(p => p.id !== id && p.videoUrl);
+      if (videoPosts.length > 0) {
+        return videoPosts[Math.floor(Math.random() * videoPosts.length)].id;
+      }
+    }
+    
+    return bestMatch?.id || null;
+  }, [allPosts, content, id]);
 
   // Handle video autoplay when active (muted by default)
   useEffect(() => {
@@ -126,10 +169,15 @@ const ImmersivePostCard = ({
     if (Math.abs(deltaX) > 80 && Math.abs(deltaX) > Math.abs(deltaY)) {
       handleCloseFullscreen();
     }
-    // Vertical swipe up - show similar content (placeholder)
+    // Vertical swipe up - show similar content
     else if (deltaY < -80 && Math.abs(deltaY) > Math.abs(deltaX)) {
-      // TODO: Navigate to similar content
-      handleCloseFullscreen();
+      const similarPostId = findSimilarVideo();
+      if (similarPostId && onNavigateToSimilar) {
+        handleCloseFullscreen();
+        onNavigateToSimilar(similarPostId);
+      } else {
+        handleCloseFullscreen();
+      }
     }
     
     setTouchStart(null);
@@ -158,6 +206,9 @@ const ImmersivePostCard = ({
 
   return (
     <>
+      {/* Fist Bump Animation Overlay */}
+      <FistBumpAnimation show={showFistBump} onComplete={handleFistBumpComplete} />
+
       {/* Fullscreen Video Modal */}
       {showFullscreenVideo && videoUrl && (
         <div 
