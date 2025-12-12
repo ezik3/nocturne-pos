@@ -295,25 +295,25 @@ const CreatePostModal = ({
             <Button 
               variant="ghost" 
               size="icon" 
-              className="bg-neon-cyan/20 hover:bg-neon-cyan/30 border border-neon-cyan/50"
+              className="bg-cyan-500/30 hover:bg-cyan-500/40 border-2 border-cyan-400"
               onClick={() => imageInputRef.current?.click()}
             >
-              <Image className="w-5 h-5 text-neon-cyan" />
+              <Image className="w-5 h-5 text-cyan-300" />
             </Button>
             <Button 
               variant="ghost" 
               size="icon" 
-              className="bg-neon-purple/20 hover:bg-neon-purple/30 border border-neon-purple/50"
+              className="bg-purple-500/30 hover:bg-purple-500/40 border-2 border-purple-400"
               onClick={() => videoInputRef.current?.click()}
             >
-              <Video className="w-5 h-5 text-neon-purple" />
+              <Video className="w-5 h-5 text-purple-300" />
             </Button>
             <Button 
               variant="ghost" 
               size="icon" 
-              className="bg-neon-pink/20 hover:bg-neon-pink/30 border border-neon-pink/50"
+              className="bg-pink-500/30 hover:bg-pink-500/40 border-2 border-pink-400"
             >
-              <Users className="w-5 h-5 text-neon-pink" />
+              <Users className="w-5 h-5 text-pink-300" />
             </Button>
             <Popover open={isLocationOpen} onOpenChange={setIsLocationOpen}>
               <PopoverTrigger asChild>

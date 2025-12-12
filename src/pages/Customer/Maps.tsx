@@ -12,7 +12,7 @@ import { motion, AnimatePresence, useDragControls, PanInfo } from 'framer-motion
 import { 
   Navigation, Car, Bike, Package, MapPin, Clock, DollarSign, 
   Star, Play, Square, Search, X, User, CheckCircle2, ChevronUp,
-  ChevronDown, TrendingUp, Calendar, Wallet, Route
+  ChevronDown, TrendingUp, Calendar, Wallet, Route, Users, Gift, Navigation2
 } from 'lucide-react';
 import Web3FeedHeader from '@/components/Customer/Feed/Web3FeedHeader';
 
@@ -63,6 +63,17 @@ const Maps = () => {
   // Ride booking form
   const [pickupAddress, setPickupAddress] = useState('');
   const [destinationAddress, setDestinationAddress] = useState('');
+  const [pickupSuggestions, setPickupSuggestions] = useState<any[]>([]);
+  const [destinationSuggestions, setDestinationSuggestions] = useState<any[]>([]);
+  const [showPickupSuggestions, setShowPickupSuggestions] = useState(false);
+  const [showDestinationSuggestions, setShowDestinationSuggestions] = useState(false);
+  const [pickupCoords, setPickupCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [destinationCoords, setDestinationCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [fareEstimate, setFareEstimate] = useState<{ fare: number; distance: number; duration: number } | null>(null);
+  const [isForFriend, setIsForFriend] = useState(false);
+  const [friendSearch, setFriendSearch] = useState('');
+  const [friendSuggestions, setFriendSuggestions] = useState<any[]>([]);
+  const [selectedFriend, setSelectedFriend] = useState<any>(null);
 
   // Route visualization
   const [routeCoordinates, setRouteCoordinates] = useState<[number, number][]>([]);
@@ -247,6 +258,139 @@ const Maps = () => {
     }
   }, [activeShift]);
 
+  // Geocoding search function using Mapbox
+  const searchAddresses = useCallback(async (query: string, proximity?: { lat: number; lng: number }) => {
+    if (!query || query.length < 3) return [];
+    
+    try {
+      const proximityParam = proximity 
+        ? `&proximity=${proximity.lng},${proximity.lat}` 
+        : userLocation 
+          ? `&proximity=${userLocation.lng},${userLocation.lat}` 
+          : '';
+      
+      const response = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&autocomplete=true&limit=5${proximityParam}&types=address,poi`
+      );
+      const data = await response.json();
+      return data.features || [];
+    } catch (error) {
+      console.error('Geocoding error:', error);
+      return [];
+    }
+  }, [userLocation]);
+
+  // Handle pickup address search
+  const handlePickupSearch = useCallback(async (value: string) => {
+    setPickupAddress(value);
+    if (value.length >= 3) {
+      const results = await searchAddresses(value);
+      setPickupSuggestions(results);
+      setShowPickupSuggestions(true);
+    } else {
+      setPickupSuggestions([]);
+      setShowPickupSuggestions(false);
+    }
+  }, [searchAddresses]);
+
+  // Handle destination address search
+  const handleDestinationSearch = useCallback(async (value: string) => {
+    setDestinationAddress(value);
+    if (value.length >= 3) {
+      const results = await searchAddresses(value);
+      setDestinationSuggestions(results);
+      setShowDestinationSuggestions(true);
+    } else {
+      setDestinationSuggestions([]);
+      setShowDestinationSuggestions(false);
+    }
+  }, [searchAddresses]);
+
+  // Select pickup suggestion
+  const selectPickupSuggestion = (suggestion: any) => {
+    setPickupAddress(suggestion.place_name);
+    setPickupCoords({ lat: suggestion.center[1], lng: suggestion.center[0] });
+    setShowPickupSuggestions(false);
+    calculateFareEstimate(
+      { lat: suggestion.center[1], lng: suggestion.center[0] },
+      destinationCoords
+    );
+  };
+
+  // Select destination suggestion
+  const selectDestinationSuggestion = (suggestion: any) => {
+    setDestinationAddress(suggestion.place_name);
+    setDestinationCoords({ lat: suggestion.center[1], lng: suggestion.center[0] });
+    setShowDestinationSuggestions(false);
+    calculateFareEstimate(pickupCoords, { lat: suggestion.center[1], lng: suggestion.center[0] });
+  };
+
+  // Calculate fare estimate
+  const calculateFareEstimate = async (
+    pickup: { lat: number; lng: number } | null,
+    destination: { lat: number; lng: number } | null
+  ) => {
+    if (!pickup || !destination) return;
+    
+    try {
+      const response = await fetch(
+        `https://api.mapbox.com/directions/v5/mapbox/driving/${pickup.lng},${pickup.lat};${destination.lng},${destination.lat}?access_token=${MAPBOX_TOKEN}`
+      );
+      const data = await response.json();
+      
+      if (data.routes && data.routes[0]) {
+        const route = data.routes[0];
+        const distanceKm = route.distance / 1000;
+        const durationMin = Math.round(route.duration / 60);
+        // Base fare: $3 + $1.50/km
+        const fare = 3 + (distanceKm * 1.5);
+        setFareEstimate({
+          fare: Math.round(fare * 100) / 100,
+          distance: Math.round(distanceKm * 10) / 10,
+          duration: durationMin,
+        });
+      }
+    } catch (error) {
+      console.error('Route calculation error:', error);
+    }
+  };
+
+  // Use current location for pickup
+  const useCurrentLocationForPickup = () => {
+    if (userLocation) {
+      setPickupCoords(userLocation);
+      // Reverse geocode to get address
+      fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${userLocation.lng},${userLocation.lat}.json?access_token=${MAPBOX_TOKEN}&limit=1`
+      )
+        .then(res => res.json())
+        .then(data => {
+          if (data.features && data.features[0]) {
+            setPickupAddress(data.features[0].place_name);
+          } else {
+            setPickupAddress('Current Location');
+          }
+        });
+    }
+  };
+
+  // Search friends for ride booking
+  const handleFriendSearch = useCallback(async (value: string) => {
+    setFriendSearch(value);
+    if (value.length >= 2) {
+      // Mock friends data - in production would search customer_profiles
+      const mockFriends = [
+        { id: '1', display_name: 'Sarah Johnson', avatar_url: 'https://randomuser.me/api/portraits/women/32.jpg' },
+        { id: '2', display_name: 'Mike Chen', avatar_url: 'https://randomuser.me/api/portraits/men/45.jpg' },
+        { id: '3', display_name: 'Emma Williams', avatar_url: 'https://randomuser.me/api/portraits/women/67.jpg' },
+        { id: '4', display_name: 'David Brown', avatar_url: 'https://randomuser.me/api/portraits/men/22.jpg' },
+      ].filter(f => f.display_name.toLowerCase().includes(value.toLowerCase()));
+      setFriendSuggestions(mockFriends);
+    } else {
+      setFriendSuggestions([]);
+    }
+  }, []);
+
   // Handle driver registration
   const handleDriverSignup = async () => {
     if (!licenseId) {
@@ -276,31 +420,40 @@ const Maps = () => {
       return;
     }
 
-    if (!userLocation) {
-      toast.error('Could not determine your location');
+    const pickup = pickupCoords || userLocation;
+    const destination = destinationCoords;
+
+    if (!pickup) {
+      toast.error('Could not determine pickup location');
       return;
     }
 
-    // Mock destination coordinates (in real app, would geocode the address)
-    const mockDestination = {
-      latitude: userLocation.lat + 0.02,
-      longitude: userLocation.lng + 0.02,
-    };
+    if (!destination) {
+      toast.error('Could not determine destination');
+      return;
+    }
 
     const result = await bookRide(
-      { address: pickupAddress, latitude: userLocation.lat, longitude: userLocation.lng },
-      { address: destinationAddress, latitude: mockDestination.latitude, longitude: mockDestination.longitude }
+      { address: pickupAddress, latitude: pickup.lat, longitude: pickup.lng },
+      { address: destinationAddress, latitude: destination.lat, longitude: destination.lng }
     );
 
     if (result.success) {
       setShowRideBooking(false);
       setTrackingOrder(result.booking);
+      setFareEstimate(null);
+      setSelectedFriend(null);
+      setIsForFriend(false);
       
       // Display route on map
       displayRoute(
-        [userLocation.lng, userLocation.lat],
-        [mockDestination.longitude, mockDestination.latitude]
+        [pickup.lng, pickup.lat],
+        [destination.lng, destination.lat]
       );
+      
+      if (isForFriend && selectedFriend) {
+        toast.success(`Ride booked for ${selectedFriend.display_name}!`);
+      }
     }
   };
 
@@ -410,7 +563,7 @@ const Maps = () => {
                     JV Ride
                   </h3>
                   <p className="text-white/60 text-sm mb-4">
-                    Book a ride for just <span className="text-cyan font-bold">$0.10</span> platform fee. Drivers keep 100%!
+                    Drivers keep <span className="text-cyan font-bold">100%</span> of fares!
                   </p>
                   <Button
                     onClick={() => setShowRideBooking(true)}
@@ -832,7 +985,7 @@ const Maps = () => {
 
       {/* Ride Booking Modal */}
       <Dialog open={showRideBooking} onOpenChange={setShowRideBooking}>
-        <DialogContent className="bg-gradient-to-br from-gray-900 via-black to-gray-900 border-white/10">
+        <DialogContent className="bg-gradient-to-br from-gray-900 via-black to-gray-900 border-white/10 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold bg-gradient-to-r from-cyan to-purple bg-clip-text text-transparent">
               Book a JV Ride
@@ -840,46 +993,181 @@ const Maps = () => {
           </DialogHeader>
           
           <div className="space-y-4">
-            <div className="bg-gradient-to-r from-cyan/10 to-purple/10 rounded-xl p-4 border border-cyan/20">
-              <p className="text-white/80 text-sm">
-                Platform fee: Only <span className="text-cyan font-bold">$0.10</span>
-                <br />
-                <span className="text-white/50">Drivers keep 100% of the fare!</span>
-              </p>
-            </div>
+            {/* Book for friend toggle */}
+            <button
+              onClick={() => {
+                setIsForFriend(!isForFriend);
+                setSelectedFriend(null);
+                setFriendSearch('');
+              }}
+              className={`w-full p-3 rounded-xl border transition-all flex items-center gap-3 ${
+                isForFriend
+                  ? 'border-pink-400 bg-pink-500/20'
+                  : 'border-white/10 hover:border-pink-400/50'
+              }`}
+            >
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                isForFriend ? 'bg-pink-500' : 'bg-white/10'
+              }`}>
+                <Gift className={`w-5 h-5 ${isForFriend ? 'text-white' : 'text-pink-400'}`} />
+              </div>
+              <div className="text-left flex-1">
+                <p className={`font-semibold ${isForFriend ? 'text-pink-400' : 'text-white'}`}>
+                  Book for a Friend
+                </p>
+                <p className="text-xs text-white/50">Send a ride to someone else</p>
+              </div>
+            </button>
 
-            <div>
+            {/* Friend search */}
+            {isForFriend && (
+              <div className="relative">
+                <label className="text-white/70 text-sm mb-1 block flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  Search Friend
+                </label>
+                <Input
+                  value={friendSearch}
+                  onChange={(e) => handleFriendSearch(e.target.value)}
+                  placeholder="Type a friend's name..."
+                  className="bg-white/5 border-white/10 text-white"
+                />
+                {friendSuggestions.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-gray-900 border border-white/20 rounded-xl overflow-hidden shadow-xl">
+                    {friendSuggestions.map((friend) => (
+                      <button
+                        key={friend.id}
+                        onClick={() => {
+                          setSelectedFriend(friend);
+                          setFriendSearch(friend.display_name);
+                          setFriendSuggestions([]);
+                        }}
+                        className="w-full p-3 flex items-center gap-3 hover:bg-white/10 transition-colors text-left"
+                      >
+                        <img src={friend.avatar_url} alt="" className="w-8 h-8 rounded-full" />
+                        <span className="text-white text-sm">{friend.display_name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {selectedFriend && (
+                  <div className="mt-2 p-2 bg-pink-500/20 rounded-lg flex items-center gap-2 border border-pink-400/30">
+                    <img src={selectedFriend.avatar_url} alt="" className="w-8 h-8 rounded-full" />
+                    <span className="text-pink-300 text-sm font-medium">{selectedFriend.display_name}</span>
+                    <button 
+                      onClick={() => {
+                        setSelectedFriend(null);
+                        setFriendSearch('');
+                      }}
+                      className="ml-auto p-1 hover:bg-white/10 rounded-full"
+                    >
+                      <X className="w-4 h-4 text-white/60" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Pickup Location with autocomplete */}
+            <div className="relative">
               <label className="text-white/70 text-sm mb-1 block flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-green-500" />
                 Pickup Location
               </label>
-              <Input
-                value={pickupAddress}
-                onChange={(e) => setPickupAddress(e.target.value)}
-                placeholder="Current location or enter address"
-                className="bg-white/5 border-white/10 text-white"
-              />
+              <div className="flex gap-2">
+                <Input
+                  value={pickupAddress}
+                  onChange={(e) => handlePickupSearch(e.target.value)}
+                  placeholder="Enter pickup address..."
+                  className="bg-white/5 border-white/10 text-white flex-1"
+                />
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={useCurrentLocationForPickup}
+                  className="border-cyan/30 hover:bg-cyan/20"
+                >
+                  <Navigation2 className="w-4 h-4 text-cyan" />
+                </Button>
+              </div>
+              {showPickupSuggestions && pickupSuggestions.length > 0 && (
+                <div className="absolute z-50 w-full mt-1 bg-gray-900 border border-white/20 rounded-xl overflow-hidden shadow-xl max-h-48 overflow-y-auto">
+                  {pickupSuggestions.map((suggestion) => (
+                    <button
+                      key={suggestion.id}
+                      onClick={() => selectPickupSuggestion(suggestion)}
+                      className="w-full p-3 flex items-center gap-3 hover:bg-white/10 transition-colors text-left border-b border-white/5 last:border-0"
+                    >
+                      <MapPin className="w-4 h-4 text-green-400 flex-shrink-0" />
+                      <span className="text-white text-sm line-clamp-2">{suggestion.place_name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            <div>
+            {/* Destination with autocomplete */}
+            <div className="relative">
               <label className="text-white/70 text-sm mb-1 block flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-red-500" />
                 Destination
               </label>
               <Input
                 value={destinationAddress}
-                onChange={(e) => setDestinationAddress(e.target.value)}
+                onChange={(e) => handleDestinationSearch(e.target.value)}
                 placeholder="Where are you going?"
                 className="bg-white/5 border-white/10 text-white"
               />
+              {showDestinationSuggestions && destinationSuggestions.length > 0 && (
+                <div className="absolute z-50 w-full mt-1 bg-gray-900 border border-white/20 rounded-xl overflow-hidden shadow-xl max-h-48 overflow-y-auto">
+                  {destinationSuggestions.map((suggestion) => (
+                    <button
+                      key={suggestion.id}
+                      onClick={() => selectDestinationSuggestion(suggestion)}
+                      className="w-full p-3 flex items-center gap-3 hover:bg-white/10 transition-colors text-left border-b border-white/5 last:border-0"
+                    >
+                      <MapPin className="w-4 h-4 text-red-400 flex-shrink-0" />
+                      <span className="text-white text-sm line-clamp-2">{suggestion.place_name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
+
+            {/* Fare Estimate */}
+            {fareEstimate && (
+              <div className="bg-gradient-to-r from-cyan/10 to-purple/10 rounded-xl p-4 border border-cyan/20">
+                <h4 className="text-white font-bold mb-3 flex items-center gap-2">
+                  <DollarSign className="w-5 h-5 text-green-400" />
+                  Fare Estimate
+                </h4>
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div>
+                    <p className="text-white/50 text-xs">Fare</p>
+                    <p className="text-green-400 font-bold text-lg">${fareEstimate.fare.toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <p className="text-white/50 text-xs">Distance</p>
+                    <p className="text-cyan font-bold text-lg">{fareEstimate.distance} km</p>
+                  </div>
+                  <div>
+                    <p className="text-white/50 text-xs">Duration</p>
+                    <p className="text-purple font-bold text-lg">{fareEstimate.duration} min</p>
+                  </div>
+                </div>
+                <p className="text-white/40 text-xs mt-2 text-center">
+                  + $0.10 platform fee
+                </p>
+              </div>
+            )}
 
             <Button
               onClick={handleBookRide}
-              className="w-full bg-gradient-to-r from-cyan to-purple hover:opacity-90"
+              disabled={!pickupAddress || !destinationAddress || (isForFriend && !selectedFriend)}
+              className="w-full bg-gradient-to-r from-cyan to-purple hover:opacity-90 disabled:opacity-50"
             >
               <Car className="w-4 h-4 mr-2" />
-              Find Driver
+              {isForFriend && selectedFriend ? `Send Ride to ${selectedFriend.display_name}` : 'Find Driver'}
             </Button>
           </div>
         </DialogContent>
