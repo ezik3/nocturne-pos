@@ -47,36 +47,36 @@ const Top10 = () => {
   );
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-black overflow-x-hidden">
       <Web3FeedHeader />
       
       <div className="px-4 py-6 max-w-7xl mx-auto">
         {/* Search Bar */}
-        <div className="flex gap-3 mb-6">
+        <div className="flex gap-2 mb-5">
           <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
             <Input
               placeholder="Search cities, countries..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-12 bg-secondary/30 border-border/50 h-12 rounded-xl"
+              className="pl-10 bg-black/50 border-white/20 h-10 rounded-lg text-white placeholder:text-white/40"
             />
           </div>
-          <Button className="bg-gradient-to-r from-neon-pink to-neon-purple h-12 px-6 rounded-xl">
+          <Button className="bg-gradient-to-r from-neon-pink to-neon-purple h-10 px-5 rounded-lg text-sm">
             Search
           </Button>
         </div>
 
-        {/* City Tabs */}
-        <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide mb-4">
+        {/* City Tabs - horizontal scroll without scrollbar */}
+        <div className="flex gap-2 overflow-x-auto pb-3 mb-4 no-scrollbar" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           {cities.map((city) => (
             <button
               key={city}
               onClick={() => setSelectedCity(city)}
               className={`px-4 py-2 rounded-full whitespace-nowrap transition-all text-sm font-medium ${
                 selectedCity === city
-                  ? "bg-gradient-to-r from-neon-pink to-neon-cyan text-white"
-                  : "bg-secondary/50 text-foreground/80 hover:bg-secondary border border-border/50"
+                  ? "bg-transparent text-white border-2 border-cyan-400"
+                  : "bg-white/10 text-white/70 hover:bg-white/20 border border-transparent"
               }`}
             >
               {city}
@@ -85,13 +85,13 @@ const Top10 = () => {
         </div>
 
         {/* View Mode Toggle (Users vs Venues) */}
-        <div className="flex items-center justify-center gap-4 mb-4">
+        <div className="flex items-center justify-center gap-3 mb-4">
           <button
             onClick={() => setViewMode("users")}
-            className={`flex items-center gap-2 px-6 py-2.5 rounded-full transition-all ${
+            className={`flex items-center gap-2 px-5 py-2 rounded-full transition-all text-sm font-medium ${
               viewMode === "users"
-                ? "bg-gradient-to-r from-neon-cyan to-neon-purple text-white"
-                : "bg-secondary/50 text-foreground/70 hover:bg-secondary"
+                ? "bg-transparent text-white border-2 border-cyan-400"
+                : "bg-white/10 text-white/60 hover:bg-white/20 border border-transparent"
             }`}
           >
             <Trophy className="w-4 h-4" />
@@ -99,10 +99,10 @@ const Top10 = () => {
           </button>
           <button
             onClick={() => setViewMode("venues")}
-            className={`flex items-center gap-2 px-6 py-2.5 rounded-full transition-all ${
+            className={`flex items-center gap-2 px-5 py-2 rounded-full transition-all text-sm font-medium ${
               viewMode === "venues"
-                ? "bg-gradient-to-r from-neon-cyan to-neon-purple text-white"
-                : "bg-secondary/50 text-foreground/70 hover:bg-secondary"
+                ? "bg-transparent text-white border-2 border-cyan-400"
+                : "bg-white/10 text-white/60 hover:bg-white/20 border border-transparent"
             }`}
           >
             <Building2 className="w-4 h-4" />
@@ -112,13 +112,13 @@ const Top10 = () => {
 
         {/* Content Type Toggle (Videos vs Pics) - only for users */}
         {viewMode === "users" && (
-          <div className="flex items-center justify-center gap-4 mb-4">
+          <div className="flex items-center justify-center gap-3 mb-5">
             <button
               onClick={() => setContentType("videos")}
-              className={`flex items-center gap-2 px-5 py-2 rounded-full transition-all text-sm ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all text-sm font-medium ${
                 contentType === "videos"
-                  ? "bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/50"
-                  : "bg-secondary/30 text-foreground/60 hover:bg-secondary/50"
+                  ? "bg-cyan-500/20 text-cyan-400 border-2 border-cyan-400"
+                  : "bg-white/10 text-white/60 hover:bg-white/20 border border-transparent"
               }`}
             >
               <Play className="w-4 h-4" />
@@ -126,10 +126,10 @@ const Top10 = () => {
             </button>
             <button
               onClick={() => setContentType("pics")}
-              className={`flex items-center gap-2 px-5 py-2 rounded-full transition-all text-sm ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all text-sm font-medium ${
                 contentType === "pics"
-                  ? "bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/50"
-                  : "bg-secondary/30 text-foreground/60 hover:bg-secondary/50"
+                  ? "bg-cyan-500/20 text-cyan-400 border-2 border-cyan-400"
+                  : "bg-white/10 text-white/60 hover:bg-white/20 border border-transparent"
               }`}
             >
               <Image className="w-4 h-4" />
@@ -140,15 +140,15 @@ const Top10 = () => {
 
         {/* Venue Type Filters - only for venues */}
         {viewMode === "venues" && (
-          <div className="flex gap-2 justify-center flex-wrap mb-6">
+          <div className="flex gap-2 justify-center flex-wrap mb-5">
             {venueTypes.map((type) => (
               <button
                 key={type}
                 onClick={() => setSelectedType(type)}
-                className={`px-4 py-2 rounded-full text-sm transition-all ${
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
                   selectedType === type
-                    ? "bg-secondary text-foreground border border-neon-cyan/50"
-                    : "bg-secondary/30 text-foreground/70 hover:bg-secondary/50 border border-border/30"
+                    ? "bg-transparent text-white border-2 border-cyan-400"
+                    : "bg-white/10 text-white/60 hover:bg-white/20 border border-transparent"
                 }`}
               >
                 {type === "All" ? (
@@ -163,7 +163,7 @@ const Top10 = () => {
 
         {/* Content Grid */}
         {viewMode === "users" ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
             {filteredUsers.slice(0, 10).map((user, index) => (
               <div
                 key={user.id}
@@ -175,31 +175,31 @@ const Top10 = () => {
                   className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                 />
                 {/* Rank Badge */}
-                <div className="absolute top-3 left-3 w-8 h-8 bg-black/80 rounded-full flex items-center justify-center font-bold text-white border border-white/20">
+                <div className="absolute top-3 left-3 w-8 h-8 bg-black/80 rounded-full flex items-center justify-center font-bold text-white border border-white/30">
                   {index + 1}
                 </div>
                 {/* Gradient Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
                 {/* User Info */}
-                <div className="absolute bottom-3 left-3 right-3 flex items-center gap-2">
-                  <Avatar className="w-8 h-8 border-2 border-neon-cyan">
-                    <AvatarImage src={user.avatar} />
-                    <AvatarFallback>{user.name[0]}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white text-sm font-medium truncate">{user.name}</p>
-                    <p className="text-neon-cyan text-xs">{user.pounds} pounds</p>
+                <div className="absolute bottom-3 left-3 right-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Avatar className="w-7 h-7 border-2 border-cyan-400">
+                      <AvatarImage src={user.avatar} />
+                      <AvatarFallback>{user.name[0]}</AvatarFallback>
+                    </Avatar>
+                    <p className="text-white text-sm font-semibold truncate">{user.name}</p>
                   </div>
+                  <p className="text-cyan-400 text-xs font-medium">👊 {user.pounds} pounds</p>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredVenues.map((venue, index) => (
               <div
                 key={venue.id}
-                className="relative group cursor-pointer overflow-hidden rounded-xl"
+                className="relative group cursor-pointer overflow-hidden rounded-xl bg-white/5"
               >
                 <div className="aspect-video overflow-hidden">
                   <img
@@ -209,16 +209,16 @@ const Top10 = () => {
                   />
                 </div>
                 {/* Rank Badge */}
-                <div className="absolute top-3 left-3 w-8 h-8 bg-black/80 rounded-full flex items-center justify-center font-bold text-white border border-neon-purple/50">
+                <div className="absolute top-3 left-3 w-8 h-8 bg-black/80 rounded-full flex items-center justify-center font-bold text-white border border-purple-400/50">
                   {index + 1}
                 </div>
                 {/* Gradient Overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
                 {/* Venue Info */}
-                <div className="p-4 bg-secondary/50">
-                  <h3 className="text-neon-cyan font-bold text-lg">{venue.name}</h3>
-                  <p className="text-foreground/70 text-sm">{venue.city} • {venue.type}</p>
-                  <p className="text-neon-purple text-sm mt-1">{venue.vibes} vibes</p>
+                <div className="p-4">
+                  <h3 className="text-cyan-400 font-bold text-lg">{venue.name}</h3>
+                  <p className="text-white/80 text-sm">{venue.city} • {venue.type}</p>
+                  <p className="text-purple-400 text-sm mt-1 font-medium">{venue.vibes} vibes</p>
                 </div>
               </div>
             ))}

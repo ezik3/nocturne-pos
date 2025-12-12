@@ -100,22 +100,22 @@ const DiscoverNew = () => {
   };
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-black overflow-x-hidden">
       <Web3FeedHeader />
       
       <div className="px-4 py-6 max-w-7xl mx-auto">
         {/* Search Bar */}
-        <div className="flex gap-3 mb-6">
+        <div className="flex gap-2 mb-5">
           <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
             <Input
               placeholder="Search for venues..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-12 bg-secondary/30 border-border/50 h-14 rounded-xl text-lg"
+              className="pl-10 bg-black/50 border-white/20 h-10 rounded-lg text-white placeholder:text-white/40"
             />
           </div>
-          <Button className="bg-gradient-to-r from-neon-pink to-neon-purple h-14 px-8 rounded-xl text-lg">
+          <Button className="bg-gradient-to-r from-neon-pink to-neon-purple h-10 px-5 rounded-lg text-sm">
             Search
           </Button>
         </div>
@@ -126,10 +126,10 @@ const DiscoverNew = () => {
             <button
               key={type}
               onClick={() => setSelectedType(type)}
-              className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all ${
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
                 selectedType === type
-                  ? "bg-secondary text-foreground border border-neon-cyan/50"
-                  : "bg-secondary/30 text-foreground/70 hover:bg-secondary/50 border border-border/30"
+                  ? "bg-transparent text-white border-2 border-cyan-400"
+                  : "bg-white/10 text-white/60 hover:bg-white/20 border border-transparent"
               }`}
             >
               {type}
@@ -137,16 +137,16 @@ const DiscoverNew = () => {
           ))}
         </div>
 
-        {/* City Tabs */}
-        <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide mb-6">
+        {/* City Tabs - horizontal scroll without scrollbar */}
+        <div className="flex gap-2 overflow-x-auto pb-3 mb-5 no-scrollbar" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           {cities.map((city) => (
             <button
               key={city}
               onClick={() => setSelectedCity(city)}
               className={`px-4 py-2 rounded-full whitespace-nowrap transition-all text-sm font-medium ${
                 selectedCity === city
-                  ? "bg-gradient-to-r from-neon-pink to-neon-cyan text-white"
-                  : "bg-secondary/50 text-foreground/80 hover:bg-secondary border border-border/50"
+                  ? "bg-transparent text-white border-2 border-cyan-400"
+                  : "bg-white/10 text-white/70 hover:bg-white/20 border border-transparent"
               }`}
             >
               {city}
@@ -155,12 +155,12 @@ const DiscoverNew = () => {
         </div>
 
         {/* Venues Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredVenues.map((venue) => (
             <div
               key={venue.id}
               onClick={() => navigate(`/app/venue/${venue.id}`)}
-              className="group cursor-pointer overflow-hidden rounded-2xl bg-secondary/20 border border-border/30 hover:border-neon-cyan/50 transition-all"
+              className="group cursor-pointer overflow-hidden rounded-xl bg-white/5 hover:border-cyan-400/50 border border-transparent transition-all"
             >
               {/* Image */}
               <div className="aspect-video overflow-hidden">
@@ -173,11 +173,11 @@ const DiscoverNew = () => {
               
               {/* Info */}
               <div className="p-4">
-                <h3 className="text-neon-cyan text-xl font-bold mb-1">{venue.name}</h3>
-                <p className="text-foreground/60 text-sm mb-3">{venue.description}</p>
+                <h3 className="text-cyan-400 text-xl font-bold mb-1">{venue.name}</h3>
+                <p className="text-white/70 text-sm mb-3">{venue.description}</p>
                 
                 <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-1 text-foreground/50">
+                  <div className="flex items-center gap-1 text-white/60">
                     <MapPin className="w-4 h-4" />
                     {venue.city}
                   </div>
@@ -186,7 +186,7 @@ const DiscoverNew = () => {
                       <TrendingUp className="w-4 h-4" />
                       {venue.vibeScore}%
                     </div>
-                    <div className="flex items-center gap-1 text-foreground/50">
+                    <div className="flex items-center gap-1 text-white/60">
                       <Users className="w-4 h-4" />
                       {venue.occupancy}/{venue.capacity}
                     </div>
@@ -199,7 +199,7 @@ const DiscoverNew = () => {
 
         {filteredVenues.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-foreground/60 text-lg">No venues found matching your criteria</p>
+            <p className="text-white/60 text-lg">No venues found matching your criteria</p>
           </div>
         )}
       </div>
