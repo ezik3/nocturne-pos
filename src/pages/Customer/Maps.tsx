@@ -993,31 +993,34 @@ const Maps = () => {
           </DialogHeader>
           
           <div className="space-y-4">
-            {/* Book for friend toggle */}
-            <button
-              onClick={() => {
-                setIsForFriend(!isForFriend);
-                setSelectedFriend(null);
-                setFriendSearch('');
-              }}
-              className={`w-full p-3 rounded-xl border transition-all flex items-center gap-3 ${
-                isForFriend
-                  ? 'border-pink-400 bg-pink-500/20'
-                  : 'border-white/10 hover:border-pink-400/50'
-              }`}
-            >
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                isForFriend ? 'bg-pink-500' : 'bg-white/10'
-              }`}>
-                <Gift className={`w-5 h-5 ${isForFriend ? 'text-white' : 'text-pink-400'}`} />
+            {/* Book for friend toggle - Switch style */}
+            <div className="flex items-center justify-between p-3 rounded-xl border border-white/10 bg-white/5">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                  isForFriend ? 'bg-pink-500' : 'bg-white/10'
+                }`}>
+                  <Gift className={`w-5 h-5 ${isForFriend ? 'text-white' : 'text-pink-400'}`} />
+                </div>
+                <div className="text-left">
+                  <p className="font-semibold text-white">Book for a Friend</p>
+                  <p className="text-xs text-white/50">Send a ride to someone else</p>
+                </div>
               </div>
-              <div className="text-left flex-1">
-                <p className={`font-semibold ${isForFriend ? 'text-pink-400' : 'text-white'}`}>
-                  Book for a Friend
-                </p>
-                <p className="text-xs text-white/50">Send a ride to someone else</p>
-              </div>
-            </button>
+              <button
+                onClick={() => {
+                  setIsForFriend(!isForFriend);
+                  setSelectedFriend(null);
+                  setFriendSearch('');
+                }}
+                className={`relative w-14 h-7 rounded-full transition-all ${
+                  isForFriend ? 'bg-pink-500' : 'bg-white/20'
+                }`}
+              >
+                <div className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow-lg transition-all ${
+                  isForFriend ? 'left-8' : 'left-1'
+                }`} />
+              </button>
+            </div>
 
             {/* Friend search */}
             {isForFriend && (
