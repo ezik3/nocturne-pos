@@ -280,11 +280,11 @@ const ImmersiveFeed = () => {
       <div 
         ref={containerRef}
         onScroll={handleScroll}
-        className="pt-40 h-screen overflow-y-auto snap-y-mandatory scrollbar-hide"
+        className="pt-44 h-screen overflow-y-auto snap-y-mandatory scrollbar-hide"
         style={{ scrollSnapType: 'y mandatory' }}
       >
         {posts.length === 0 ? (
-          <div className="h-[calc(100vh-160px)] flex flex-col items-center justify-center">
+          <div className="h-[calc(100vh-176px)] flex flex-col items-center justify-center">
             <div className="w-24 h-24 mb-6 relative">
               <div className="absolute inset-0 bg-gradient-to-br from-cyan via-purple to-pink rounded-2xl opacity-30 animate-pulse" 
                    style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }} />
@@ -306,7 +306,7 @@ const ImmersiveFeed = () => {
           posts.map((post, index) => (
             <div 
               key={post.id} 
-              className="h-[calc(100vh-180px)] snap-start"
+              className="h-[calc(100vh-176px)] snap-start"
               style={{ scrollSnapAlign: 'start' }}
             >
               <ImmersivePostCard
@@ -317,7 +317,7 @@ const ImmersiveFeed = () => {
                 isGold={post.post_type === "gold"}
                 isAR={index % 3 === 0} // Mock AR indicator
                 content={post.content}
-                imageUrl={post.image_url || `https://picsum.photos/seed/${post.id}/800/1200`}
+                imageUrl={post.image_url}
                 videoUrl={post.video_url}
                 venueName={post.venues?.name}
                 poundsCount={post.pounds_count || 0}

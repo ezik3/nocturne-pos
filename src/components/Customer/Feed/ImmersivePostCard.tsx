@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Play, Pause, Volume2, VolumeX, MessageCircle, Share2, Sparkles, Clock, MapPin } from "lucide-react";
+import { Play, Pause, Volume2, VolumeX, MessageCircle, Share2, Sparkles, Clock, MapPin, X, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import TaggedUsersDisplay from "./TaggedUsersDisplay";
 import FistPoundIcon from "./FistPoundIcon";
@@ -38,6 +38,9 @@ interface ImmersivePostCardProps {
   isActive?: boolean;
 }
 
+// Global state for mute preference
+let globalMutePreference = true; // Start muted
+
 const ImmersivePostCard = ({
   id,
   authorName,
@@ -61,10 +64,12 @@ const ImmersivePostCard = ({
   isActive = true,
 }: ImmersivePostCardProps) => {
   const [isPounding, setIsPounding] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(true);
+  const [isMuted, setIsMuted] = useState(globalMutePreference);
   const [showFullContent, setShowFullContent] = useState(false);
+  const [showFullscreenVideo, setShowFullscreenVideo] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const fullscreenVideoRef = useRef<HTMLVideoElement>(null);
+  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
 
   const MAX_PREVIEW_LENGTH = 50;
 
@@ -78,18 +83,128 @@ const ImmersivePostCard = ({
   const expiryProgress = Math.max(0, Math.min(100, (expiresIn / 24) * 100));
   const isExpiringSoon = expiresIn <= 6;
 
+  // Handle video autoplay when active (muted by default)
   useEffect(() => {
-    if (videoRef.current) {
-      if (isActive && isPlaying) {
-        videoRef.current.play();
+    if (videoRef.current && videoUrl) {
+      if (isActive) {
+        videoRef.current.muted = isMuted;
+        videoRef.current.play().catch(() => {});
       } else {
         videoRef.current.pause();
       }
     }
-  }, [isActive, isPlaying]);
+  }, [isActive, videoUrl, isMuted]);
+
+  // Open fullscreen video with sound
+  const handleVideoClick = useCallback(() => {
+    if (videoUrl) {
+      setShowFullscreenVideo(true);
+      // When opening fullscreen, unmute globally
+      globalMutePreference = false;
+      setIsMuted(false);
+    }
+  }, [videoUrl]);
+
+  // Close fullscreen and return to feed with sound enabled
+  const handleCloseFullscreen = useCallback(() => {
+    setShowFullscreenVideo(false);
+    // Sound stays on after exiting fullscreen (swipe left/right)
+  }, []);
+
+  // Handle swipe gestures in fullscreen
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStart) return;
+    
+    const deltaX = e.changedTouches[0].clientX - touchStart.x;
+    const deltaY = e.changedTouches[0].clientY - touchStart.y;
+    
+    // Horizontal swipe - go back to feed
+    if (Math.abs(deltaX) > 80 && Math.abs(deltaX) > Math.abs(deltaY)) {
+      handleCloseFullscreen();
+    }
+    // Vertical swipe up - show similar content (placeholder)
+    else if (deltaY < -80 && Math.abs(deltaY) > Math.abs(deltaX)) {
+      // TODO: Navigate to similar content
+      handleCloseFullscreen();
+    }
+    
+    setTouchStart(null);
+  };
+
+  // Toggle mute
+  const toggleMute = useCallback(() => {
+    const newMuted = !isMuted;
+    globalMutePreference = newMuted;
+    setIsMuted(newMuted);
+    if (videoRef.current) {
+      videoRef.current.muted = newMuted;
+    }
+    if (fullscreenVideoRef.current) {
+      fullscreenVideoRef.current.muted = newMuted;
+    }
+  }, [isMuted]);
+
+  // Play fullscreen video when opened
+  useEffect(() => {
+    if (showFullscreenVideo && fullscreenVideoRef.current) {
+      fullscreenVideoRef.current.muted = false;
+      fullscreenVideoRef.current.play().catch(() => {});
+    }
+  }, [showFullscreenVideo]);
 
   return (
     <>
+      {/* Fullscreen Video Modal */}
+      {showFullscreenVideo && videoUrl && (
+        <div 
+          className="fixed inset-0 z-[100] bg-black flex items-center justify-center"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
+          <video
+            ref={fullscreenVideoRef}
+            src={videoUrl}
+            autoPlay
+            loop
+            playsInline
+            className="w-full h-full object-contain"
+          />
+          
+          {/* Close button */}
+          <button
+            onClick={handleCloseFullscreen}
+            className="absolute top-6 right-6 w-12 h-12 rounded-full bg-black/50 backdrop-blur-lg flex items-center justify-center z-10"
+          >
+            <X className="w-6 h-6 text-white" />
+          </button>
+          
+          {/* Mute button in fullscreen */}
+          <button
+            onClick={toggleMute}
+            className="absolute bottom-6 right-6 w-12 h-12 rounded-full bg-black/50 backdrop-blur-lg flex items-center justify-center z-10"
+          >
+            {isMuted ? <VolumeX className="w-6 h-6 text-white" /> : <Volume2 className="w-6 h-6 text-white" />}
+          </button>
+          
+          {/* Swipe indicators */}
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 text-white/50 text-sm">
+            <div className="flex items-center gap-1">
+              <ChevronLeft className="w-4 h-4" />
+              <ChevronRight className="w-4 h-4" />
+              <span>Swipe to exit</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <ChevronUp className="w-4 h-4" />
+              <span>Swipe up for similar</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Full Content Overlay */}
       {showFullContent && (
         <div 
@@ -135,7 +250,8 @@ const ImmersivePostCard = ({
             loop
             muted={isMuted}
             playsInline
-            className="w-full h-full object-cover"
+            onClick={handleVideoClick}
+            className="w-full h-full object-cover cursor-pointer"
           />
         ) : imageUrl ? (
           <img src={imageUrl} alt="Post" className="w-full h-full object-cover" />
@@ -152,6 +268,16 @@ const ImmersivePostCard = ({
         
         {/* Particle Effect for AR posts */}
         {isAR && <div className="absolute inset-0 particles opacity-40" />}
+        
+        {/* Play indicator for videos - tap to open fullscreen */}
+        {videoUrl && !showFullscreenVideo && (
+          <button 
+            onClick={handleVideoClick}
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 rounded-full bg-white/20 backdrop-blur-xl flex items-center justify-center hover:scale-110 transition-all z-10"
+          >
+            <Play className="w-10 h-10 text-white ml-1" />
+          </button>
+        )}
       </div>
 
       {/* Expiry Timer Bar */}
@@ -242,22 +368,14 @@ const ImmersivePostCard = ({
           </div>
         </button>
 
-        {/* Video Controls */}
+        {/* Mute/Unmute Button - Only for videos */}
         {videoUrl && (
-          <>
-            <button 
-              onClick={() => setIsPlaying(!isPlaying)}
-              className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-xl flex items-center justify-center hover:scale-110 transition-all"
-            >
-              {isPlaying ? <Pause className="w-5 h-5 text-white" /> : <Play className="w-5 h-5 text-white ml-0.5" />}
-            </button>
-            <button 
-              onClick={() => setIsMuted(!isMuted)}
-              className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-xl flex items-center justify-center hover:scale-110 transition-all"
-            >
-              {isMuted ? <VolumeX className="w-5 h-5 text-white" /> : <Volume2 className="w-5 h-5 text-white" />}
-            </button>
-          </>
+          <button 
+            onClick={toggleMute}
+            className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-xl flex items-center justify-center hover:scale-110 transition-all"
+          >
+            {isMuted ? <VolumeX className="w-5 h-5 text-white" /> : <Volume2 className="w-5 h-5 text-white" />}
+          </button>
         )}
       </div>
 
