@@ -280,7 +280,7 @@ const ImmersiveFeed = () => {
       <div 
         ref={containerRef}
         onScroll={handleScroll}
-        className="pt-32 h-screen overflow-y-auto snap-y-mandatory scrollbar-hide"
+        className="pt-40 h-screen overflow-y-auto snap-y-mandatory scrollbar-hide"
         style={{ scrollSnapType: 'y mandatory' }}
       >
         {posts.length === 0 ? (
@@ -306,7 +306,7 @@ const ImmersiveFeed = () => {
           posts.map((post, index) => (
             <div 
               key={post.id} 
-              className="h-[calc(100vh-160px)] snap-start"
+              className="h-[calc(100vh-180px)] snap-start"
               style={{ scrollSnapAlign: 'start' }}
             >
               <ImmersivePostCard
