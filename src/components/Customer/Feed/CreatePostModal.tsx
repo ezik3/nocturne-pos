@@ -3,7 +3,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Camera, MapPin, Users, Sparkles, Globe, Lock, X, Image, Video, Upload } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
+import { Camera, MapPin, Users, Sparkles, Globe, Lock, X, Image, Video, Upload, Navigation } from "lucide-react";
 import { toast } from "sonner";
 
 interface CreatePostModalProps {
@@ -39,6 +41,8 @@ const CreatePostModal = ({
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null);
+  const [locationName, setLocationName] = useState<string>("");
+  const [isLocationOpen, setIsLocationOpen] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
@@ -130,9 +134,9 @@ const CreatePostModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg bg-gradient-to-br from-gray-900 via-black to-gray-900 border-white/10 p-0 overflow-hidden">
+      <DialogContent className="sm:max-w-lg bg-gradient-to-br from-gray-900 via-black to-gray-900 border-white/10 p-0 max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <DialogHeader className="p-4 border-b border-white/10">
+        <DialogHeader className="p-4 border-b border-white/10 sticky top-0 bg-gray-900/95 backdrop-blur-xl z-10">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-lg font-bold bg-gradient-to-r from-neon-cyan to-neon-purple bg-clip-text text-transparent">
               Create Post
@@ -163,11 +167,11 @@ const CreatePostModal = ({
               onClick={() => setVisibility("public")}
               className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold transition-all duration-300 ${
                 visibility === "public" 
-                  ? "bg-gradient-to-r from-neon-cyan to-cyan-600 text-black shadow-[0_0_20px_rgba(0,255,255,0.4)]" 
+                  ? "bg-gradient-to-r from-neon-cyan to-cyan-600 text-white shadow-[0_0_20px_rgba(0,255,255,0.4)]" 
                   : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/10"
               }`}
             >
-              <Globe className="w-4 h-4" />
+              <Globe className="w-4 h-4 text-current" />
               <span>Public</span>
             </button>
           </div>
@@ -228,21 +232,40 @@ const CreatePostModal = ({
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="Share your party vibes... ✨"
-              className={`min-h-[120px] bg-transparent border-none resize-none text-white placeholder:text-white/40 focus-visible:ring-0 p-0 ${
+              className={`min-h-[100px] bg-transparent border-none resize-none text-white placeholder:text-white/40 focus-visible:ring-0 p-0 ${
                 isGold ? "placeholder:text-yellow-400/50" : ""
               }`}
-              maxLength={5000}
+              maxLength={500}
             />
           </div>
 
-          {/* Media Preview */}
+          {/* Location Tag */}
+          {locationName && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-neon-cyan/10 rounded-lg border border-neon-cyan/30">
+              <MapPin className="w-4 h-4 text-neon-cyan" />
+              <span className="text-sm text-neon-cyan">{locationName}</span>
+              <button onClick={() => setLocationName("")} className="ml-auto hover:bg-white/10 rounded-full p-1">
+                <X className="w-3 h-3 text-white/60" />
+              </button>
+            </div>
+          )}
+
+          {/* Media Preview - Maintains Aspect Ratio */}
           {(selectedImage || selectedVideo) && (
             <div className="relative rounded-xl overflow-hidden bg-black/30">
               {selectedImage && (
-                <img src={selectedImage} alt="Selected" className="w-full max-h-48 object-cover" />
+                <img 
+                  src={selectedImage} 
+                  alt="Selected" 
+                  className="w-full max-h-[300px] object-contain mx-auto" 
+                />
               )}
               {selectedVideo && (
-                <video src={selectedVideo} className="w-full max-h-48 object-cover" controls />
+                <video 
+                  src={selectedVideo} 
+                  className="w-full max-h-[300px] object-contain mx-auto" 
+                  controls 
+                />
               )}
               <button
                 onClick={clearMedia}
@@ -253,8 +276,8 @@ const CreatePostModal = ({
             </div>
           )}
 
-          {/* Action Buttons */}
-          <div className="flex items-center gap-2">
+          {/* Action Buttons - Sticky Footer */}
+          <div className="flex items-center gap-2 pt-2 border-t border-white/10">
             <input
               type="file"
               ref={imageInputRef}
@@ -272,27 +295,74 @@ const CreatePostModal = ({
             <Button 
               variant="ghost" 
               size="icon" 
-              className="text-neon-cyan hover:bg-neon-cyan/10"
+              className="bg-neon-cyan/20 hover:bg-neon-cyan/30 border border-neon-cyan/50"
               onClick={() => imageInputRef.current?.click()}
             >
-              <Image className="w-5 h-5" />
+              <Image className="w-5 h-5 text-neon-cyan" />
             </Button>
             <Button 
               variant="ghost" 
               size="icon" 
-              className="text-neon-purple hover:bg-neon-purple/10"
+              className="bg-neon-purple/20 hover:bg-neon-purple/30 border border-neon-purple/50"
               onClick={() => videoInputRef.current?.click()}
             >
-              <Video className="w-5 h-5" />
+              <Video className="w-5 h-5 text-neon-purple" />
             </Button>
-            <Button variant="ghost" size="icon" className="text-neon-pink hover:bg-neon-pink/10">
-              <Users className="w-5 h-5" />
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="bg-neon-pink/20 hover:bg-neon-pink/30 border border-neon-pink/50"
+            >
+              <Users className="w-5 h-5 text-neon-pink" />
             </Button>
-            <Button variant="ghost" size="icon" className="text-yellow-400 hover:bg-yellow-400/10">
-              <MapPin className="w-5 h-5" />
-            </Button>
+            <Popover open={isLocationOpen} onOpenChange={setIsLocationOpen}>
+              <PopoverTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className={`${locationName ? 'bg-yellow-400/30' : 'bg-yellow-400/20'} hover:bg-yellow-400/30 border border-yellow-400/50`}
+                >
+                  <MapPin className="w-5 h-5 text-yellow-400" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-72 bg-gray-900 border-white/20" align="start">
+                <div className="space-y-3">
+                  <p className="text-sm font-medium text-white">Add Location</p>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Enter location name..."
+                      value={locationName}
+                      onChange={(e) => setLocationName(e.target.value)}
+                      className="bg-white/5 border-white/20 text-white placeholder:text-white/40"
+                    />
+                  </div>
+                  <Button 
+                    size="sm" 
+                    onClick={() => {
+                      if (navigator.geolocation) {
+                        navigator.geolocation.getCurrentPosition(
+                          () => toast.success("Location detected!"),
+                          () => toast.error("Could not get location")
+                        );
+                      }
+                    }}
+                    className="w-full bg-neon-cyan/20 hover:bg-neon-cyan/30 text-neon-cyan border border-neon-cyan/30"
+                  >
+                    <Navigation className="w-4 h-4 mr-2" />
+                    Use Current Location
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    onClick={() => setIsLocationOpen(false)}
+                    className="w-full bg-white/10 hover:bg-white/20 text-white"
+                  >
+                    Done
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
             <div className="flex-1" />
-            <span className="text-xs text-muted-foreground">{content.length}/5000</span>
+            <span className="text-xs text-muted-foreground">{content.length}/500</span>
           </div>
 
           {/* Submit Button */}
