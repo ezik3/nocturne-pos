@@ -291,26 +291,7 @@ const ImmersiveFeed = () => {
         className="fixed top-14 left-0 right-0 bottom-0 w-full overflow-y-auto scrollbar-hide"
         style={{ scrollSnapType: 'y mandatory' }}
       >
-        {posts.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center">
-            <div className="w-24 h-24 mb-6 relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-cyan via-purple to-pink rounded-2xl opacity-30 animate-pulse" 
-                   style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }} />
-              <div className="absolute inset-2 bg-black/80 rounded-xl flex items-center justify-center"
-                   style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}>
-                <Sparkles className="w-10 h-10 text-cyan" />
-              </div>
-            </div>
-            <h3 className="text-2xl font-bold text-white mb-2">The Metaverse Awaits</h3>
-            <p className="text-white/60 text-center max-w-xs">Be the first to share what's happening in your world!</p>
-            <button 
-              onClick={() => setShowCreateModal(true)}
-              className="mt-6 px-6 py-3 bg-gradient-to-r from-cyan to-purple rounded-full text-white font-medium hover:opacity-90 transition-all neon-glow-cyan"
-            >
-              Create First Post
-            </button>
-          </div>
-        ) : (
+        {posts.length === 0 ? null : (
           posts.map((post, index) => (
             <div 
               key={post.id} 
@@ -367,10 +348,8 @@ const ImmersiveFeed = () => {
         <Plus className="w-7 h-7 text-white" />
       </button>
 
-      {/* Floating AI Button */}
-      <div className="fixed left-4 bottom-24 z-40">
-        <FloatingAIButton />
-      </div>
+      {/* Floating AI Button - Bottom Right with Swipe */}
+      <FloatingAIButton />
 
       {/* Create Post Modal */}
       <CreatePostModal

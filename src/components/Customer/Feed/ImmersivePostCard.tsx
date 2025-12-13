@@ -208,6 +208,7 @@ const ImmersivePostCard = ({
         setIsVideoPaused(false);
       } else {
         fullscreenVideoRef.current.pause();
+        fullscreenVideoRef.current.muted = true; // Mute audio when paused
         setIsVideoPaused(true);
       }
     }
@@ -226,11 +227,11 @@ const ImmersivePostCard = ({
       {/* Fist Bump Animation Overlay */}
       <FistBumpAnimation show={showFistBump} onComplete={handleFistBumpComplete} />
 
-      {/* Fullscreen Media Modal - covers EVERYTHING */}
+      {/* Fullscreen Media Modal - covers EVERYTHING including navbar */}
       {(showFullscreenVideo && (videoUrl || imageUrl)) && (
         <div 
-          className="fixed inset-0 z-[9999] bg-black flex items-center justify-center"
-          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh' }}
+          className="fixed inset-0 bg-black flex items-center justify-center"
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', zIndex: 99999 }}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
           onClick={videoUrl ? handleTogglePlayPause : undefined}
@@ -265,13 +266,14 @@ const ImmersivePostCard = ({
             </div>
           )}
           
-          {/* Close button - positioned safely below top edge */}
+          {/* Close button - positioned at top */}
           <button
             onClick={(e) => {
               e.stopPropagation();
               handleCloseFullscreen();
             }}
-            className="absolute top-16 right-6 w-12 h-12 rounded-full bg-black/70 backdrop-blur-lg flex items-center justify-center z-[10000]"
+            className="absolute top-6 right-6 w-12 h-12 rounded-full bg-black/70 backdrop-blur-lg flex items-center justify-center"
+            style={{ zIndex: 100000 }}
           >
             <X className="w-6 h-6 text-white" />
           </button>
@@ -282,13 +284,17 @@ const ImmersivePostCard = ({
               e.stopPropagation();
               toggleMute();
             }}
-            className="absolute bottom-6 right-6 w-12 h-12 rounded-full bg-black/50 backdrop-blur-lg flex items-center justify-center z-[10000]"
+            className="absolute bottom-6 right-6 w-12 h-12 rounded-full bg-black/50 backdrop-blur-lg flex items-center justify-center"
+            style={{ zIndex: 100000 }}
           >
             {isMuted ? <VolumeX className="w-6 h-6 text-white" /> : <Volume2 className="w-6 h-6 text-white" />}
           </button>
           
           {/* Swipe indicators */}
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 text-white/50 text-sm z-[10000]">
+          <div 
+            className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 text-white/50 text-sm"
+            style={{ zIndex: 100000 }}
+          >
             <div className="flex items-center gap-1">
               <ChevronLeft className="w-4 h-4" />
               <ChevronRight className="w-4 h-4" />
