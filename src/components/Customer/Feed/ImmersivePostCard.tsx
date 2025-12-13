@@ -245,14 +245,15 @@ const ImmersivePostCard = ({
       <FistBumpAnimation show={showFistBump} onComplete={handleFistBumpComplete} />
 
       {/* Fullscreen Media Modal - rendered via portal to cover EVERYTHING */}
-      {(showFullscreenVideo && (videoUrl || imageUrl)) && createPortal(
+      {showFullscreenVideo && (videoUrl || imageUrl) && createPortal(
         <div 
-          className="fixed inset-0 bg-black flex items-center justify-center"
+          className="fixed inset-0 bg-black"
           style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', zIndex: 999999 }}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
-          onClick={videoUrl ? handleTogglePlayPause : undefined}
+          onClick={videoUrl ? handleTogglePlayPause : handleCloseFullscreen}
         >
+          {/* Fullscreen Media - fills entire screen */}
           {videoUrl ? (
             <video
               ref={fullscreenVideoRef}
@@ -260,8 +261,7 @@ const ImmersivePostCard = ({
               autoPlay
               loop
               playsInline
-              className="w-full h-full object-contain md:object-contain"
-              style={{ maxWidth: '100vw', maxHeight: '100vh' }}
+              className="absolute inset-0 w-full h-full object-cover"
               onClick={(e) => {
                 e.stopPropagation();
                 handleTogglePlayPause();
@@ -271,14 +271,14 @@ const ImmersivePostCard = ({
             <img 
               src={imageUrl} 
               alt="Post" 
-              className="w-full h-full object-contain"
-              style={{ maxWidth: '100vw', maxHeight: '100vh' }}
+              className="absolute inset-0 w-full h-full object-cover"
+              onClick={(e) => e.stopPropagation()}
             />
           ) : null}
           
           {/* Play/Pause indicator for videos */}
           {videoUrl && isVideoPaused && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 1000000 }}>
               <div className="w-20 h-20 rounded-full bg-black/50 backdrop-blur-lg flex items-center justify-center">
                 <Play className="w-10 h-10 text-white ml-1" />
               </div>
@@ -297,34 +297,60 @@ const ImmersivePostCard = ({
             <X className="w-6 h-6 text-white" />
           </button>
           
-          {/* Mute button in fullscreen */}
+          {/* Mute button in fullscreen - for videos only */}
           {videoUrl && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 toggleMute();
               }}
-              className="absolute bottom-6 right-6 w-12 h-12 rounded-full bg-black/50 backdrop-blur-lg flex items-center justify-center"
+              className="absolute bottom-24 right-6 w-12 h-12 rounded-full bg-black/50 backdrop-blur-lg flex items-center justify-center"
               style={{ zIndex: 1000000 }}
             >
               {isMuted ? <VolumeX className="w-6 h-6 text-white" /> : <Volume2 className="w-6 h-6 text-white" />}
             </button>
           )}
           
+          {/* Author Info + Caption at bottom */}
+          <div 
+            className="absolute bottom-6 left-4 right-20 flex items-end gap-3"
+            style={{ zIndex: 1000000 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Avatar className={`w-10 h-10 ring-2 flex-shrink-0 ${isGold ? 'ring-gold' : 'ring-cyan'}`}>
+              <AvatarImage src={authorAvatar} alt={authorName} className="object-cover" />
+              <AvatarFallback className="bg-gradient-to-br from-purple to-pink text-white font-bold text-sm">
+                {authorName?.[0]?.toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <span className={`font-bold text-sm ${isGold ? 'text-gold' : 'text-white'}`}>
+                @{authorName}
+              </span>
+              {content && (
+                <p className="text-white/90 text-sm mt-0.5 line-clamp-2">
+                  {content}
+                </p>
+              )}
+            </div>
+          </div>
+          
           {/* Swipe indicators */}
           <div 
-            className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 text-white/50 text-sm"
+            className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 text-white/50 text-xs"
             style={{ zIndex: 1000000 }}
           >
             <div className="flex items-center gap-1">
-              <ChevronLeft className="w-4 h-4" />
-              <ChevronRight className="w-4 h-4" />
+              <ChevronLeft className="w-3 h-3" />
+              <ChevronRight className="w-3 h-3" />
               <span>Swipe to exit</span>
             </div>
-            <div className="flex items-center gap-1">
-              <ChevronUp className="w-4 h-4" />
-              <span>Swipe up for similar</span>
-            </div>
+            {videoUrl && (
+              <div className="flex items-center gap-1">
+                <ChevronUp className="w-3 h-3" />
+                <span>Swipe up for similar</span>
+              </div>
+            )}
           </div>
         </div>,
         document.body
