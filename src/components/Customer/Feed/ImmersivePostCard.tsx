@@ -205,18 +205,28 @@ const ImmersivePostCard = ({
     if (fullscreenVideoRef.current) {
       const video = fullscreenVideoRef.current;
       if (video.paused) {
+        video.volume = 1;
         video.muted = false;
         video.play().catch(() => {});
         setIsVideoPaused(false);
       } else {
+        // STOP the video and audio completely
         video.pause();
-        // Completely stop audio by setting volume to 0 and muting
-        video.volume = 0;
+        video.currentTime = video.currentTime; // Force stop
         video.muted = true;
+        video.volume = 0;
         setIsVideoPaused(true);
       }
     }
   }, []);
+
+  // Also pause background video when fullscreen opens
+  useEffect(() => {
+    if (showFullscreenVideo && videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.muted = true;
+    }
+  }, [showFullscreenVideo]);
 
   // Play fullscreen video when opened
   useEffect(() => {
@@ -263,7 +273,6 @@ const ImmersivePostCard = ({
               alt="Post" 
               className="w-full h-full object-contain"
               style={{ maxWidth: '100vw', maxHeight: '100vh' }}
-              onClick={(e) => e.stopPropagation()}
             />
           ) : null}
           
