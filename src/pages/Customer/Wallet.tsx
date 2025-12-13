@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Coins, ArrowDownLeft, History, Wifi, WifiOff, Wallet as WalletIcon, Copy, Check, Send, Globe, ChevronDown, Info, Zap } from "lucide-react";
+import { Coins, ArrowDownLeft, History, Wifi, WifiOff, Wallet as WalletIcon, Copy, Check, Send, Globe, ChevronDown, Info, Zap, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useJVCoinWallet } from "@/hooks/useJVCoinWallet";
 import { useCurrency, CURRENCIES } from "@/hooks/useCurrency";
@@ -10,8 +10,10 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+import { useNavigate } from "react-router-dom";
 
 export default function Wallet() {
+  const navigate = useNavigate();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [pendingTransactions, setPendingTransactions] = useState<any[]>([]);
   const [showDepositModal, setShowDepositModal] = useState(false);
@@ -113,11 +115,21 @@ export default function Wallet() {
       <div className="container max-w-4xl mx-auto p-4 space-y-6">
         {/* Header with Currency Selector */}
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-              JV Wallet
-            </h1>
-            <p className="text-muted-foreground text-sm">Manage your JV Coins</p>
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => navigate(-1)}
+              className="h-10 w-10 rounded-full hover:bg-white/10"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                JV Wallet
+              </h1>
+              <p className="text-muted-foreground text-sm">Manage your JV Coins</p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             {/* Currency Selector */}

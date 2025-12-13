@@ -218,8 +218,8 @@ const Top10 = () => {
                 {/* Venue Info */}
                 <div className="p-4">
                   <h3 className="text-cyan-400 font-bold text-lg">{venue.name}</h3>
-                  <p className="text-white/70 text-sm">{venue.city} • {venue.type}</p>
-                  <p className="text-purple-300 text-sm mt-1 font-medium">{venue.vibes} vibes</p>
+                  <p className="text-white/80 text-sm">{venue.city} • {venue.type}</p>
+                  <p className="text-purple-400 text-sm mt-1 font-medium">{venue.vibes} vibes</p>
                 </div>
               </div>
             ))}
