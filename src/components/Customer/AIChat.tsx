@@ -149,7 +149,7 @@ export default function AIChat({ context, venueId, onClose }: AIChatProps) {
   };
 
   return (
-    <Card className="fixed bottom-4 right-4 w-96 h-[600px] flex flex-col shadow-2xl z-50 border-2">
+    <Card className="fixed bottom-4 right-4 w-[calc(100%-2rem)] max-w-96 h-[70vh] max-h-[600px] flex flex-col shadow-2xl z-50 border-2 md:w-96 md:h-[600px]">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-primary to-primary/80">
         <div className="flex items-center gap-2">

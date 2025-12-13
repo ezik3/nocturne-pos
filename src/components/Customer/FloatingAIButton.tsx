@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Bot } from "lucide-react";
+import { Bot, ChevronLeft } from "lucide-react";
 import AIChat from "./AIChat";
 import { motion, useMotionValue, useTransform, useAnimation } from "framer-motion";
 
@@ -24,7 +24,13 @@ export default function FloatingAIButton() {
     }
   };
 
-  // Handle screen edge swipe to bring back
+  // Bring button back
+  const bringBack = () => {
+    setIsHidden(false);
+    controls.start({ x: 0, opacity: 1 });
+  };
+
+  // Handle screen edge swipe to bring back (mobile)
   useEffect(() => {
     if (!isHidden) return;
 
@@ -47,8 +53,7 @@ export default function FloatingAIButton() {
       
       // If swiped left by at least 50px from right edge
       if (swipeDistance > 50) {
-        setIsHidden(false);
-        controls.start({ x: 0, opacity: 1 });
+        bringBack();
       }
       
       (window as any).__aiButtonSwipeStart = null;
@@ -65,9 +70,10 @@ export default function FloatingAIButton() {
 
   return (
     <>
+      {/* Main floating button - positioned to align with create post button */}
       <motion.div
         ref={containerRef}
-        className="fixed right-4 bottom-24 z-40"
+        className="fixed right-4 bottom-[88px] z-40"
         drag="x"
         dragConstraints={{ left: 0, right: 200 }}
         dragElastic={0.2}
@@ -84,9 +90,15 @@ export default function FloatingAIButton() {
         </Button>
       </motion.div>
 
-      {/* Swipe hint indicator when hidden */}
+      {/* Desktop & Mobile bring-back indicator when hidden */}
       {isHidden && (
-        <div className="fixed right-0 bottom-28 z-30 w-1 h-16 bg-gradient-to-b from-cyan to-purple rounded-l-full opacity-50 animate-pulse" />
+        <button
+          onClick={bringBack}
+          className="fixed right-0 bottom-[88px] z-40 flex items-center gap-1 px-2 py-3 bg-gradient-to-l from-purple to-cyan rounded-l-full shadow-lg hover:pr-4 transition-all cursor-pointer group"
+        >
+          <ChevronLeft className="w-5 h-5 text-white group-hover:animate-pulse" />
+          <Bot className="w-4 h-4 text-white" />
+        </button>
       )}
 
       {showChat && (
