@@ -100,10 +100,11 @@ const DiscoverNew = () => {
   };
 
   return (
-    <div className="min-h-screen bg-black overflow-x-hidden">
+    <div className="min-h-screen bg-black overflow-x-hidden overflow-y-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+      <style>{`::-webkit-scrollbar { display: none; }`}</style>
       <Web3FeedHeader />
       
-      <div className="px-4 py-6 max-w-7xl mx-auto">
+      <div className="px-4 pt-20 pb-6 max-w-7xl mx-auto">
         {/* Search Bar */}
         <div className="flex gap-2 mb-5">
           <div className="relative flex-1">
