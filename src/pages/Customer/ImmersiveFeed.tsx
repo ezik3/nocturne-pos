@@ -48,7 +48,7 @@ const ImmersiveFeed = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [posts, setPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Start with false for faster initial render
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
@@ -57,7 +57,6 @@ const ImmersiveFeed = () => {
   const [canUseGold, setCanUseGold] = useState(true);
   const [currentPostIndex, setCurrentPostIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
-
   // Fetch user profile
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -90,31 +89,40 @@ const ImmersiveFeed = () => {
     fetchUserProfile();
   }, [user]);
 
-  // Fetch posts
+  // Fetch posts - optimized for speed
   const fetchPosts = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("posts")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(20);
+    try {
+      const { data, error } = await supabase
+        .from("posts")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(20);
 
-    if (error) {
-      toast.error("Failed to load posts");
-      console.error(error);
-    } else {
-      const postsWithProfiles = await Promise.all(
-        (data || []).map(async (post) => {
-          const { data: profile } = await supabase
-            .from("customer_profiles")
-            .select("display_name, avatar_url")
-            .eq("user_id", post.user_id)
-            .maybeSingle();
-          return { ...post, customer_profiles: profile };
-        })
-      );
-      setPosts(postsWithProfiles as Post[]);
+      if (error) {
+        console.error(error);
+        return;
+      }
+      
+      // Set posts immediately without waiting for profiles
+      setPosts(data as Post[]);
+      
+      // Then fetch profiles in background
+      if (data && data.length > 0) {
+        const postsWithProfiles = await Promise.all(
+          data.map(async (post) => {
+            const { data: profile } = await supabase
+              .from("customer_profiles")
+              .select("display_name, avatar_url")
+              .eq("user_id", post.user_id)
+              .maybeSingle();
+            return { ...post, customer_profiles: profile };
+          })
+        );
+        setPosts(postsWithProfiles as Post[]);
+      }
+    } catch (err) {
+      console.error(err);
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => {
