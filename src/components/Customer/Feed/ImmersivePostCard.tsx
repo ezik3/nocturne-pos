@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Play, Pause, Volume2, VolumeX, MessageCircle, Share2, Sparkles, Clock, MapPin, X, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
@@ -227,11 +228,11 @@ const ImmersivePostCard = ({
       {/* Fist Bump Animation Overlay */}
       <FistBumpAnimation show={showFistBump} onComplete={handleFistBumpComplete} />
 
-      {/* Fullscreen Media Modal - covers EVERYTHING including navbar */}
-      {(showFullscreenVideo && (videoUrl || imageUrl)) && (
+      {/* Fullscreen Media Modal - rendered via portal to cover EVERYTHING */}
+      {(showFullscreenVideo && (videoUrl || imageUrl)) && createPortal(
         <div 
           className="fixed inset-0 bg-black flex items-center justify-center"
-          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', zIndex: 99999 }}
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', zIndex: 999999 }}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
           onClick={videoUrl ? handleTogglePlayPause : undefined}
@@ -273,27 +274,29 @@ const ImmersivePostCard = ({
               handleCloseFullscreen();
             }}
             className="absolute top-6 right-6 w-12 h-12 rounded-full bg-black/70 backdrop-blur-lg flex items-center justify-center"
-            style={{ zIndex: 100000 }}
+            style={{ zIndex: 1000000 }}
           >
             <X className="w-6 h-6 text-white" />
           </button>
           
           {/* Mute button in fullscreen */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleMute();
-            }}
-            className="absolute bottom-6 right-6 w-12 h-12 rounded-full bg-black/50 backdrop-blur-lg flex items-center justify-center"
-            style={{ zIndex: 100000 }}
-          >
-            {isMuted ? <VolumeX className="w-6 h-6 text-white" /> : <Volume2 className="w-6 h-6 text-white" />}
-          </button>
+          {videoUrl && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleMute();
+              }}
+              className="absolute bottom-6 right-6 w-12 h-12 rounded-full bg-black/50 backdrop-blur-lg flex items-center justify-center"
+              style={{ zIndex: 1000000 }}
+            >
+              {isMuted ? <VolumeX className="w-6 h-6 text-white" /> : <Volume2 className="w-6 h-6 text-white" />}
+            </button>
+          )}
           
           {/* Swipe indicators */}
           <div 
             className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 text-white/50 text-sm"
-            style={{ zIndex: 100000 }}
+            style={{ zIndex: 1000000 }}
           >
             <div className="flex items-center gap-1">
               <ChevronLeft className="w-4 h-4" />
@@ -305,7 +308,8 @@ const ImmersivePostCard = ({
               <span>Swipe up for similar</span>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Full Content Overlay */}
