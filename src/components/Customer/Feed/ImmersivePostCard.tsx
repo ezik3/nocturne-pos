@@ -4,8 +4,8 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Play, Pause, Volume2, VolumeX, MessageCircle, Share2, Sparkles, Clock, MapPin, X, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import TaggedUsersDisplay from "./TaggedUsersDisplay";
-import FistPoundIcon from "./FistPoundIcon";
 import FistBumpAnimation from "./FistBumpAnimation";
+import fistIcon from "@/assets/fist-icon.png";
 
 interface TaggedUser {
   id: string;
@@ -75,6 +75,8 @@ const ImmersivePostCard = ({
   const [showFullContent, setShowFullContent] = useState(false);
   const [showFullscreenVideo, setShowFullscreenVideo] = useState(false);
   const [isVideoPaused, setIsVideoPaused] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const fullscreenVideoRef = useRef<HTMLVideoElement>(null);
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
@@ -200,8 +202,22 @@ const ImmersivePostCard = ({
     }
   }, [isMuted]);
 
+  // Hide controls after delay
+  const startControlsTimer = useCallback(() => {
+    if (controlsTimeoutRef.current) {
+      clearTimeout(controlsTimeoutRef.current);
+    }
+    setShowControls(true);
+    controlsTimeoutRef.current = setTimeout(() => {
+      setShowControls(false);
+    }, 3000);
+  }, []);
+
   // Toggle play/pause for fullscreen video (including audio)
   const handleTogglePlayPause = useCallback(() => {
+    // Show controls on any interaction
+    startControlsTimer();
+    
     if (fullscreenVideoRef.current) {
       const video = fullscreenVideoRef.current;
       if (video.paused) {
@@ -216,9 +232,18 @@ const ImmersivePostCard = ({
         video.muted = true;
         video.volume = 0;
         setIsVideoPaused(true);
+        setShowControls(true); // Keep controls visible when paused
+        if (controlsTimeoutRef.current) {
+          clearTimeout(controlsTimeoutRef.current);
+        }
       }
     }
-  }, []);
+  }, [startControlsTimer]);
+
+  // Handle fullscreen click for images - show controls
+  const handleFullscreenImageClick = useCallback(() => {
+    startControlsTimer();
+  }, [startControlsTimer]);
 
   // Also pause background video when fullscreen opens
   useEffect(() => {
@@ -228,16 +253,24 @@ const ImmersivePostCard = ({
     }
   }, [showFullscreenVideo]);
 
-  // Play fullscreen video when opened
+  // Play fullscreen video when opened and start controls timer
   useEffect(() => {
-    if (showFullscreenVideo && fullscreenVideoRef.current && videoUrl) {
-      const video = fullscreenVideoRef.current;
-      video.volume = 1;
-      video.muted = false;
-      video.play().catch(() => {});
-      setIsVideoPaused(false);
+    if (showFullscreenVideo) {
+      startControlsTimer();
+      if (fullscreenVideoRef.current && videoUrl) {
+        const video = fullscreenVideoRef.current;
+        video.volume = 1;
+        video.muted = false;
+        video.play().catch(() => {});
+        setIsVideoPaused(false);
+      }
     }
-  }, [showFullscreenVideo, videoUrl]);
+    return () => {
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current);
+      }
+    };
+  }, [showFullscreenVideo, videoUrl, startControlsTimer]);
 
   return (
     <>
@@ -251,7 +284,7 @@ const ImmersivePostCard = ({
           style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', zIndex: 999999 }}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
-          onClick={videoUrl ? handleTogglePlayPause : handleCloseFullscreen}
+          onClick={videoUrl ? handleTogglePlayPause : handleFullscreenImageClick}
         >
           {/* Fullscreen Media - fills entire screen */}
           {videoUrl ? (
@@ -272,7 +305,10 @@ const ImmersivePostCard = ({
               src={imageUrl} 
               alt="Post" 
               className="absolute inset-0 w-full h-full object-cover"
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleFullscreenImageClick();
+              }}
             />
           ) : null}
           
@@ -285,26 +321,27 @@ const ImmersivePostCard = ({
             </div>
           )}
           
-          {/* Close button - positioned at top */}
+          {/* Close button - positioned at top with fade */}
           <button
             onClick={(e) => {
               e.stopPropagation();
               handleCloseFullscreen();
             }}
-            className="absolute top-6 right-6 w-12 h-12 rounded-full bg-black/70 backdrop-blur-lg flex items-center justify-center"
+            className={`absolute top-6 right-6 w-12 h-12 rounded-full bg-black/70 backdrop-blur-lg flex items-center justify-center transition-opacity duration-500 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
             style={{ zIndex: 1000000 }}
           >
             <X className="w-6 h-6 text-white" />
           </button>
           
-          {/* Mute button in fullscreen - for videos only */}
+          {/* Mute button in fullscreen - for videos only with fade */}
           {videoUrl && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
+                startControlsTimer();
                 toggleMute();
               }}
-              className="absolute bottom-24 right-6 w-12 h-12 rounded-full bg-black/50 backdrop-blur-lg flex items-center justify-center"
+              className={`absolute bottom-24 right-6 w-12 h-12 rounded-full bg-black/50 backdrop-blur-lg flex items-center justify-center transition-opacity duration-500 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
               style={{ zIndex: 1000000 }}
             >
               {isMuted ? <VolumeX className="w-6 h-6 text-white" /> : <Volume2 className="w-6 h-6 text-white" />}
@@ -335,9 +372,9 @@ const ImmersivePostCard = ({
             </div>
           </div>
           
-          {/* Swipe indicators */}
+          {/* Swipe indicators with fade */}
           <div 
-            className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 text-white/50 text-xs"
+            className={`absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 text-white/50 text-xs transition-opacity duration-500 ${showControls ? 'opacity-100' : 'opacity-0'}`}
             style={{ zIndex: 1000000 }}
           >
             <div className="flex items-center gap-1">
@@ -415,15 +452,15 @@ const ImmersivePostCard = ({
           <div className="w-full h-full bg-gradient-to-br from-purple via-pink to-cyan opacity-30" />
         )}
         
-        {/* Gradient Overlays */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-transparent to-transparent" />
+        {/* Gradient Overlays - pointer-events-none to allow clicks through */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-transparent to-transparent pointer-events-none" />
         
         {/* Web3 Grid Pattern Overlay */}
-        <div className="absolute inset-0 web3-grid opacity-20" />
+        <div className="absolute inset-0 web3-grid opacity-20 pointer-events-none" />
         
         {/* Particle Effect for AR posts */}
-        {isAR && <div className="absolute inset-0 particles opacity-40" />}
+        {isAR && <div className="absolute inset-0 particles opacity-40 pointer-events-none" />}
         
         {/* Play indicator for videos - tap to open fullscreen */}
         {videoUrl && !showFullscreenVideo && (
@@ -498,7 +535,7 @@ const ImmersivePostCard = ({
               ? 'bg-pink neon-glow-pink' 
               : 'bg-white/10 backdrop-blur-xl'
           }`}>
-            <FistPoundIcon className={`w-6 h-6 ${isPounding ? 'text-white' : 'text-white'}`} filled={isPounding} />
+            <img src={fistIcon} alt="Pound" className="w-7 h-7 object-contain" />
           </div>
           <span className="text-xs text-white font-medium">{poundsCount}</span>
         </button>
