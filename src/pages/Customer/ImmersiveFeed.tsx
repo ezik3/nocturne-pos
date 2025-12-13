@@ -280,11 +280,11 @@ const ImmersiveFeed = () => {
       <div 
         ref={containerRef}
         onScroll={handleScroll}
-        className="fixed top-14 left-0 right-0 bottom-0 overflow-y-auto scrollbar-hide"
+        className="fixed top-0 left-0 right-0 bottom-0 w-full overflow-y-auto scrollbar-hide"
         style={{ scrollSnapType: 'y mandatory' }}
       >
-        {/* Fade overlay behind stories */}
-        <div className="h-[120px] pointer-events-none" />
+        {/* Fade overlay behind stories - post extends up but fades behind navbar/stories */}
+        <div className="h-[176px] pointer-events-none relative z-10" />
         {posts.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center">
             <div className="w-24 h-24 mb-6 relative">
@@ -308,8 +308,8 @@ const ImmersiveFeed = () => {
           posts.map((post, index) => (
             <div 
               key={post.id} 
-              className="h-full w-full"
-              style={{ scrollSnapAlign: 'start' }}
+              className="w-full"
+              style={{ scrollSnapAlign: 'start', height: 'calc(100vh - 176px)', marginTop: index === 0 ? '-176px' : '0', paddingTop: index === 0 ? '176px' : '0' }}
             >
               <ImmersivePostCard
                 id={post.id}

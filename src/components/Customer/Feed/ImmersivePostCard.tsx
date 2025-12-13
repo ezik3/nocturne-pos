@@ -138,15 +138,17 @@ const ImmersivePostCard = ({
     }
   }, [isActive, videoUrl, isMuted]);
 
-  // Open fullscreen video with sound
-  const handleVideoClick = useCallback(() => {
-    if (videoUrl) {
+  // Open fullscreen media (video or image) with sound for videos
+  const handleMediaClick = useCallback(() => {
+    if (videoUrl || imageUrl) {
       setShowFullscreenVideo(true);
-      // When opening fullscreen, unmute globally
-      globalMutePreference = false;
-      setIsMuted(false);
+      if (videoUrl) {
+        // When opening fullscreen video, unmute globally
+        globalMutePreference = false;
+        setIsMuted(false);
+      }
     }
-  }, [videoUrl]);
+  }, [videoUrl, imageUrl]);
 
   // Close fullscreen and return to feed with sound enabled
   const handleCloseFullscreen = useCallback(() => {
@@ -209,21 +211,29 @@ const ImmersivePostCard = ({
       {/* Fist Bump Animation Overlay */}
       <FistBumpAnimation show={showFistBump} onComplete={handleFistBumpComplete} />
 
-      {/* Fullscreen Video Modal */}
-      {showFullscreenVideo && videoUrl && (
+      {/* Fullscreen Media Modal */}
+      {(showFullscreenVideo && (videoUrl || imageUrl)) && (
         <div 
           className="fixed inset-0 z-[100] bg-black flex items-center justify-center"
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
         >
-          <video
-            ref={fullscreenVideoRef}
-            src={videoUrl}
-            autoPlay
-            loop
-            playsInline
-            className="w-full h-full object-contain"
-          />
+          {videoUrl ? (
+            <video
+              ref={fullscreenVideoRef}
+              src={videoUrl}
+              autoPlay
+              loop
+              playsInline
+              className="w-full h-full object-cover"
+            />
+          ) : imageUrl ? (
+            <img 
+              src={imageUrl} 
+              alt="Post" 
+              className="w-full h-full object-contain"
+            />
+          ) : null}
           
           {/* Close button */}
           <button
@@ -301,11 +311,16 @@ const ImmersivePostCard = ({
             loop
             muted={isMuted}
             playsInline
-            onClick={handleVideoClick}
+            onClick={handleMediaClick}
             className="w-full h-full object-cover cursor-pointer"
           />
         ) : imageUrl ? (
-          <img src={imageUrl} alt="Post" className="w-full h-full object-cover" />
+          <img 
+            src={imageUrl} 
+            alt="Post" 
+            className="w-full h-full object-cover cursor-pointer" 
+            onClick={handleMediaClick}
+          />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-purple via-pink to-cyan opacity-30" />
         )}
@@ -323,7 +338,7 @@ const ImmersivePostCard = ({
         {/* Play indicator for videos - tap to open fullscreen */}
         {videoUrl && !showFullscreenVideo && (
           <button 
-            onClick={handleVideoClick}
+            onClick={handleMediaClick}
             className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 rounded-full bg-white/20 backdrop-blur-xl flex items-center justify-center hover:scale-110 transition-all z-10"
           >
             <Play className="w-10 h-10 text-white ml-1" />
