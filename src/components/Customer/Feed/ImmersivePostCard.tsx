@@ -203,13 +203,16 @@ const ImmersivePostCard = ({
   // Toggle play/pause for fullscreen video (including audio)
   const handleTogglePlayPause = useCallback(() => {
     if (fullscreenVideoRef.current) {
-      if (fullscreenVideoRef.current.paused) {
-        fullscreenVideoRef.current.play();
-        fullscreenVideoRef.current.muted = false;
+      const video = fullscreenVideoRef.current;
+      if (video.paused) {
+        video.muted = false;
+        video.play().catch(() => {});
         setIsVideoPaused(false);
       } else {
-        fullscreenVideoRef.current.pause();
-        fullscreenVideoRef.current.muted = true; // Mute audio when paused
+        video.pause();
+        // Completely stop audio by setting volume to 0 and muting
+        video.volume = 0;
+        video.muted = true;
         setIsVideoPaused(true);
       }
     }
@@ -217,11 +220,14 @@ const ImmersivePostCard = ({
 
   // Play fullscreen video when opened
   useEffect(() => {
-    if (showFullscreenVideo && fullscreenVideoRef.current) {
-      fullscreenVideoRef.current.muted = false;
-      fullscreenVideoRef.current.play().catch(() => {});
+    if (showFullscreenVideo && fullscreenVideoRef.current && videoUrl) {
+      const video = fullscreenVideoRef.current;
+      video.volume = 1;
+      video.muted = false;
+      video.play().catch(() => {});
+      setIsVideoPaused(false);
     }
-  }, [showFullscreenVideo]);
+  }, [showFullscreenVideo, videoUrl]);
 
   return (
     <>
@@ -244,7 +250,8 @@ const ImmersivePostCard = ({
               autoPlay
               loop
               playsInline
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain md:object-contain"
+              style={{ maxWidth: '100vw', maxHeight: '100vh' }}
               onClick={(e) => {
                 e.stopPropagation();
                 handleTogglePlayPause();
@@ -255,6 +262,8 @@ const ImmersivePostCard = ({
               src={imageUrl} 
               alt="Post" 
               className="w-full h-full object-contain"
+              style={{ maxWidth: '100vw', maxHeight: '100vh' }}
+              onClick={(e) => e.stopPropagation()}
             />
           ) : null}
           
