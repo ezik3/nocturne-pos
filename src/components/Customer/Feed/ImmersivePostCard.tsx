@@ -199,11 +199,12 @@ const ImmersivePostCard = ({
     }
   }, [isMuted]);
 
-  // Toggle play/pause for fullscreen video
+  // Toggle play/pause for fullscreen video (including audio)
   const handleTogglePlayPause = useCallback(() => {
     if (fullscreenVideoRef.current) {
       if (fullscreenVideoRef.current.paused) {
         fullscreenVideoRef.current.play();
+        fullscreenVideoRef.current.muted = false;
         setIsVideoPaused(false);
       } else {
         fullscreenVideoRef.current.pause();
@@ -225,10 +226,11 @@ const ImmersivePostCard = ({
       {/* Fist Bump Animation Overlay */}
       <FistBumpAnimation show={showFistBump} onComplete={handleFistBumpComplete} />
 
-      {/* Fullscreen Media Modal */}
+      {/* Fullscreen Media Modal - covers EVERYTHING */}
       {(showFullscreenVideo && (videoUrl || imageUrl)) && (
         <div 
-          className="fixed inset-0 z-[100] bg-black flex items-center justify-center"
+          className="fixed inset-0 z-[9999] bg-black flex items-center justify-center"
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh' }}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
           onClick={videoUrl ? handleTogglePlayPause : undefined}
@@ -263,24 +265,30 @@ const ImmersivePostCard = ({
             </div>
           )}
           
-          {/* Close button */}
+          {/* Close button - positioned safely below top edge */}
           <button
-            onClick={handleCloseFullscreen}
-            className="absolute top-6 right-6 w-12 h-12 rounded-full bg-black/50 backdrop-blur-lg flex items-center justify-center z-10"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleCloseFullscreen();
+            }}
+            className="absolute top-16 right-6 w-12 h-12 rounded-full bg-black/70 backdrop-blur-lg flex items-center justify-center z-[10000]"
           >
             <X className="w-6 h-6 text-white" />
           </button>
           
           {/* Mute button in fullscreen */}
           <button
-            onClick={toggleMute}
-            className="absolute bottom-6 right-6 w-12 h-12 rounded-full bg-black/50 backdrop-blur-lg flex items-center justify-center z-10"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleMute();
+            }}
+            className="absolute bottom-6 right-6 w-12 h-12 rounded-full bg-black/50 backdrop-blur-lg flex items-center justify-center z-[10000]"
           >
             {isMuted ? <VolumeX className="w-6 h-6 text-white" /> : <Volume2 className="w-6 h-6 text-white" />}
           </button>
           
           {/* Swipe indicators */}
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 text-white/50 text-sm">
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 text-white/50 text-sm z-[10000]">
             <div className="flex items-center gap-1">
               <ChevronLeft className="w-4 h-4" />
               <ChevronRight className="w-4 h-4" />
