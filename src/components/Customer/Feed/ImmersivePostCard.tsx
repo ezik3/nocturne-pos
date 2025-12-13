@@ -73,6 +73,7 @@ const ImmersivePostCard = ({
   const [isMuted, setIsMuted] = useState(globalMutePreference);
   const [showFullContent, setShowFullContent] = useState(false);
   const [showFullscreenVideo, setShowFullscreenVideo] = useState(false);
+  const [isVideoPaused, setIsVideoPaused] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const fullscreenVideoRef = useRef<HTMLVideoElement>(null);
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
@@ -198,6 +199,19 @@ const ImmersivePostCard = ({
     }
   }, [isMuted]);
 
+  // Toggle play/pause for fullscreen video
+  const handleTogglePlayPause = useCallback(() => {
+    if (fullscreenVideoRef.current) {
+      if (fullscreenVideoRef.current.paused) {
+        fullscreenVideoRef.current.play();
+        setIsVideoPaused(false);
+      } else {
+        fullscreenVideoRef.current.pause();
+        setIsVideoPaused(true);
+      }
+    }
+  }, []);
+
   // Play fullscreen video when opened
   useEffect(() => {
     if (showFullscreenVideo && fullscreenVideoRef.current) {
@@ -217,6 +231,7 @@ const ImmersivePostCard = ({
           className="fixed inset-0 z-[100] bg-black flex items-center justify-center"
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
+          onClick={videoUrl ? handleTogglePlayPause : undefined}
         >
           {videoUrl ? (
             <video
@@ -226,6 +241,10 @@ const ImmersivePostCard = ({
               loop
               playsInline
               className="w-full h-full object-cover"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleTogglePlayPause();
+              }}
             />
           ) : imageUrl ? (
             <img 
@@ -234,6 +253,15 @@ const ImmersivePostCard = ({
               className="w-full h-full object-contain"
             />
           ) : null}
+          
+          {/* Play/Pause indicator for videos */}
+          {videoUrl && isVideoPaused && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="w-20 h-20 rounded-full bg-black/50 backdrop-blur-lg flex items-center justify-center">
+                <Play className="w-10 h-10 text-white ml-1" />
+              </div>
+            </div>
+          )}
           
           {/* Close button */}
           <button
