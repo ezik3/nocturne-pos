@@ -64,6 +64,14 @@ import VenueMessages from "./pages/Venue/VenueMessages";
 import VenueAccount from "./pages/Venue/VenueAccount";
 import VenueSettings from "./pages/Venue/VenueSettings";
 
+// Admin imports
+import AdminLayout from "./components/Admin/AdminLayout";
+import AdminLogin from "./pages/Admin/AdminLogin";
+import AdminDashboardPage from "./pages/Admin/AdminDashboard";
+import AdminUsersPage from "./pages/Admin/AdminUsers";
+import AdminVenuesPage from "./pages/Admin/AdminVenues";
+import AdminTreasuryPage from "./pages/Admin/AdminTreasury";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -341,6 +349,19 @@ const App = () => (
             </ProtectedRoute>
           } />
           
+          {/* Admin Routes */}
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin" element={<AdminLayout><AdminDashboardPage /></AdminLayout>} />
+          <Route path="/admin/users" element={<AdminLayout><AdminUsersPage /></AdminLayout>} />
+          <Route path="/admin/venues" element={<AdminLayout><AdminVenuesPage /></AdminLayout>} />
+          <Route path="/admin/treasury" element={<AdminLayout><AdminTreasuryPage /></AdminLayout>} />
+          <Route path="/admin/transactions" element={<AdminLayout><div className="p-8 text-foreground">Transactions - Coming Soon</div></AdminLayout>} />
+          <Route path="/admin/points" element={<AdminLayout><div className="p-8 text-foreground">Points & Loyalty - Coming Soon</div></AdminLayout>} />
+          <Route path="/admin/reports" element={<AdminLayout><div className="p-8 text-foreground">Reports - Coming Soon</div></AdminLayout>} />
+          <Route path="/admin/notifications" element={<AdminLayout><div className="p-8 text-foreground">Notifications - Coming Soon</div></AdminLayout>} />
+          <Route path="/admin/analytics" element={<AdminLayout><div className="p-8 text-foreground">Analytics - Coming Soon</div></AdminLayout>} />
+          <Route path="/admin/settings" element={<AdminLayout><div className="p-8 text-foreground">Settings - Coming Soon</div></AdminLayout>} />
+
           {/* Redirects */}
           <Route path="/" element={<Navigate to="/auth" replace />} />
           <Route path="/app" element={<Navigate to="/app/feed/immersive" replace />} />
