@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_audit_log: {
+        Row: {
+          action_type: string
+          admin_id: string
+          created_at: string
+          details: Json | null
+          id: string
+          ip_address: string | null
+          target_id: string | null
+          target_type: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action_type: string
+          admin_id: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          target_id?: string | null
+          target_type?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action_type?: string
+          admin_id?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          target_id?: string | null
+          target_type?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       check_ins: {
         Row: {
           checked_in_at: string | null
@@ -96,6 +132,83 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      deposit_records: {
+        Row: {
+          amount_jvc: number
+          amount_local: number
+          amount_usd: number
+          completed_at: string | null
+          created_at: string
+          crypto_from_address: string | null
+          crypto_tx_hash: string | null
+          deposit_method: string
+          exchange_rate: number
+          failure_reason: string | null
+          id: string
+          local_currency: string
+          metadata: Json | null
+          net_amount: number | null
+          status: string
+          stripe_charge_id: string | null
+          stripe_fee: number | null
+          stripe_payment_intent_id: string | null
+          user_id: string | null
+          venue_id: string | null
+        }
+        Insert: {
+          amount_jvc: number
+          amount_local: number
+          amount_usd: number
+          completed_at?: string | null
+          created_at?: string
+          crypto_from_address?: string | null
+          crypto_tx_hash?: string | null
+          deposit_method: string
+          exchange_rate?: number
+          failure_reason?: string | null
+          id?: string
+          local_currency?: string
+          metadata?: Json | null
+          net_amount?: number | null
+          status?: string
+          stripe_charge_id?: string | null
+          stripe_fee?: number | null
+          stripe_payment_intent_id?: string | null
+          user_id?: string | null
+          venue_id?: string | null
+        }
+        Update: {
+          amount_jvc?: number
+          amount_local?: number
+          amount_usd?: number
+          completed_at?: string | null
+          created_at?: string
+          crypto_from_address?: string | null
+          crypto_tx_hash?: string | null
+          deposit_method?: string
+          exchange_rate?: number
+          failure_reason?: string | null
+          id?: string
+          local_currency?: string
+          metadata?: Json | null
+          net_amount?: number | null
+          status?: string
+          stripe_charge_id?: string | null
+          stripe_fee?: number | null
+          stripe_payment_intent_id?: string | null
+          user_id?: string | null
+          venue_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deposit_records_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       driver_profiles: {
         Row: {
@@ -399,6 +512,36 @@ export type Database = {
           },
         ]
       }
+      exchange_rates: {
+        Row: {
+          base_currency: string
+          expires_at: string
+          fetched_at: string
+          id: string
+          rate: number
+          source: string
+          target_currency: string
+        }
+        Insert: {
+          base_currency?: string
+          expires_at?: string
+          fetched_at?: string
+          id?: string
+          rate: number
+          source?: string
+          target_currency: string
+        }
+        Update: {
+          base_currency?: string
+          expires_at?: string
+          fetched_at?: string
+          id?: string
+          rate?: number
+          source?: string
+          target_currency?: string
+        }
+        Relationships: []
+      }
       floorplans: {
         Row: {
           canvas_height: number | null
@@ -510,6 +653,107 @@ export type Database = {
           status?: string | null
           updated_at?: string | null
           venue_id?: string
+        }
+        Relationships: []
+      }
+      ledger_entries: {
+        Row: {
+          amount: number
+          balance_after: number
+          balance_before: number
+          created_at: string
+          entry_type: string
+          id: string
+          transaction_id: string
+          wallet_id: string | null
+          wallet_type: string
+        }
+        Insert: {
+          amount: number
+          balance_after: number
+          balance_before: number
+          created_at?: string
+          entry_type: string
+          id?: string
+          transaction_id: string
+          wallet_id?: string | null
+          wallet_type: string
+        }
+        Update: {
+          amount?: number
+          balance_after?: number
+          balance_before?: number
+          created_at?: string
+          entry_type?: string
+          id?: string
+          transaction_id?: string
+          wallet_id?: string | null
+          wallet_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ledger_entries_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mint_burn_audit: {
+        Row: {
+          admin_id: string | null
+          admin_reason: string | null
+          amount_jvc: number
+          amount_usd: number
+          balance_after: number
+          balance_before: number
+          created_at: string
+          deposit_id: string | null
+          id: string
+          operation_type: string
+          total_supply_after: number
+          total_supply_before: number
+          triggered_by: string
+          wallet_id: string
+          wallet_type: string
+          withdrawal_id: string | null
+        }
+        Insert: {
+          admin_id?: string | null
+          admin_reason?: string | null
+          amount_jvc: number
+          amount_usd: number
+          balance_after: number
+          balance_before: number
+          created_at?: string
+          deposit_id?: string | null
+          id?: string
+          operation_type: string
+          total_supply_after: number
+          total_supply_before: number
+          triggered_by: string
+          wallet_id: string
+          wallet_type: string
+          withdrawal_id?: string | null
+        }
+        Update: {
+          admin_id?: string | null
+          admin_reason?: string | null
+          amount_jvc?: number
+          amount_usd?: number
+          balance_after?: number
+          balance_before?: number
+          created_at?: string
+          deposit_id?: string | null
+          id?: string
+          operation_type?: string
+          total_supply_after?: number
+          total_supply_before?: number
+          triggered_by?: string
+          wallet_id?: string
+          wallet_type?: string
+          withdrawal_id?: string | null
         }
         Relationships: []
       }
@@ -662,6 +906,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      platform_treasury: {
+        Row: {
+          collected_fees: number
+          created_at: string
+          id: string
+          last_reconciled_at: string | null
+          pending_deposits: number
+          pending_withdrawals: number
+          reconciliation_status: string | null
+          stripe_balance: number
+          total_jvc_supply: number
+          total_usd_backing: number
+          updated_at: string
+        }
+        Insert: {
+          collected_fees?: number
+          created_at?: string
+          id?: string
+          last_reconciled_at?: string | null
+          pending_deposits?: number
+          pending_withdrawals?: number
+          reconciliation_status?: string | null
+          stripe_balance?: number
+          total_jvc_supply?: number
+          total_usd_backing?: number
+          updated_at?: string
+        }
+        Update: {
+          collected_fees?: number
+          created_at?: string
+          id?: string
+          last_reconciled_at?: string | null
+          pending_deposits?: number
+          pending_withdrawals?: number
+          reconciliation_status?: string | null
+          stripe_balance?: number
+          total_jvc_supply?: number
+          total_usd_backing?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       post_comments: {
         Row: {
@@ -873,6 +1159,78 @@ export type Database = {
         }
         Relationships: []
       }
+      transactions: {
+        Row: {
+          amount_jvc: number
+          amount_local: number | null
+          amount_usd: number
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          exchange_rate: number | null
+          fee_amount: number
+          fee_collected: boolean
+          from_wallet_id: string | null
+          from_wallet_type: string | null
+          id: string
+          local_currency: string | null
+          metadata: Json | null
+          reference_id: string | null
+          reference_type: string | null
+          status: string
+          to_wallet_id: string | null
+          to_wallet_type: string | null
+          transaction_type: string
+        }
+        Insert: {
+          amount_jvc: number
+          amount_local?: number | null
+          amount_usd: number
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          exchange_rate?: number | null
+          fee_amount?: number
+          fee_collected?: boolean
+          from_wallet_id?: string | null
+          from_wallet_type?: string | null
+          id?: string
+          local_currency?: string | null
+          metadata?: Json | null
+          reference_id?: string | null
+          reference_type?: string | null
+          status?: string
+          to_wallet_id?: string | null
+          to_wallet_type?: string | null
+          transaction_type: string
+        }
+        Update: {
+          amount_jvc?: number
+          amount_local?: number | null
+          amount_usd?: number
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          exchange_rate?: number | null
+          fee_amount?: number
+          fee_collected?: boolean
+          from_wallet_id?: string | null
+          from_wallet_type?: string | null
+          id?: string
+          local_currency?: string | null
+          metadata?: Json | null
+          reference_id?: string | null
+          reference_type?: string | null
+          status?: string
+          to_wallet_id?: string | null
+          to_wallet_type?: string | null
+          transaction_type?: string
+        }
+        Relationships: []
+      }
       user_connections: {
         Row: {
           connected_user_id: string
@@ -923,7 +1281,12 @@ export type Database = {
           balance_jv_token: number | null
           balance_usd: number | null
           created_at: string | null
+          freeze_reason: string | null
+          frozen_at: string | null
+          frozen_by: string | null
           id: string
+          is_frozen: boolean
+          pending_balance: number
           reward_points: number | null
           updated_at: string | null
           user_id: string
@@ -932,7 +1295,12 @@ export type Database = {
           balance_jv_token?: number | null
           balance_usd?: number | null
           created_at?: string | null
+          freeze_reason?: string | null
+          frozen_at?: string | null
+          frozen_by?: string | null
           id?: string
+          is_frozen?: boolean
+          pending_balance?: number
           reward_points?: number | null
           updated_at?: string | null
           user_id: string
@@ -941,7 +1309,12 @@ export type Database = {
           balance_jv_token?: number | null
           balance_usd?: number | null
           created_at?: string | null
+          freeze_reason?: string | null
+          frozen_at?: string | null
+          frozen_by?: string | null
           id?: string
+          is_frozen?: boolean
+          pending_balance?: number
           reward_points?: number | null
           updated_at?: string | null
           user_id?: string
@@ -991,6 +1364,56 @@ export type Database = {
             columns: ["floorplan_id"]
             isOneToOne: false
             referencedRelation: "floorplans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      venue_wallets: {
+        Row: {
+          balance_jvc: number
+          balance_usd: number
+          created_at: string
+          freeze_reason: string | null
+          frozen_at: string | null
+          frozen_by: string | null
+          id: string
+          is_frozen: boolean
+          pending_balance: number
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          balance_jvc?: number
+          balance_usd?: number
+          created_at?: string
+          freeze_reason?: string | null
+          frozen_at?: string | null
+          frozen_by?: string | null
+          id?: string
+          is_frozen?: boolean
+          pending_balance?: number
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          balance_jvc?: number
+          balance_usd?: number
+          created_at?: string
+          freeze_reason?: string | null
+          frozen_at?: string | null
+          frozen_by?: string | null
+          id?: string
+          is_frozen?: boolean
+          pending_balance?: number
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_wallets_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: true
+            referencedRelation: "venues"
             referencedColumns: ["id"]
           },
         ]
@@ -1046,6 +1469,134 @@ export type Database = {
         }
         Relationships: []
       }
+      wallet_freezes: {
+        Row: {
+          created_at: string
+          freeze_reason: string
+          frozen_by: string
+          id: string
+          is_active: boolean
+          unfreeze_reason: string | null
+          unfrozen_at: string | null
+          unfrozen_by: string | null
+          wallet_id: string
+          wallet_type: string
+        }
+        Insert: {
+          created_at?: string
+          freeze_reason: string
+          frozen_by: string
+          id?: string
+          is_active?: boolean
+          unfreeze_reason?: string | null
+          unfrozen_at?: string | null
+          unfrozen_by?: string | null
+          wallet_id: string
+          wallet_type: string
+        }
+        Update: {
+          created_at?: string
+          freeze_reason?: string
+          frozen_by?: string
+          id?: string
+          is_active?: boolean
+          unfreeze_reason?: string | null
+          unfrozen_at?: string | null
+          unfrozen_by?: string | null
+          wallet_id?: string
+          wallet_type?: string
+        }
+        Relationships: []
+      }
+      withdrawal_records: {
+        Row: {
+          amount_jvc: number
+          amount_local: number
+          amount_usd: number
+          approved_at: string | null
+          approved_by: string | null
+          bank_account_last4: string | null
+          bank_name: string | null
+          completed_at: string | null
+          created_at: string
+          crypto_to_address: string | null
+          crypto_tx_hash: string | null
+          exchange_rate: number
+          failure_reason: string | null
+          fee_amount: number
+          id: string
+          local_currency: string
+          metadata: Json | null
+          net_payout: number
+          rejection_reason: string | null
+          status: string
+          stripe_payout_id: string | null
+          user_id: string | null
+          venue_id: string | null
+          withdrawal_method: string
+        }
+        Insert: {
+          amount_jvc: number
+          amount_local: number
+          amount_usd: number
+          approved_at?: string | null
+          approved_by?: string | null
+          bank_account_last4?: string | null
+          bank_name?: string | null
+          completed_at?: string | null
+          created_at?: string
+          crypto_to_address?: string | null
+          crypto_tx_hash?: string | null
+          exchange_rate?: number
+          failure_reason?: string | null
+          fee_amount?: number
+          id?: string
+          local_currency?: string
+          metadata?: Json | null
+          net_payout: number
+          rejection_reason?: string | null
+          status?: string
+          stripe_payout_id?: string | null
+          user_id?: string | null
+          venue_id?: string | null
+          withdrawal_method: string
+        }
+        Update: {
+          amount_jvc?: number
+          amount_local?: number
+          amount_usd?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          bank_account_last4?: string | null
+          bank_name?: string | null
+          completed_at?: string | null
+          created_at?: string
+          crypto_to_address?: string | null
+          crypto_tx_hash?: string | null
+          exchange_rate?: number
+          failure_reason?: string | null
+          fee_amount?: number
+          id?: string
+          local_currency?: string
+          metadata?: Json | null
+          net_payout?: number
+          rejection_reason?: string | null
+          status?: string
+          stripe_payout_id?: string | null
+          user_id?: string | null
+          venue_id?: string | null
+          withdrawal_method?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "withdrawal_records_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1058,9 +1609,19 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      app_role: "admin" | "manager" | "staff" | "kitchen"
+      app_role:
+        | "admin"
+        | "manager"
+        | "staff"
+        | "kitchen"
+        | "owner_superadmin"
+        | "admin_manager"
+        | "admin_support"
+        | "admin_finance"
+        | "admin_compliance"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1188,7 +1749,17 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "manager", "staff", "kitchen"],
+      app_role: [
+        "admin",
+        "manager",
+        "staff",
+        "kitchen",
+        "owner_superadmin",
+        "admin_manager",
+        "admin_support",
+        "admin_finance",
+        "admin_compliance",
+      ],
     },
   },
 } as const
