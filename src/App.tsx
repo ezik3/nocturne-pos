@@ -71,6 +71,14 @@ import AdminDashboardPage from "./pages/Admin/AdminDashboard";
 import AdminUsersPage from "./pages/Admin/AdminUsers";
 import AdminVenuesPage from "./pages/Admin/AdminVenues";
 import AdminTreasuryPage from "./pages/Admin/AdminTreasury";
+import AdminMintBurnPage from "./pages/Admin/AdminMintBurn";
+import AdminTransactionsPage from "./pages/Admin/AdminTransactions";
+import AdminDepositsPage from "./pages/Admin/AdminDeposits";
+import AdminWithdrawalsPage from "./pages/Admin/AdminWithdrawals";
+import AdminWalletFreezesPage from "./pages/Admin/AdminWalletFreezes";
+import AdminAuditLogPage from "./pages/Admin/AdminAuditLog";
+import AdminRolesPage from "./pages/Admin/AdminRoles";
+import AdminSettingsPage from "./pages/Admin/AdminSettings";
 
 const queryClient = new QueryClient();
 
