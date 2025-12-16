@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 
 const navItems = [
   { title: "Dashboard", url: "/venue/pos/dashboard", icon: LayoutDashboard },
@@ -30,12 +31,20 @@ const navItems = [
 
 export default function Sidebar() {
   const navigate = useNavigate();
+  const [venueName, setVenueName] = useState("JV POS");
+
+  useEffect(() => {
+    const storedName = localStorage.getItem('jv_current_venue_name');
+    if (storedName) {
+      setVenueName(storedName);
+    }
+  }, []);
 
   return (
     <aside className="w-64 min-h-screen glass border-r border-border p-4 flex flex-col">
       <div className="mb-8">
-        <h2 className="text-2xl font-bold text-primary">JV POS</h2>
-        <p className="text-sm text-muted-foreground">Night Venue System</p>
+        <h2 className="text-2xl font-bold text-primary truncate">{venueName}</h2>
+        <p className="text-sm text-muted-foreground">Point of Sale</p>
       </div>
 
       <nav className="space-y-2 flex-1">

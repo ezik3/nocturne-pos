@@ -37,15 +37,12 @@ const ProfileNew = () => {
 
   useEffect(() => {
     const fetchProfile = async () => {
-      // First check localStorage for verified name and picture
-      const verifiedName = localStorage.getItem("jv_verified_name");
-      const profilePicture = localStorage.getItem("jv_profile_picture");
-
       if (!user) {
         setLoading(false);
         return;
       }
 
+      // First try to get from database
       const { data, error } = await supabase
         .from("customer_profiles")
         .select("*")
@@ -55,15 +52,19 @@ const ProfileNew = () => {
       if (error) {
         console.error(error);
       }
+
+      // Also check localStorage as fallback
+      const verifiedName = localStorage.getItem("jv_verified_name");
+      const profilePicture = localStorage.getItem("jv_profile_picture");
       
       setProfile({
-        display_name: verifiedName || data?.display_name || "DJ Sarah Spin",
-        bio: data?.bio || "Electro-house DJ and music producer with a passion for creating unforgettable nights. Spinning beats and igniting dance floors across the globe. Let's make some noise! 🎧🔥",
-        location: data?.location || "Sin City",
-        avatar_url: profilePicture || data?.avatar_url || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300",
-        followers: 1234,
-        following: 567,
-        events: 89,
+        display_name: data?.display_name || verifiedName || user.email?.split('@')[0] || "User",
+        bio: data?.bio || "No bio yet. Edit your profile to add one!",
+        location: data?.location || "Earth",
+        avatar_url: data?.avatar_url || profilePicture || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300",
+        followers: data?.connection_count || 0,
+        following: 0,
+        events: 0,
       });
       
       setLoading(false);

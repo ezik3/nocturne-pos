@@ -17,15 +17,7 @@ import DealCreatorModal from "@/components/Venue/DealCreatorModal";
 import TablesPopup from "@/components/Venue/TablesPopup";
 import { useVenueOrders } from "@/hooks/useVenueOrders";
 import { formatDistanceToNow } from "date-fns";
-
-const venueData = {
-  name: "The Electric Lounge",
-  vibeLevel: "🔥 Lit",
-  currentOccupancy: 156,
-  maxCapacity: 250,
-  avgWaitTime: 12,
-  rating: 4.8,
-};
+import { supabase } from "@/integrations/supabase/client";
 
 const peopleAtVenue = [
   { id: "1", name: "Sarah M.", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100", table: "4" },
@@ -102,6 +94,48 @@ export default function VenueHome() {
   const [showDealCreator, setShowDealCreator] = useState(false);
   const [showTablesPopup, setShowTablesPopup] = useState(false);
   const { orders, stats, getRecentOrders } = useVenueOrders();
+  
+  // Venue data state
+  const [venueData, setVenueData] = useState({
+    name: "Loading...",
+    vibeLevel: "🔥 Lit",
+    currentOccupancy: 0,
+    maxCapacity: 250,
+    avgWaitTime: 12,
+    rating: 4.8,
+    imageUrl: null as string | null,
+  });
+
+  // Fetch venue data from database
+  useEffect(() => {
+    const fetchVenueData = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: venue, error } = await supabase
+        .from('venues')
+        .select('*')
+        .eq('owner_user_id', user.id)
+        .maybeSingle();
+
+      if (venue && !error) {
+        setVenueData({
+          name: venue.name,
+          vibeLevel: "🔥 Lit",
+          currentOccupancy: venue.current_occupancy || 0,
+          maxCapacity: venue.capacity || 250,
+          avgWaitTime: 12,
+          rating: (venue.vibe_score || 48) / 10,
+          imageUrl: venue.image_url,
+        });
+        // Store venue name for POS and other pages
+        localStorage.setItem('jv_current_venue_name', venue.name);
+        localStorage.setItem('jv_current_venue_id', venue.id);
+      }
+    };
+
+    fetchVenueData();
+  }, []);
   
   const occupancyPercent = (venueData.currentOccupancy / venueData.maxCapacity) * 100;
   const todayRevenue = orders.filter(o => o.status === "served").reduce((sum, o) => sum + o.total, 0);
