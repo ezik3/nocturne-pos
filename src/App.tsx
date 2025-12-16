@@ -359,16 +359,19 @@ const App = () => (
           
           {/* Admin Routes */}
           <Route path="/admin/login" element={<AdminLogin />} />
-          <Route path="/admin" element={<AdminLayout><AdminDashboardPage /></AdminLayout>} />
+          <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+          <Route path="/admin/dashboard" element={<AdminLayout><AdminDashboardPage /></AdminLayout>} />
           <Route path="/admin/users" element={<AdminLayout><AdminUsersPage /></AdminLayout>} />
           <Route path="/admin/venues" element={<AdminLayout><AdminVenuesPage /></AdminLayout>} />
           <Route path="/admin/treasury" element={<AdminLayout><AdminTreasuryPage /></AdminLayout>} />
-          <Route path="/admin/transactions" element={<AdminLayout><div className="p-8 text-foreground">Transactions - Coming Soon</div></AdminLayout>} />
-          <Route path="/admin/points" element={<AdminLayout><div className="p-8 text-foreground">Points & Loyalty - Coming Soon</div></AdminLayout>} />
-          <Route path="/admin/reports" element={<AdminLayout><div className="p-8 text-foreground">Reports - Coming Soon</div></AdminLayout>} />
-          <Route path="/admin/notifications" element={<AdminLayout><div className="p-8 text-foreground">Notifications - Coming Soon</div></AdminLayout>} />
-          <Route path="/admin/analytics" element={<AdminLayout><div className="p-8 text-foreground">Analytics - Coming Soon</div></AdminLayout>} />
-          <Route path="/admin/settings" element={<AdminLayout><div className="p-8 text-foreground">Settings - Coming Soon</div></AdminLayout>} />
+          <Route path="/admin/mint-burn" element={<AdminLayout><AdminMintBurnPage /></AdminLayout>} />
+          <Route path="/admin/transactions" element={<AdminLayout><AdminTransactionsPage /></AdminLayout>} />
+          <Route path="/admin/deposits" element={<AdminLayout><AdminDepositsPage /></AdminLayout>} />
+          <Route path="/admin/withdrawals" element={<AdminLayout><AdminWithdrawalsPage /></AdminLayout>} />
+          <Route path="/admin/wallet-freezes" element={<AdminLayout><AdminWalletFreezesPage /></AdminLayout>} />
+          <Route path="/admin/audit-log" element={<AdminLayout><AdminAuditLogPage /></AdminLayout>} />
+          <Route path="/admin/roles" element={<AdminLayout><AdminRolesPage /></AdminLayout>} />
+          <Route path="/admin/settings" element={<AdminLayout><AdminSettingsPage /></AdminLayout>} />
 
           {/* Redirects */}
           <Route path="/" element={<Navigate to="/auth" replace />} />
