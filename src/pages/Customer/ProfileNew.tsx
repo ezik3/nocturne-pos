@@ -86,94 +86,93 @@ const ProfileNew = () => {
   }
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-background">
       <Web3FeedHeader />
       
       {/* Hero Section with Video Background Option */}
-      <div className="relative h-[50vh] overflow-hidden">
+      <div className="relative h-[45vh] min-h-[350px] overflow-hidden">
         {/* Background - could be video or image */}
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-900/50 via-black to-pink-900/30" />
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-900/50 via-background to-pink-900/30" />
         <div className="absolute inset-0 web3-grid opacity-20" />
         
         {/* Video Play Button (indicating video background option) */}
-        <button className="absolute top-6 left-6 w-14 h-14 bg-neon-green rounded-full flex items-center justify-center hover:scale-110 transition-transform shadow-lg shadow-neon-green/30">
-          <Play className="w-7 h-7 text-black ml-1" fill="currentColor" />
+        <button className="absolute top-4 left-4 w-12 h-12 bg-primary rounded-full flex items-center justify-center hover:scale-110 transition-transform shadow-lg shadow-primary/30 z-10">
+          <Play className="w-6 h-6 text-primary-foreground ml-0.5" fill="currentColor" />
         </button>
-
-        {/* Top Right Actions */}
-        <div className="absolute top-6 right-6 flex gap-3">
-          <Button
-            variant="outline"
-            className="bg-neon-cyan/20 border-neon-cyan text-neon-cyan hover:bg-neon-cyan/30 rounded-xl"
-            onClick={() => navigate("/app/wallet")}
-          >
-            <Wallet className="w-4 h-4 mr-2" />
-            Wallet
-          </Button>
-          <Button
-            variant="outline"
-            className="bg-neon-pink/20 border-neon-pink text-neon-pink hover:bg-neon-pink/30 rounded-xl"
-            onClick={handleSignOut}
-          >
-            <LogOut className="w-4 h-4 mr-2" />
-            Logout
-          </Button>
-        </div>
 
         {/* Audio Control */}
         <button
           onClick={() => setIsMuted(!isMuted)}
-          className="absolute bottom-6 right-6 w-10 h-10 bg-black/50 rounded-full flex items-center justify-center text-white/70 hover:text-white transition-colors"
+          className="absolute top-4 right-4 w-10 h-10 bg-background/50 backdrop-blur-sm rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors z-10"
         >
           {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
         </button>
 
         {/* Profile Info Overlay */}
-        <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black via-black/80 to-transparent">
-          <div className="flex items-end gap-6">
-            <Avatar className="w-32 h-32 border-4 border-white shadow-xl">
+        <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-background via-background/90 to-transparent">
+          <div className="flex items-end gap-6 max-w-6xl mx-auto">
+            <Avatar className="w-28 h-28 border-4 border-primary shadow-xl shadow-primary/20">
               <AvatarImage src={profile.avatar_url} />
-              <AvatarFallback className="text-4xl bg-secondary">
+              <AvatarFallback className="text-3xl bg-secondary">
                 {profile.display_name?.[0] || "U"}
               </AvatarFallback>
             </Avatar>
             
             <div className="flex-1 pb-2">
-              <h1 className="text-4xl font-bold text-white mb-1">{profile.display_name}</h1>
-              <div className="flex items-center gap-2 text-lg mb-4">
-                <span className="text-foreground/70">@{profile.display_name.toLowerCase().replace(/\s+/g, '')}</span>
-                <span className="text-neon-cyan">@{profile.location}</span>
+              <h1 className="text-3xl font-bold text-foreground mb-1">{profile.display_name}</h1>
+              <div className="flex items-center gap-2 text-base mb-3">
+                <span className="text-muted-foreground">@{profile.display_name.toLowerCase().replace(/\s+/g, '')}</span>
+                <span className="text-primary">@{profile.location}</span>
               </div>
               
               {/* Stats */}
-              <div className="flex gap-8 mb-4">
+              <div className="flex gap-6 mb-3">
                 <div>
-                  <span className="text-neon-cyan text-2xl font-bold">{profile.followers.toLocaleString()}</span>
-                  <span className="text-foreground/60 ml-2">Followers</span>
+                  <span className="text-primary text-xl font-bold">{profile.followers.toLocaleString()}</span>
+                  <span className="text-muted-foreground ml-2 text-sm">Followers</span>
                 </div>
                 <div>
-                  <span className="text-neon-purple text-2xl font-bold">{profile.following}</span>
-                  <span className="text-foreground/60 ml-2">Following</span>
+                  <span className="text-accent text-xl font-bold">{profile.following}</span>
+                  <span className="text-muted-foreground ml-2 text-sm">Following</span>
                 </div>
                 <div>
-                  <span className="text-neon-pink text-2xl font-bold">{profile.events}</span>
-                  <span className="text-foreground/60 ml-2">Events</span>
+                  <span className="text-pink-500 text-xl font-bold">{profile.events}</span>
+                  <span className="text-muted-foreground ml-2 text-sm">Events</span>
                 </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-2">
                 <Button
                   variant="outline"
-                  className="border-neon-cyan text-neon-cyan hover:bg-neon-cyan/20 rounded-xl"
+                  size="sm"
+                  className="border-primary text-primary hover:bg-primary/20 rounded-lg"
                   onClick={() => navigate("/app/profile/edit")}
                 >
                   <Edit2 className="w-4 h-4 mr-2" />
                   Edit Profile
                 </Button>
-                <Button className="bg-gradient-to-r from-neon-cyan to-neon-purple text-white rounded-xl">
+                <Button size="sm" className="bg-gradient-to-r from-primary to-accent text-primary-foreground rounded-lg">
                   <UserPlus className="w-4 h-4 mr-2" />
                   Follow
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-primary/50 text-primary hover:bg-primary/20 rounded-lg"
+                  onClick={() => navigate("/app/wallet")}
+                >
+                  <Wallet className="w-4 h-4 mr-2" />
+                  Wallet
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-destructive/50 text-destructive hover:bg-destructive/20 rounded-lg"
+                  onClick={handleSignOut}
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Logout
                 </Button>
               </div>
             </div>
@@ -182,18 +181,18 @@ const ProfileNew = () => {
       </div>
 
       {/* Content Sections */}
-      <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="p-6 max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* About Me */}
-        <div className="bg-secondary/30 rounded-2xl p-6 border border-border/30">
-          <h2 className="text-neon-cyan text-2xl font-bold mb-4">About Me</h2>
-          <p className="text-foreground/80 leading-relaxed">{profile.bio}</p>
+        <div className="bg-card/50 rounded-2xl p-6 border border-border/50">
+          <h2 className="text-primary text-xl font-bold mb-4">About Me</h2>
+          <p className="text-foreground/80 leading-relaxed text-sm">{profile.bio}</p>
           
-          <h3 className="text-neon-pink text-xl font-bold mt-6 mb-3">Interests</h3>
+          <h3 className="text-accent text-lg font-bold mt-6 mb-3">Interests</h3>
           <div className="flex flex-wrap gap-2">
             {mockInterests.map((interest) => (
               <span
                 key={interest}
-                className="px-3 py-1.5 bg-neon-purple/20 text-neon-purple rounded-full text-sm border border-neon-purple/30"
+                className="px-3 py-1 bg-accent/20 text-accent rounded-full text-xs border border-accent/30"
               >
                 {interest}
               </span>
@@ -202,29 +201,29 @@ const ProfileNew = () => {
         </div>
 
         {/* Friends */}
-        <div className="bg-secondary/30 rounded-2xl p-6 border border-border/30">
-          <h2 className="text-neon-pink text-2xl font-bold mb-4">Friends</h2>
-          <div className="flex flex-wrap gap-6">
+        <div className="bg-card/50 rounded-2xl p-6 border border-border/50">
+          <h2 className="text-pink-500 text-xl font-bold mb-4">Friends</h2>
+          <div className="flex flex-wrap gap-4">
             {mockFriends.map((friend) => (
               <div key={friend.id} className="flex flex-col items-center gap-2">
-                <Avatar className="w-20 h-20 border-2 border-neon-purple">
+                <Avatar className="w-16 h-16 border-2 border-accent/50">
                   <AvatarImage src={friend.avatar} />
                   <AvatarFallback>{friend.name[0]}</AvatarFallback>
                 </Avatar>
-                <span className="text-foreground/80 text-sm">{friend.name}</span>
+                <span className="text-muted-foreground text-xs">{friend.name}</span>
               </div>
             ))}
           </div>
         </div>
 
         {/* Recent Posts */}
-        <div className="bg-secondary/30 rounded-2xl p-6 border border-border/30 lg:col-span-2">
-          <h2 className="text-neon-cyan text-2xl font-bold mb-4">Recent Posts</h2>
+        <div className="bg-card/50 rounded-2xl p-6 border border-border/50 lg:col-span-2">
+          <h2 className="text-primary text-xl font-bold mb-4">Recent Posts</h2>
           <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <div
                 key={i}
-                className="aspect-square rounded-xl bg-gradient-to-br from-neon-purple/20 to-neon-pink/20 border border-border/30 hover:border-neon-cyan/50 transition-colors cursor-pointer overflow-hidden"
+                className="aspect-square rounded-xl bg-gradient-to-br from-accent/20 to-pink-500/20 border border-border/50 hover:border-primary/50 transition-colors cursor-pointer overflow-hidden"
               >
                 <img
                   src={`https://images.unsplash.com/photo-${1540039155733 + i * 1000}-5bb30b53aa14?w=300`}
