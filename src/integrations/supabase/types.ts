@@ -1421,6 +1421,11 @@ export type Database = {
       venues: {
         Row: {
           address: string | null
+          approval_status: string
+          approved_at: string | null
+          approved_by: string | null
+          business_email: string | null
+          business_license: string | null
           capacity: number | null
           city: string | null
           created_at: string | null
@@ -1431,12 +1436,19 @@ export type Database = {
           latitude: number | null
           longitude: number | null
           name: string
+          owner_user_id: string | null
+          rejection_reason: string | null
           updated_at: string | null
           venue_type: string | null
           vibe_score: number | null
         }
         Insert: {
           address?: string | null
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          business_email?: string | null
+          business_license?: string | null
           capacity?: number | null
           city?: string | null
           created_at?: string | null
@@ -1447,12 +1459,19 @@ export type Database = {
           latitude?: number | null
           longitude?: number | null
           name: string
+          owner_user_id?: string | null
+          rejection_reason?: string | null
           updated_at?: string | null
           venue_type?: string | null
           vibe_score?: number | null
         }
         Update: {
           address?: string | null
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          business_email?: string | null
+          business_license?: string | null
           capacity?: number | null
           city?: string | null
           created_at?: string | null
@@ -1463,6 +1482,8 @@ export type Database = {
           latitude?: number | null
           longitude?: number | null
           name?: string
+          owner_user_id?: string | null
+          rejection_reason?: string | null
           updated_at?: string | null
           venue_type?: string | null
           vibe_score?: number | null

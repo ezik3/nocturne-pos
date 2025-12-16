@@ -14,6 +14,7 @@ import {
   Info
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function VenueProfileSetup() {
   const navigate = useNavigate();
@@ -52,7 +53,7 @@ export default function VenueProfileSetup() {
     }
   };
 
-  const handleComplete = () => {
+  const handleComplete = async () => {
     if (!logo) {
       toast.error('Please upload your venue logo');
       return;
@@ -62,9 +63,52 @@ export default function VenueProfileSetup() {
     localStorage.setItem('jv_venue_logo', logo);
     localStorage.setItem('jv_venue_profile_setup', 'complete');
 
+    try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('Authentication error. Please log in again.');
+        navigate('/auth');
+        return;
+      }
+
+      // Get venue data from localStorage
+      const venueDataStr = localStorage.getItem('jv_venue_data');
+      const venueData = venueDataStr ? JSON.parse(venueDataStr) : {};
+
+      // Create venue record with pending status
+      const { error } = await supabase
+        .from('venues')
+        .insert({
+          name: venueName || venueData.venueName || 'Unnamed Venue',
+          owner_user_id: user.id,
+          address: venueData.venueAddress || null,
+          city: venueData.country || null,
+          venue_type: venueData.venueType || null,
+          business_license: venueData.businessLicense || null,
+          business_email: venueData.businessEmail || null,
+          image_url: logo,
+          approval_status: 'pending',
+          description: `Owned by ${ownerName}`
+        });
+
+      if (error) {
+        console.error('Error creating venue:', error);
+        // If venue already exists, that's okay - they might have refreshed
+        if (!error.message.includes('duplicate')) {
+          toast.error('Failed to submit venue registration');
+        }
+      } else {
+        toast.success('Venue registration submitted for review!');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    }
+
+    // Navigate to pending approval page
     setTimeout(() => {
-      navigate('/venue/home');
-    }, 2000);
+      navigate('/venue/pending-approval');
+    }, 1500);
   };
 
   return (
