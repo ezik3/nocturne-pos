@@ -27,7 +27,7 @@ const pendingVenues = [
 
 export function PendingApprovals() {
   return (
-    <div className="glass-card p-6">
+    <div className="bg-card/80 backdrop-blur-xl border border-border/50 rounded-lg p-6">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
           <h3 className="font-semibold text-foreground">Pending Approvals</h3>
@@ -51,16 +51,17 @@ export function PendingApprovals() {
               <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
                 <MapPin className="w-3 h-3" />
                 {venue.location}
-                <span>•</span>
+                <span className="text-border">•</span>
                 {venue.category}
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button size="icon" variant="ghost" className="text-destructive hover:bg-destructive/10">
+              <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10">
                 <X className="w-4 h-4" />
               </Button>
-              <Button size="icon" className="bg-success hover:bg-success/90">
-                <Check className="w-4 h-4" />
+              <Button size="sm" className="bg-success hover:bg-success/90 text-success-foreground">
+                <Check className="w-4 h-4 mr-1" />
+                Approve
               </Button>
             </div>
           </div>

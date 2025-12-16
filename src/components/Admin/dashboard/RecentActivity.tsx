@@ -53,7 +53,7 @@ const typeColors: Record<string, string> = {
 
 export function RecentActivity() {
   return (
-    <div className="glass-card p-6">
+    <div className="bg-card/80 backdrop-blur-xl border border-border/50 rounded-lg p-6">
       <div className="flex items-center justify-between mb-6">
         <h3 className="font-semibold text-foreground">Recent Activity</h3>
         <button className="text-xs text-primary hover:underline">View all</button>
@@ -62,7 +62,7 @@ export function RecentActivity() {
         {activities.map((activity) => (
           <div
             key={activity.id}
-            className="flex items-start gap-4 p-3 rounded-lg hover:bg-muted/30 transition-colors"
+            className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
           >
             <div className={cn("p-2 rounded-lg", typeColors[activity.type])}>
               <activity.icon className="w-4 h-4" />
