@@ -19,8 +19,9 @@ export function StatCard({
   iconColor = "text-primary",
 }: StatCardProps) {
   return (
-    <div className="stat-card glow-effect">
-      <div className="flex items-start justify-between">
+    <div className="bg-card/80 backdrop-blur-xl border border-border/50 rounded-lg p-6 hover:border-primary/30 transition-all duration-300 relative group">
+      <div className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-[radial-gradient(ellipse_at_center,_hsl(187_94%_43%_/_0.15)_0%,_transparent_70%)]" />
+      <div className="flex items-start justify-between relative z-10">
         <div>
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
           <p className="text-2xl font-semibold text-foreground mt-1">{value}</p>

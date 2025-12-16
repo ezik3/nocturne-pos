@@ -1,44 +1,44 @@
 import { useState } from "react";
-import { NavLink as RouterNavLink, useNavigate } from "react-router-dom";
-import { 
-  LayoutDashboard, 
-  Users, 
-  Building2, 
-  Wallet, 
-  ArrowLeftRight, 
-  Download, 
-  Upload, 
-  FileText, 
-  Settings, 
-  LogOut,
+import { NavLink as RouterNavLink, useNavigate, useLocation } from "react-router-dom";
+import {
+  LayoutDashboard,
+  Users,
+  Store,
+  Wallet,
   Coins,
-  AlertTriangle,
-  UserCog,
+  ArrowUpDown,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Snowflake,
+  FileText,
+  Shield,
+  Settings,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const navItems = [
-  { title: "Dashboard", url: "/admin/dashboard", icon: LayoutDashboard },
-  { title: "Users", url: "/admin/users", icon: Users },
-  { title: "Venues", url: "/admin/venues", icon: Building2 },
-  { title: "Treasury", url: "/admin/treasury", icon: Wallet },
-  { title: "Mint/Burn", url: "/admin/mint-burn", icon: Coins },
-  { title: "Transactions", url: "/admin/transactions", icon: ArrowLeftRight },
-  { title: "Deposits", url: "/admin/deposits", icon: Download },
-  { title: "Withdrawals", url: "/admin/withdrawals", icon: Upload },
-  { title: "Wallet Freezes", url: "/admin/wallet-freezes", icon: AlertTriangle },
-  { title: "Audit Log", url: "/admin/audit-log", icon: FileText },
-  { title: "Roles", url: "/admin/roles", icon: UserCog },
-  { title: "Settings", url: "/admin/settings", icon: Settings },
+  { icon: LayoutDashboard, label: "Dashboard", href: "/admin/dashboard" },
+  { icon: Users, label: "Users", href: "/admin/users" },
+  { icon: Store, label: "Venues", href: "/admin/venues" },
+  { icon: Wallet, label: "Treasury", href: "/admin/treasury" },
+  { icon: ArrowUpDown, label: "Mint/Burn", href: "/admin/mint-burn" },
+  { icon: Coins, label: "Transactions", href: "/admin/transactions" },
+  { icon: ArrowDownToLine, label: "Deposits", href: "/admin/deposits" },
+  { icon: ArrowUpFromLine, label: "Withdrawals", href: "/admin/withdrawals" },
+  { icon: Snowflake, label: "Wallet Freezes", href: "/admin/wallet-freezes" },
+  { icon: FileText, label: "Audit Log", href: "/admin/audit-log" },
+  { icon: Shield, label: "Roles", href: "/admin/roles" },
+  { icon: Settings, label: "Settings", href: "/admin/settings" },
 ];
 
 export default function AdminSidebar() {
-  const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = () => {
     localStorage.removeItem("jv_admin_token");
@@ -46,79 +46,90 @@ export default function AdminSidebar() {
   };
 
   return (
-    <aside className={cn(
-      "sticky top-0 h-screen bg-slate-900 border-r border-slate-800 flex flex-col transition-all duration-300",
-      collapsed ? "w-20" : "w-64"
-    )}>
-      {/* Header */}
-      <div className="p-4 border-b border-slate-800">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center flex-shrink-0">
-              <span className="text-white font-bold text-lg">JV</span>
-            </div>
-            {!collapsed && (
-              <div className="overflow-hidden">
-                <h1 className="text-lg font-bold text-white">Joint Vibe</h1>
-                <p className="text-xs text-slate-400">Admin Portal</p>
-              </div>
-            )}
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-slate-400 hover:text-white hover:bg-slate-800 h-8 w-8"
-            onClick={() => setCollapsed(!collapsed)}
-          >
-            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-          </Button>
-        </div>
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-        {navItems.map((item) => (
-          <RouterNavLink
-            key={item.url}
-            to={item.url}
-            className={({ isActive }) =>
-              cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
-                collapsed && "justify-center px-0",
-                isActive
-                  ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30"
-                  : "text-slate-400 hover:text-white hover:bg-slate-800"
-              )
-            }
-          >
-            <item.icon className="h-5 w-5 flex-shrink-0" />
-            {!collapsed && <span>{item.title}</span>}
-          </RouterNavLink>
-        ))}
-      </nav>
-
-      {/* User Profile */}
-      <div className="p-4 border-t border-slate-800">
+    <aside
+      className={cn(
+        "fixed left-0 top-0 z-40 h-screen bg-sidebar border-r border-sidebar-border transition-all duration-300 flex flex-col",
+        collapsed ? "w-16" : "w-64"
+      )}
+    >
+      {/* Logo */}
+      <div className="flex items-center justify-between h-16 px-4 border-b border-sidebar-border">
         {!collapsed && (
-          <div className="flex items-center gap-3 mb-4 px-2">
-            <Avatar className="h-10 w-10 bg-gradient-to-br from-cyan-500 to-purple-600">
-              <AvatarFallback className="bg-transparent text-white font-semibold">SA</AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">Super Admin</p>
-              <p className="text-xs text-slate-400 truncate">owner@jointvibe.com</p>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+              <Shield className="w-5 h-5 text-primary-foreground" />
+            </div>
+            <div>
+              <h1 className="font-semibold text-foreground text-sm">Joint Vibe</h1>
+              <p className="text-[10px] text-muted-foreground">Admin Portal</p>
             </div>
           </div>
         )}
+        {collapsed && (
+          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center mx-auto">
+            <Shield className="w-5 h-5 text-primary-foreground" />
+          </div>
+        )}
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className={cn(
+            "p-1.5 rounded-md hover:bg-accent transition-colors",
+            collapsed && "absolute -right-3 top-6 bg-sidebar border border-sidebar-border"
+          )}
+        >
+          {collapsed ? (
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          ) : (
+            <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+          )}
+        </button>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        {navItems.map((item) => {
+          const isActive = location.pathname === item.href;
+          return (
+            <RouterNavLink
+              key={item.href}
+              to={item.href}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground hover:bg-accent hover:text-foreground transition-all duration-200",
+                isActive && "bg-primary/10 text-primary border-l-2 border-primary"
+              )}
+            >
+              <item.icon className={cn("w-5 h-5 shrink-0", isActive && "text-primary")} />
+              {!collapsed && <span className="truncate">{item.label}</span>}
+            </RouterNavLink>
+          );
+        })}
+      </nav>
+
+      {/* User section */}
+      <div className="p-3 border-t border-sidebar-border">
+        <div className={cn(
+          "flex items-center gap-3 p-2 rounded-lg",
+          collapsed ? "justify-center" : ""
+        )}>
+          <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+            <span className="text-xs font-medium text-primary">SA</span>
+          </div>
+          {!collapsed && (
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground truncate">Super Admin</p>
+              <p className="text-xs text-muted-foreground truncate">owner@jointvibe.com</p>
+            </div>
+          )}
+        </div>
         <Button
           variant="ghost"
+          onClick={handleLogout}
           className={cn(
-            "w-full text-red-400 hover:text-red-300 hover:bg-red-500/10",
+            "w-full mt-2 text-destructive hover:bg-destructive/10",
             collapsed ? "justify-center px-0" : "justify-start"
           )}
-          onClick={handleLogout}
         >
-          <LogOut className="h-5 w-5" />
+          <LogOut className="w-5 h-5 shrink-0" />
           {!collapsed && <span className="ml-3">Logout</span>}
         </Button>
       </div>

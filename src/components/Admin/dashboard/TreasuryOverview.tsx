@@ -1,4 +1,4 @@
-import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Coins } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, Coins } from "lucide-react";
 
 const treasuryData = {
   totalJVC: "2,847,392",
@@ -12,10 +12,10 @@ const treasuryData = {
 
 export function TreasuryOverview() {
   return (
-    <div className="glass-card p-6">
+    <div className="bg-card/80 backdrop-blur-xl border border-border/50 rounded-lg p-6">
       <div className="flex items-center justify-between mb-6">
         <h3 className="font-semibold text-foreground">Treasury Overview</h3>
-        <span className="status-badge status-active">
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success">
           <span className="w-1.5 h-1.5 bg-success rounded-full mr-1.5" />
           Balanced
         </span>
@@ -43,25 +43,26 @@ export function TreasuryOverview() {
         </div>
       </div>
 
-      {/* Mint/Burn Today */}
+      {/* Today's Activity */}
       <div className="space-y-2">
-        <div className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
+        <p className="text-xs text-muted-foreground uppercase tracking-wider">Today's Activity</p>
+        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
           <div className="flex items-center gap-2">
             <ArrowUpRight className="w-4 h-4 text-success" />
-            <span className="text-sm text-muted-foreground">Minted Today</span>
+            <span className="text-sm text-foreground">Minted</span>
           </div>
-          <span className="font-medium text-success">+{treasuryData.todayMinted}</span>
+          <span className="text-sm font-medium text-success">+{treasuryData.todayMinted} JVC</span>
         </div>
-        <div className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
+        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
           <div className="flex items-center gap-2">
             <ArrowDownRight className="w-4 h-4 text-destructive" />
-            <span className="text-sm text-muted-foreground">Burned Today</span>
+            <span className="text-sm text-foreground">Burned</span>
           </div>
-          <span className="font-medium text-destructive">-{treasuryData.todayBurned}</span>
+          <span className="text-sm font-medium text-destructive">-{treasuryData.todayBurned} JVC</span>
         </div>
-        <div className="flex items-center justify-between p-3 rounded-lg bg-success/10 border border-success/20">
+        <div className="flex items-center justify-between p-3 rounded-lg bg-primary/10 border border-primary/20">
           <span className="text-sm font-medium text-foreground">Net Change</span>
-          <span className="font-semibold text-success">{treasuryData.netChange}</span>
+          <span className="text-sm font-bold text-primary">{treasuryData.netChange} JVC</span>
         </div>
       </div>
     </div>

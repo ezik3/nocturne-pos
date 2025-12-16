@@ -1,10 +1,9 @@
-import { useEffect, useState } from "react";
-import { Search, Filter, MoreVertical, Building2, Wallet, MapPin, Users, Eye } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import { Search, Filter, MoreHorizontal, Store, MapPin, Check, X, Eye, Clock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -32,6 +32,7 @@ interface Venue {
   capacity: number | null;
   current_occupancy: number | null;
   created_at: string;
+  status?: "active" | "pending" | "suspended";
   wallet?: {
     balance_jvc: number;
     balance_usd: number;
@@ -39,11 +40,18 @@ interface Venue {
   };
 }
 
+const statusColors: Record<string, string> = {
+  active: "bg-success/10 text-success",
+  pending: "bg-warning/10 text-warning",
+  suspended: "bg-destructive/10 text-destructive",
+};
+
 export default function AdminVenues() {
   const [venues, setVenues] = useState<Venue[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
+  const [activeTab, setActiveTab] = useState("all");
 
   useEffect(() => {
     fetchVenues();
@@ -58,7 +66,6 @@ export default function AdminVenues() {
 
       if (error) throw error;
 
-      // Fetch wallet data for each venue
       const venuesWithWallets = await Promise.all(
         (venuesData || []).map(async (venue) => {
           const { data: wallet } = await supabase
@@ -67,8 +74,14 @@ export default function AdminVenues() {
             .eq("venue_id", venue.id)
             .single();
 
+          // Simulate status based on wallet state
+          let status: "active" | "pending" | "suspended" = "active";
+          if (wallet?.is_frozen) status = "suspended";
+          else if (!wallet) status = "pending";
+
           return {
             ...venue,
+            status,
             wallet: wallet || undefined
           };
         })
@@ -83,168 +96,197 @@ export default function AdminVenues() {
     }
   };
 
-  const filteredVenues = venues.filter(venue => {
+  const filteredVenues = venues.filter((venue) => {
     const query = searchQuery.toLowerCase();
-    return (
+    const matchesSearch = 
       venue.name.toLowerCase().includes(query) ||
       venue.city?.toLowerCase().includes(query) ||
-      venue.venue_type?.toLowerCase().includes(query)
-    );
+      venue.venue_type?.toLowerCase().includes(query);
+    
+    if (activeTab === "pending") return matchesSearch && venue.status === "pending";
+    if (activeTab === "active") return matchesSearch && venue.status === "active";
+    return matchesSearch;
   });
+
+  const pendingCount = venues.filter((v) => v.status === "pending").length;
 
   if (isLoading) {
     return (
-      <div className="p-8 flex items-center justify-center min-h-screen">
-        <div className="h-12 w-12 rounded-full border-4 border-purple-500 border-t-transparent animate-spin" />
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="h-12 w-12 rounded-full border-4 border-primary border-t-transparent animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="p-8 space-y-6">
-      {/* Header */}
+    <div className="space-y-6">
+      {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-white">Venue Management</h1>
-          <p className="text-slate-400 mt-1">Manage platform venues and their wallets</p>
+          <h1 className="text-2xl font-bold text-foreground">Venue Management</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Review and manage venue registrations
+          </p>
         </div>
-        <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">
-          {venues.length} Total Venues
-        </Badge>
+        <Button className="bg-primary hover:bg-primary/90">
+          Export Venues
+        </Button>
       </div>
 
-      {/* Search & Filter */}
-      <Card className="bg-slate-900/50 border-slate-800">
-        <CardContent className="p-4">
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <div className="flex items-center justify-between">
+          <TabsList className="bg-muted">
+            <TabsTrigger value="all">All Venues</TabsTrigger>
+            <TabsTrigger value="pending" className="gap-2">
+              Pending
+              <span className="px-1.5 py-0.5 text-xs bg-warning/20 text-warning rounded-full">
+                {pendingCount}
+              </span>
+            </TabsTrigger>
+            <TabsTrigger value="active">Active</TabsTrigger>
+          </TabsList>
+
+          {/* Search */}
           <div className="flex items-center gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+            <div className="relative w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Search by name, city, or type..."
+                placeholder="Search venues..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 bg-slate-800 border-slate-700 text-white"
+                className="pl-9 bg-muted border-border"
               />
             </div>
-            <Button variant="outline" className="border-slate-700 text-slate-300">
-              <Filter className="h-4 w-4 mr-2" />
-              Filter
+            <Button variant="outline" className="gap-2">
+              <Filter className="w-4 h-4" />
+              Filters
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Venues Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredVenues.map((venue) => (
-          <Card key={venue.id} className="bg-slate-900/50 border-slate-800 overflow-hidden hover:border-purple-500/30 transition-colors">
-            <div className="aspect-video relative bg-slate-800">
-              {venue.image_url ? (
-                <img
-                  src={venue.image_url}
-                  alt={venue.name}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <Building2 className="h-12 w-12 text-slate-600" />
+        <TabsContent value={activeTab} className="mt-6">
+          {/* Venues Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {filteredVenues.map((venue) => (
+              <div
+                key={venue.id}
+                className={cn(
+                  "bg-card/80 backdrop-blur-xl border border-border/50 rounded-lg p-5 transition-all duration-200",
+                  venue.status === "pending" && "border-warning/30"
+                )}
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "p-3 rounded-lg",
+                      venue.status === "pending" ? "bg-warning/10" : "bg-primary/10"
+                    )}>
+                      <Store className={cn(
+                        "w-5 h-5",
+                        venue.status === "pending" ? "text-warning" : "text-primary"
+                      )} />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-foreground">{venue.name}</h3>
+                      <span className={cn("inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mt-1", statusColors[venue.status || "active"])}>
+                        {venue.status}
+                      </span>
+                    </div>
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <MoreHorizontal className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setSelectedVenue(venue)}>
+                        <Eye className="w-4 h-4 mr-2" />
+                        View Details
+                      </DropdownMenuItem>
+                      {venue.status === "pending" && (
+                        <>
+                          <DropdownMenuItem className="text-success">
+                            <Check className="w-4 h-4 mr-2" />
+                            Approve
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="text-destructive">
+                            <X className="w-4 h-4 mr-2" />
+                            Reject
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
-              )}
-              {venue.venue_type && (
-                <Badge className="absolute top-3 left-3 bg-purple-500/80 text-white">
-                  {venue.venue_type}
-                </Badge>
-              )}
-            </div>
-            <CardContent className="p-4 space-y-4">
-              <div>
-                <h3 className="text-lg font-semibold text-white">{venue.name}</h3>
-                {venue.city && (
-                  <div className="flex items-center gap-1 text-sm text-slate-400 mt-1">
-                    <MapPin className="h-3 w-3" />
-                    {venue.city}
+
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <MapPin className="w-4 h-4" />
+                    {venue.city || "Unknown location"}
+                  </div>
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Store className="w-4 h-4" />
+                    {venue.venue_type || "Venue"}
+                  </div>
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Clock className="w-4 h-4" />
+                    Submitted: {new Date(venue.created_at).toLocaleDateString()}
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-4 border-t border-border">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="p-2 rounded bg-muted/50">
+                      <p className="text-xs text-muted-foreground">JVC Balance</p>
+                      <p className="text-sm font-medium text-primary">
+                        {(venue.wallet?.balance_jvc || 0).toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="p-2 rounded bg-muted/50">
+                      <p className="text-xs text-muted-foreground">Capacity</p>
+                      <p className="text-sm font-medium text-foreground">
+                        {venue.current_occupancy || 0}/{venue.capacity || "∞"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {venue.status === "pending" && (
+                  <div className="flex items-center gap-2 mt-4">
+                    <Button size="sm" variant="outline" className="flex-1 text-destructive border-destructive/30 hover:bg-destructive/10">
+                      <X className="w-4 h-4 mr-1" />
+                      Reject
+                    </Button>
+                    <Button size="sm" className="flex-1 bg-success hover:bg-success/90 text-success-foreground">
+                      <Check className="w-4 h-4 mr-1" />
+                      Approve
+                    </Button>
                   </div>
                 )}
               </div>
+            ))}
+          </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-2 rounded bg-slate-800/50">
-                  <p className="text-xs text-slate-500">JVC Balance</p>
-                  <p className="text-sm font-medium text-cyan-400">
-                    {(venue.wallet?.balance_jvc || 0).toLocaleString()} JVC
-                  </p>
-                </div>
-                <div className="p-2 rounded bg-slate-800/50">
-                  <p className="text-xs text-slate-500">Occupancy</p>
-                  <p className="text-sm font-medium text-white">
-                    {venue.current_occupancy || 0}/{venue.capacity || "∞"}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between pt-2 border-t border-slate-800">
-                <div className="flex items-center gap-2">
-                  {venue.wallet?.is_frozen ? (
-                    <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-xs">
-                      Frozen
-                    </Badge>
-                  ) : (
-                    <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs">
-                      Active
-                    </Badge>
-                  )}
-                  {venue.vibe_score && venue.vibe_score > 0 && (
-                    <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30 text-xs">
-                      ⚡ {venue.vibe_score}
-                    </Badge>
-                  )}
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="text-slate-400 hover:text-white">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="bg-slate-900 border-slate-800">
-                    <DropdownMenuItem 
-                      className="text-slate-300 hover:text-white"
-                      onClick={() => setSelectedVenue(venue)}
-                    >
-                      <Eye className="h-4 w-4 mr-2" />
-                      View Details
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="text-slate-300 hover:text-white">
-                      <Wallet className="h-4 w-4 mr-2" />
-                      View Wallet
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="text-slate-300 hover:text-white">
-                      <Users className="h-4 w-4 mr-2" />
-                      View Staff
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {filteredVenues.length === 0 && (
-        <div className="text-center py-12 text-slate-500">
-          No venues found
-        </div>
-      )}
+          {filteredVenues.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground">
+              No venues found
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
 
       {/* Venue Details Dialog */}
       <Dialog open={!!selectedVenue} onOpenChange={(open) => !open && setSelectedVenue(null)}>
-        <DialogContent className="bg-slate-900 border-slate-800 max-w-2xl">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="text-white">Venue Details</DialogTitle>
+            <DialogTitle>Venue Details</DialogTitle>
           </DialogHeader>
           {selectedVenue && (
             <div className="space-y-6">
               <div className="flex items-start gap-6">
-                <div className="w-32 h-32 rounded-xl overflow-hidden bg-slate-800 flex-shrink-0">
+                <div className="w-32 h-32 rounded-xl overflow-hidden bg-muted flex-shrink-0">
                   {selectedVenue.image_url ? (
                     <img
                       src={selectedVenue.image_url}
@@ -253,53 +295,53 @@ export default function AdminVenues() {
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <Building2 className="h-12 w-12 text-slate-600" />
+                      <Store className="h-12 w-12 text-muted-foreground" />
                     </div>
                   )}
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-2xl font-bold text-white">{selectedVenue.name}</h3>
+                  <h3 className="text-2xl font-bold text-foreground">{selectedVenue.name}</h3>
                   {selectedVenue.venue_type && (
-                    <Badge className="mt-2 bg-purple-500/20 text-purple-400 border-purple-500/30">
+                    <Badge className="mt-2 bg-primary/20 text-primary">
                       {selectedVenue.venue_type}
                     </Badge>
                   )}
                   {selectedVenue.description && (
-                    <p className="text-slate-400 mt-3">{selectedVenue.description}</p>
+                    <p className="text-muted-foreground mt-3">{selectedVenue.description}</p>
                   )}
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 rounded-lg bg-slate-800/50">
-                  <p className="text-sm text-slate-400">Location</p>
-                  <p className="text-white mt-1">
+                <div className="p-4 rounded-lg bg-muted/50">
+                  <p className="text-sm text-muted-foreground">Location</p>
+                  <p className="text-foreground mt-1">
                     {selectedVenue.address || "No address"}, {selectedVenue.city || "Unknown city"}
                   </p>
                 </div>
-                <div className="p-4 rounded-lg bg-slate-800/50">
-                  <p className="text-sm text-slate-400">Capacity</p>
-                  <p className="text-white mt-1">
+                <div className="p-4 rounded-lg bg-muted/50">
+                  <p className="text-sm text-muted-foreground">Capacity</p>
+                  <p className="text-foreground mt-1">
                     {selectedVenue.current_occupancy || 0} / {selectedVenue.capacity || "Unlimited"}
                   </p>
                 </div>
-                <div className="p-4 rounded-lg bg-slate-800/50">
-                  <p className="text-sm text-slate-400">JVC Balance</p>
-                  <p className="text-cyan-400 font-semibold mt-1">
+                <div className="p-4 rounded-lg bg-muted/50">
+                  <p className="text-sm text-muted-foreground">JVC Balance</p>
+                  <p className="text-primary font-semibold mt-1">
                     {(selectedVenue.wallet?.balance_jvc || 0).toLocaleString()} JVC
                   </p>
                 </div>
-                <div className="p-4 rounded-lg bg-slate-800/50">
-                  <p className="text-sm text-slate-400">USD Balance</p>
-                  <p className="text-green-400 font-semibold mt-1">
+                <div className="p-4 rounded-lg bg-muted/50">
+                  <p className="text-sm text-muted-foreground">USD Balance</p>
+                  <p className="text-success font-semibold mt-1">
                     ${(selectedVenue.wallet?.balance_usd || 0).toLocaleString()}
                   </p>
                 </div>
               </div>
 
-              <div className="p-4 rounded-lg bg-slate-800/50">
-                <p className="text-sm text-slate-400">Venue ID</p>
-                <p className="text-slate-300 font-mono text-sm mt-1">{selectedVenue.id}</p>
+              <div className="p-4 rounded-lg bg-muted/50">
+                <p className="text-sm text-muted-foreground">Venue ID</p>
+                <p className="text-muted-foreground font-mono text-sm mt-1">{selectedVenue.id}</p>
               </div>
             </div>
           )}
