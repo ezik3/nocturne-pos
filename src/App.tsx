@@ -23,6 +23,8 @@ import VenueIDVerification from "./pages/Auth/Venue/IDVerification";
 import VenueFacialRecognition from "./pages/Auth/Venue/FacialRecognition";
 import VenuePrivateKeyGeneration from "./pages/Auth/Venue/PrivateKeyGeneration";
 import VenueProfileSetup from "./pages/Auth/Venue/ProfileSetup";
+import VenuePendingApproval from "./pages/Auth/Venue/PendingApproval";
+import VenueProtectedRoute from "./components/Venue/VenueProtectedRoute";
 import POSLayout from "./components/POS/POSLayout";
 import Dashboard from "./pages/POS/Dashboard";
 import NewOrder from "./pages/POS/NewOrder";
@@ -111,6 +113,7 @@ const App = () => (
           <Route path="/venue/facial-recognition" element={<VenueFacialRecognition />} />
           <Route path="/venue/private-key" element={<VenuePrivateKeyGeneration />} />
           <Route path="/venue/profile-setup" element={<VenueProfileSetup />} />
+          <Route path="/venue/pending-approval" element={<VenuePendingApproval />} />
           
           {/* Customer App Routes */}
           <Route path="/app/feed/immersive" element={
@@ -199,67 +202,67 @@ const App = () => (
 
           {/* Venue Management Routes - Protected */}
           <Route path="/venue/home" element={
-            <ProtectedRoute>
+            <VenueProtectedRoute>
               <VenueLayout>
                 <VenueHome />
               </VenueLayout>
-            </ProtectedRoute>
+            </VenueProtectedRoute>
           } />
           <Route path="/venue/menu" element={
-            <ProtectedRoute>
+            <VenueProtectedRoute>
               <VenueLayout>
                 <VenueMenu />
               </VenueLayout>
-            </ProtectedRoute>
+            </VenueProtectedRoute>
           } />
           <Route path="/venue/orders" element={
-            <ProtectedRoute>
+            <VenueProtectedRoute>
               <VenueLayout>
                 <VenueOrders />
               </VenueLayout>
-            </ProtectedRoute>
+            </VenueProtectedRoute>
           } />
           <Route path="/venue/credits" element={
-            <ProtectedRoute>
+            <VenueProtectedRoute>
               <VenueLayout>
                 <VenueCredits />
               </VenueLayout>
-            </ProtectedRoute>
+            </VenueProtectedRoute>
           } />
           <Route path="/venue/assign" element={
-            <ProtectedRoute>
+            <VenueProtectedRoute>
               <VenueLayout>
                 <VenueAssign />
               </VenueLayout>
-            </ProtectedRoute>
+            </VenueProtectedRoute>
           } />
           <Route path="/venue/notifications" element={
-            <ProtectedRoute>
+            <VenueProtectedRoute>
               <VenueLayout>
                 <VenueNotifications />
               </VenueLayout>
-            </ProtectedRoute>
+            </VenueProtectedRoute>
           } />
           <Route path="/venue/messages" element={
-            <ProtectedRoute>
+            <VenueProtectedRoute>
               <VenueLayout>
                 <VenueMessages />
               </VenueLayout>
-            </ProtectedRoute>
+            </VenueProtectedRoute>
           } />
           <Route path="/venue/account" element={
-            <ProtectedRoute>
+            <VenueProtectedRoute>
               <VenueLayout>
                 <VenueAccount />
               </VenueLayout>
-            </ProtectedRoute>
+            </VenueProtectedRoute>
           } />
           <Route path="/venue/settings" element={
-            <ProtectedRoute>
+            <VenueProtectedRoute>
               <VenueLayout>
                 <VenueSettings />
               </VenueLayout>
-            </ProtectedRoute>
+            </VenueProtectedRoute>
           } />
           
           {/* Employee Work Mode Login */}
