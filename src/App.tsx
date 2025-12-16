@@ -68,6 +68,7 @@ import VenueSettings from "./pages/Venue/VenueSettings";
 
 // Admin imports
 import AdminLayout from "./components/Admin/AdminLayout";
+import AdminProtectedRoute from "./components/Admin/AdminProtectedRoute";
 import AdminLogin from "./pages/Admin/AdminLogin";
 import AdminDashboardPage from "./pages/Admin/AdminDashboard";
 import AdminUsersPage from "./pages/Admin/AdminUsers";
@@ -362,19 +363,23 @@ const App = () => (
           
           {/* Admin Routes */}
           <Route path="/admin/login" element={<AdminLogin />} />
-          <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
-          <Route path="/admin/dashboard" element={<AdminLayout><AdminDashboardPage /></AdminLayout>} />
-          <Route path="/admin/users" element={<AdminLayout><AdminUsersPage /></AdminLayout>} />
-          <Route path="/admin/venues" element={<AdminLayout><AdminVenuesPage /></AdminLayout>} />
-          <Route path="/admin/treasury" element={<AdminLayout><AdminTreasuryPage /></AdminLayout>} />
-          <Route path="/admin/mint-burn" element={<AdminLayout><AdminMintBurnPage /></AdminLayout>} />
-          <Route path="/admin/transactions" element={<AdminLayout><AdminTransactionsPage /></AdminLayout>} />
-          <Route path="/admin/deposits" element={<AdminLayout><AdminDepositsPage /></AdminLayout>} />
-          <Route path="/admin/withdrawals" element={<AdminLayout><AdminWithdrawalsPage /></AdminLayout>} />
-          <Route path="/admin/wallet-freezes" element={<AdminLayout><AdminWalletFreezesPage /></AdminLayout>} />
-          <Route path="/admin/audit-log" element={<AdminLayout><AdminAuditLogPage /></AdminLayout>} />
-          <Route path="/admin/roles" element={<AdminLayout><AdminRolesPage /></AdminLayout>} />
-          <Route path="/admin/settings" element={<AdminLayout><AdminSettingsPage /></AdminLayout>} />
+          <Route path="/admin" element={
+            <AdminProtectedRoute>
+              <Navigate to="/admin/dashboard" replace />
+            </AdminProtectedRoute>
+          } />
+          <Route path="/admin/dashboard" element={<AdminProtectedRoute><AdminLayout><AdminDashboardPage /></AdminLayout></AdminProtectedRoute>} />
+          <Route path="/admin/users" element={<AdminProtectedRoute><AdminLayout><AdminUsersPage /></AdminLayout></AdminProtectedRoute>} />
+          <Route path="/admin/venues" element={<AdminProtectedRoute><AdminLayout><AdminVenuesPage /></AdminLayout></AdminProtectedRoute>} />
+          <Route path="/admin/treasury" element={<AdminProtectedRoute><AdminLayout><AdminTreasuryPage /></AdminLayout></AdminProtectedRoute>} />
+          <Route path="/admin/mint-burn" element={<AdminProtectedRoute><AdminLayout><AdminMintBurnPage /></AdminLayout></AdminProtectedRoute>} />
+          <Route path="/admin/transactions" element={<AdminProtectedRoute><AdminLayout><AdminTransactionsPage /></AdminLayout></AdminProtectedRoute>} />
+          <Route path="/admin/deposits" element={<AdminProtectedRoute><AdminLayout><AdminDepositsPage /></AdminLayout></AdminProtectedRoute>} />
+          <Route path="/admin/withdrawals" element={<AdminProtectedRoute><AdminLayout><AdminWithdrawalsPage /></AdminLayout></AdminProtectedRoute>} />
+          <Route path="/admin/wallet-freezes" element={<AdminProtectedRoute><AdminLayout><AdminWalletFreezesPage /></AdminLayout></AdminProtectedRoute>} />
+          <Route path="/admin/audit-log" element={<AdminProtectedRoute><AdminLayout><AdminAuditLogPage /></AdminLayout></AdminProtectedRoute>} />
+          <Route path="/admin/roles" element={<AdminProtectedRoute><AdminLayout><AdminRolesPage /></AdminLayout></AdminProtectedRoute>} />
+          <Route path="/admin/settings" element={<AdminProtectedRoute><AdminLayout><AdminSettingsPage /></AdminLayout></AdminProtectedRoute>} />
 
           {/* Redirects */}
           <Route path="/" element={<Navigate to="/auth" replace />} />

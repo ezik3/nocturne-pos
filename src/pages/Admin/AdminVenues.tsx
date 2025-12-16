@@ -76,6 +76,21 @@ export default function AdminVenues() {
 
   useEffect(() => {
     fetchVenues();
+
+    const channel = supabase
+      .channel("admin-venues")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "venues" },
+        () => {
+          fetchVenues();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchVenues = async () => {
@@ -117,26 +132,35 @@ export default function AdminVenues() {
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
-      const { error } = await supabase
+      if (!user) throw new Error("Not authenticated");
+
+      const { data: updatedVenue, error } = await supabase
         .from("venues")
         .update({
           approval_status: "approved",
           approved_at: new Date().toISOString(),
-          approved_by: user?.id
+          approved_by: user.id,
         })
-        .eq("id", venueToAction.id);
+        .eq("id", venueToAction.id)
+        .select("id, approval_status")
+        .maybeSingle();
 
       if (error) throw error;
+      if (!updatedVenue || updatedVenue.approval_status !== "approved") {
+        throw new Error("Approval failed (no permission or venue not found).");
+      }
 
-      // Create venue wallet if it doesn't exist (use upsert to avoid duplicate key errors)
+      // Create venue wallet if it doesn't exist
       const { error: walletError } = await supabase
         .from("venue_wallets")
-        .upsert({
-          venue_id: venueToAction.id,
-          balance_jvc: 0,
-          balance_usd: 0
-        }, { onConflict: 'venue_id' });
+        .upsert(
+          {
+            venue_id: venueToAction.id,
+            balance_jvc: 0,
+            balance_usd: 0,
+          },
+          { onConflict: "venue_id" }
+        );
 
       if (walletError) {
         console.error("Wallet creation error:", walletError);
@@ -146,20 +170,20 @@ export default function AdminVenues() {
       await supabase
         .from("admin_audit_log")
         .insert({
-          admin_id: user?.id,
+          admin_id: user.id,
           action_type: "venue_approved",
           target_type: "venue",
           target_id: venueToAction.id,
-          details: { venue_name: venueToAction.name }
+          details: { venue_name: venueToAction.name },
         });
 
       toast.success(`${venueToAction.name} has been approved!`);
       setApproveDialogOpen(false);
       setVenueToAction(null);
       fetchVenues();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error approving venue:", error);
-      toast.error("Failed to approve venue");
+      toast.error(error?.message || "Failed to approve venue");
     } finally {
       setIsProcessing(false);
     }

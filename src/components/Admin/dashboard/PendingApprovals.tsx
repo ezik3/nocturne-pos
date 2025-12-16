@@ -21,6 +21,21 @@ export function PendingApprovals() {
 
   useEffect(() => {
     fetchPendingVenues();
+
+    const channel = supabase
+      .channel("admin-pending-approvals")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "venues" },
+        () => {
+          fetchPendingVenues();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchPendingVenues = async () => {
@@ -45,26 +60,35 @@ export function PendingApprovals() {
     setProcessingId(venue.id);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
-      const { error } = await supabase
+      if (!user) throw new Error("Not authenticated");
+
+      const { data: updatedVenue, error } = await supabase
         .from("venues")
         .update({
           approval_status: "approved",
           approved_at: new Date().toISOString(),
-          approved_by: user?.id
+          approved_by: user.id,
         })
-        .eq("id", venue.id);
+        .eq("id", venue.id)
+        .select("id, approval_status")
+        .maybeSingle();
 
       if (error) throw error;
+      if (!updatedVenue || updatedVenue.approval_status !== "approved") {
+        throw new Error("Approval failed (no permission or venue not found).");
+      }
 
       // Create venue wallet if it doesn't exist
       const { error: walletError } = await supabase
         .from("venue_wallets")
-        .upsert({
-          venue_id: venue.id,
-          balance_jvc: 0,
-          balance_usd: 0
-        }, { onConflict: 'venue_id' });
+        .upsert(
+          {
+            venue_id: venue.id,
+            balance_jvc: 0,
+            balance_usd: 0,
+          },
+          { onConflict: "venue_id" }
+        );
 
       if (walletError) {
         console.error("Wallet creation error:", walletError);
@@ -74,18 +98,18 @@ export function PendingApprovals() {
       await supabase
         .from("admin_audit_log")
         .insert({
-          admin_id: user?.id,
+          admin_id: user.id,
           action_type: "venue_approved",
           target_type: "venue",
           target_id: venue.id,
-          details: { venue_name: venue.name }
+          details: { venue_name: venue.name },
         });
 
       toast.success(`${venue.name} has been approved!`);
       fetchPendingVenues();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error approving venue:", error);
-      toast.error("Failed to approve venue");
+      toast.error(error?.message || "Failed to approve venue");
     } finally {
       setProcessingId(null);
     }

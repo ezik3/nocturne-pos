@@ -41,6 +41,33 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchDashboardData();
+
+    const venuesChannel = supabase
+      .channel("admin-dashboard-venues")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "venues" },
+        () => {
+          fetchDashboardData();
+        }
+      )
+      .subscribe();
+
+    const auditChannel = supabase
+      .channel("admin-dashboard-audit")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "admin_audit_log" },
+        () => {
+          fetchDashboardData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(venuesChannel);
+      supabase.removeChannel(auditChannel);
+    };
   }, []);
 
   const fetchDashboardData = async () => {
