@@ -16,6 +16,26 @@ export default function AdminLogin() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setError("Please enter your email address first");
+      return;
+    }
+    setIsLoading(true);
+    setError("");
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/admin/login`
+      });
+      if (error) throw error;
+      toast.success("Password reset email sent! Check your inbox.");
+    } catch (err: any) {
+      setError(err.message || "Failed to send reset email");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -140,6 +160,15 @@ export default function AdminLogin() {
                 "Access Admin Portal"
               )}
             </Button>
+
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              className="w-full mt-3 text-sm text-cyan-400 hover:text-cyan-300 transition-colors"
+              disabled={isLoading}
+            >
+              Forgot Password?
+            </button>
           </form>
 
           <div className="mt-6 pt-4 border-t border-slate-800 text-center">
