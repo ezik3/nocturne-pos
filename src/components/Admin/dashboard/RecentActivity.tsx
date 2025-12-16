@@ -50,6 +50,21 @@ export function RecentActivity() {
 
   useEffect(() => {
     fetchRecentActivity();
+
+    const channel = supabase
+      .channel("admin-recent-activity")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "admin_audit_log" },
+        () => {
+          fetchRecentActivity();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchRecentActivity = async () => {
