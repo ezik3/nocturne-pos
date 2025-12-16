@@ -14,6 +14,7 @@ import {
   ImageIcon
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function UserProfileSetup() {
   const navigate = useNavigate();
@@ -67,15 +68,51 @@ export default function UserProfileSetup() {
     }
   };
 
-  const handleComplete = () => {
+  const handleComplete = async () => {
     if (!profileImage) {
       toast.error('Please add a profile photo');
       return;
     }
 
     setIsComplete(true);
-    localStorage.setItem('jv_profile_image', profileImage);
+    localStorage.setItem('jv_profile_picture', profileImage);
     localStorage.setItem('jv_profile_setup', 'complete');
+
+    try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        // Check if profile exists
+        const { data: existingProfile } = await supabase
+          .from('customer_profiles')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (existingProfile) {
+          // Update existing profile
+          await supabase
+            .from('customer_profiles')
+            .update({
+              display_name: fullName,
+              avatar_url: profileImage,
+              updated_at: new Date().toISOString()
+            })
+            .eq('user_id', user.id);
+        } else {
+          // Create new profile
+          await supabase
+            .from('customer_profiles')
+            .insert({
+              user_id: user.id,
+              display_name: fullName,
+              avatar_url: profileImage,
+            });
+        }
+      }
+    } catch (error) {
+      console.error('Error saving profile:', error);
+    }
 
     setTimeout(() => {
       navigate('/app/feed');

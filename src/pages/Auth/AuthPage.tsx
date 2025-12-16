@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -45,22 +47,42 @@ export default function AuthPage() {
     if (isLogin) {
       result = await signIn(email, password);
       if (!result.error) {
-        // Login goes directly to home
+        // Login - check where to redirect based on user type
         if (userType === 'venue') {
-          navigate('/venue/home');
+          // For venue login, check approval status
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { data: venue } = await supabase
+              .from('venues')
+              .select('approval_status')
+              .eq('owner_user_id', user.id)
+              .maybeSingle();
+            
+            if (venue?.approval_status === 'approved') {
+              navigate('/venue/home');
+            } else if (venue) {
+              navigate('/venue/pending-approval');
+            } else {
+              // No venue found - they need to register
+              toast.error('No venue found for this account. Please register your venue first.');
+              await supabase.auth.signOut();
+            }
+          }
         } else {
           navigate('/app/feed');
         }
       }
     } else {
+      // For signup, venues should use the dedicated signup flow
+      if (userType === 'venue') {
+        navigate('/venue/signup');
+        setLoading(false);
+        return;
+      }
+      
       result = await signUp(email, password, fullName);
       if (!result.error) {
-        // Signup goes to email verification
-        if (userType === 'venue') {
-          navigate('/venue/verify-email');
-        } else {
-          navigate('/user/verify-email');
-        }
+        navigate('/user/verify-email');
       }
     }
     
@@ -115,7 +137,7 @@ export default function AuthPage() {
           <div className="grid md:grid-cols-2 gap-6">
             {/* End User Card */}
             <button
-              onClick={() => { setUserType('user'); setIsLogin(false); }}
+              onClick={() => { setUserType('user'); setIsLogin(true); }}
               className="group glass rounded-3xl p-8 text-left transition-all duration-300 hover:scale-[1.02] hover:border-primary/50 relative overflow-hidden"
             >
               <div className="absolute -top-20 -right-20 w-40 h-40 bg-accent/10 rounded-full blur-3xl group-hover:bg-accent/20 transition-colors" />
@@ -129,14 +151,14 @@ export default function AuthPage() {
                 <p className="text-muted-foreground mb-6">Discover venues, connect with people, and enjoy the nightlife</p>
                 
                 <div className="flex items-center text-primary font-medium group-hover:gap-3 gap-2 transition-all">
-                  Get Started <ArrowRight className="w-5 h-5" />
+                  Sign In / Sign Up <ArrowRight className="w-5 h-5" />
                 </div>
               </div>
             </button>
 
             {/* Venue Card */}
             <button
-              onClick={() => navigate('/venue/signup')}
+              onClick={() => { setUserType('venue'); setIsLogin(true); }}
               className="group glass rounded-3xl p-8 text-left transition-all duration-300 hover:scale-[1.02] hover:border-primary/50 relative overflow-hidden"
             >
               <div className="absolute -top-20 -right-20 w-40 h-40 bg-primary/10 rounded-full blur-3xl group-hover:bg-primary/20 transition-colors" />
@@ -150,10 +172,17 @@ export default function AuthPage() {
                 <p className="text-muted-foreground mb-6">Manage your business, staff, orders, and accept JV Coin payments</p>
                 
                 <div className="flex items-center text-primary font-medium group-hover:gap-3 gap-2 transition-all">
-                  Get Started <ArrowRight className="w-5 h-5" />
+                  Sign In / Sign Up <ArrowRight className="w-5 h-5" />
                 </div>
               </div>
             </button>
+          </div>
+
+          {/* New Venue Registration Link */}
+          <div className="text-center mt-6">
+            <p className="text-muted-foreground text-sm">
+              New venue? <button onClick={() => navigate('/venue/signup')} className="text-primary hover:underline font-medium">Register your venue here</button>
+            </p>
           </div>
         </div>
       </div>
