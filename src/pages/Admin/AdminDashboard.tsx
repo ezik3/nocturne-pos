@@ -52,10 +52,18 @@ export default function AdminDashboard() {
         .limit(1)
         .maybeSingle();
 
-      // Fetch user count
-      const { count: userCount } = await supabase
+      // Fetch user count from customer_profiles (actual registered users)
+      const { count: customerProfileCount } = await supabase
+        .from("customer_profiles")
+        .select("*", { count: "exact", head: true });
+
+      // Also count user_wallets as backup
+      const { count: userWalletCount } = await supabase
         .from("user_wallets")
         .select("*", { count: "exact", head: true });
+
+      // Use the higher count (some users may have profiles but not wallets yet)
+      const userCount = Math.max(customerProfileCount || 0, userWalletCount || 0);
 
       // Fetch total venues
       const { count: totalVenueCount } = await supabase
@@ -101,7 +109,7 @@ export default function AdminDashboard() {
         .gte("created_at", today.toISOString());
 
       setStats({
-        totalUsers: userCount || 0,
+        totalUsers: userCount,
         totalVenues: totalVenueCount || 0,
         activeVenues: activeVenueCount || 0,
         pendingVenues: pendingVenueCount || 0,

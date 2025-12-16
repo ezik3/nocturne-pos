@@ -129,15 +129,17 @@ export default function AdminVenues() {
 
       if (error) throw error;
 
-      // Create venue wallet if it doesn't exist
-      if (!venueToAction.wallet) {
-        await supabase
-          .from("venue_wallets")
-          .insert({
-            venue_id: venueToAction.id,
-            balance_jvc: 0,
-            balance_usd: 0
-          });
+      // Create venue wallet if it doesn't exist (use upsert to avoid duplicate key errors)
+      const { error: walletError } = await supabase
+        .from("venue_wallets")
+        .upsert({
+          venue_id: venueToAction.id,
+          balance_jvc: 0,
+          balance_usd: 0
+        }, { onConflict: 'venue_id' });
+
+      if (walletError) {
+        console.error("Wallet creation error:", walletError);
       }
 
       // Log the action
@@ -553,7 +555,7 @@ export default function AdminVenues() {
       </Dialog>
 
       {/* Approve Confirmation Dialog */}
-      <AlertDialog open={approveDialogOpen} onOpenChange={setApproveDialogOpen}>
+      <AlertDialog open={approveDialogOpen} onOpenChange={(open) => !isProcessing && setApproveDialogOpen(open)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Approve Venue</AlertDialogTitle>
@@ -564,13 +566,13 @@ export default function AdminVenues() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isProcessing}>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              className="bg-success hover:bg-success/90"
+            <Button 
+              className="bg-success hover:bg-success/90 text-success-foreground"
               onClick={handleApprove}
               disabled={isProcessing}
             >
               {isProcessing ? "Approving..." : "Approve Venue"}
-            </AlertDialogAction>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
