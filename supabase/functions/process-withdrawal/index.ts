@@ -53,7 +53,7 @@ serve(async (req) => {
     const totalWithdrawal = amount;
     const netPayout = amount - WITHDRAWAL_FEE;
 
-    logStep('Processing withdrawal', { amount, fee: WITHDRAWAL_FEE, netPayout, isVenue: isVenueWithdrawal });
+    logStep('Processing INSTANT withdrawal', { amount, fee: WITHDRAWAL_FEE, netPayout, isVenue: isVenueWithdrawal });
 
     // 1. Verify wallet and balance
     let wallet: any;
@@ -119,7 +119,28 @@ serve(async (req) => {
     const balanceBefore = walletType === 'venue' ? wallet.balance_jvc : wallet.balance_jv_token;
     const balanceAfter = balanceBefore - totalWithdrawal;
 
-    // 2. Create withdrawal record (pending)
+    // 2. IMMEDIATELY debit the wallet (no pending state - instant processing)
+    if (walletType === 'venue') {
+      await supabaseAdmin
+        .from('venue_wallets')
+        .update({ 
+          balance_jvc: balanceAfter,
+          updated_at: new Date().toISOString()
+        })
+        .eq('venue_id', venue_id);
+    } else {
+      await supabaseAdmin
+        .from('user_wallets')
+        .update({ 
+          balance_jv_token: balanceAfter,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id);
+    }
+
+    logStep('Wallet debited immediately', { balanceBefore, balanceAfter });
+
+    // 3. Create withdrawal record (completed status - instant approval)
     const { data: withdrawalRecord, error: recordError } = await supabaseAdmin
       .from('withdrawal_records')
       .insert({
@@ -131,71 +152,107 @@ serve(async (req) => {
         fee_amount: WITHDRAWAL_FEE,
         net_payout: netPayout,
         withdrawal_method: withdrawal_method,
-        status: 'pending',
+        status: 'completed', // Instant - no approval needed
         bank_account_last4: bank_details?.account_last4,
         bank_name: bank_details?.bank_name,
         crypto_to_address: crypto_address,
-        metadata: { requested_by: user.id }
+        metadata: { requested_by: user.id, instant_approval: true },
+        approved_at: new Date().toISOString(),
+        completed_at: new Date().toISOString()
       })
       .select()
       .single();
 
     if (recordError) {
+      // Rollback wallet debit on failure
+      if (walletType === 'venue') {
+        await supabaseAdmin.from('venue_wallets').update({ balance_jvc: balanceBefore }).eq('venue_id', venue_id);
+      } else {
+        await supabaseAdmin.from('user_wallets').update({ balance_jv_token: balanceBefore }).eq('user_id', user.id);
+      }
       throw new Error('Failed to create withdrawal request');
     }
 
-    logStep('Withdrawal record created', { withdrawalId: withdrawalRecord.id });
+    logStep('Withdrawal record created (instant)', { withdrawalId: withdrawalRecord.id });
 
-    // 3. Move funds to pending (don't debit yet - wait for approval)
-    if (walletType === 'venue') {
-      await supabaseAdmin
-        .from('venue_wallets')
-        .update({ 
-          pending_balance: (wallet.pending_balance || 0) + totalWithdrawal,
-          updated_at: new Date().toISOString()
-        })
-        .eq('venue_id', venue_id);
-    } else {
-      await supabaseAdmin
-        .from('user_wallets')
-        .update({ 
-          pending_balance: (wallet.pending_balance || 0) + totalWithdrawal,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', user.id);
-    }
-
-    logStep('Funds moved to pending');
-
-    // 4. Update treasury pending withdrawals
+    // 4. BURN the JVC (remove from circulation)
     const { data: treasury } = await supabaseAdmin
       .from('platform_treasury')
       .select('*')
       .limit(1)
       .single();
 
+    const newTotalSupply = (treasury?.total_jvc_supply || 0) - totalWithdrawal;
+    const newUsdBacking = (treasury?.total_usd_backing || 0) - totalWithdrawal;
+    const newCollectedFees = (treasury?.collected_fees || 0) + WITHDRAWAL_FEE;
+
     await supabaseAdmin
       .from('platform_treasury')
       .upsert({
         id: treasury?.id || undefined,
-        pending_withdrawals: (treasury?.pending_withdrawals || 0) + totalWithdrawal,
+        total_jvc_supply: Math.max(0, newTotalSupply),
+        total_usd_backing: Math.max(0, newUsdBacking),
+        collected_fees: newCollectedFees,
         updated_at: new Date().toISOString()
       });
 
-    // 5. Create transaction record (pending)
+    logStep('JVC burned from supply', { burned: totalWithdrawal, newSupply: newTotalSupply });
+
+    // 5. Create mint/burn audit record
+    await supabaseAdmin.from('mint_burn_audit').insert({
+      operation_type: 'burn',
+      amount_jvc: totalWithdrawal,
+      amount_usd: totalWithdrawal,
+      wallet_id: isVenueWithdrawal ? venue_id : user.id,
+      wallet_type: walletType,
+      triggered_by: 'withdrawal',
+      withdrawal_id: withdrawalRecord.id,
+      balance_before: balanceBefore,
+      balance_after: balanceAfter,
+      total_supply_before: treasury?.total_jvc_supply || 0,
+      total_supply_after: newTotalSupply
+    });
+
+    // 6. Create ledger entries
+    await supabaseAdmin.from('ledger_entries').insert([
+      {
+        transaction_id: withdrawalRecord.id,
+        wallet_id: isVenueWithdrawal ? venue_id : user.id,
+        wallet_type: walletType,
+        entry_type: 'debit',
+        amount: totalWithdrawal,
+        balance_before: balanceBefore,
+        balance_after: balanceAfter
+      },
+      {
+        transaction_id: withdrawalRecord.id,
+        wallet_id: 'platform_treasury',
+        wallet_type: 'treasury',
+        entry_type: 'credit',
+        amount: WITHDRAWAL_FEE,
+        balance_before: treasury?.collected_fees || 0,
+        balance_after: newCollectedFees
+      }
+    ]);
+
+    // 7. Create transaction record (completed)
     await supabaseAdmin.from('transactions').insert({
       from_wallet_id: isVenueWithdrawal ? venue_id : user.id,
       from_wallet_type: walletType,
       amount_jvc: totalWithdrawal,
       amount_usd: totalWithdrawal,
       fee_amount: WITHDRAWAL_FEE,
+      fee_collected: true,
       transaction_type: 'withdrawal',
-      status: 'pending',
-      description: `Withdrawal of ${netPayout.toFixed(2)} USD (fee: $${WITHDRAWAL_FEE})`,
+      status: 'completed',
+      description: `Instant withdrawal of ${netPayout.toFixed(2)} USD (fee: $${WITHDRAWAL_FEE})`,
       reference_id: withdrawalRecord.id,
       reference_type: 'withdrawal',
-      created_by: user.id
+      created_by: user.id,
+      completed_at: new Date().toISOString()
     });
+
+    logStep('Withdrawal completed successfully', { withdrawalId: withdrawalRecord.id });
 
     return new Response(
       JSON.stringify({
@@ -204,8 +261,8 @@ serve(async (req) => {
         amount: totalWithdrawal,
         fee: WITHDRAWAL_FEE,
         net_payout: netPayout,
-        status: 'pending',
-        message: `Withdrawal request submitted. ${netPayout.toFixed(2)} USD will be sent after approval.`,
+        status: 'completed',
+        message: `Withdrawal of ${netPayout.toFixed(2)} USD processed successfully!`,
         estimated_time: withdrawal_method === 'crypto' ? '1-2 hours' : '1-3 business days'
       }),
       {
