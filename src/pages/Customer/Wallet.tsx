@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Coins, ArrowDownLeft, History, Wifi, WifiOff, Wallet as WalletIcon, Copy, Check, Send, Globe, ChevronDown, Info, Zap, ArrowLeft } from "lucide-react";
+import { Coins, ArrowDownLeft, ArrowUpRight, Wifi, WifiOff, Wallet as WalletIcon, Copy, Check, Send, Globe, ChevronDown, Info, Zap, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useJVCoinWallet } from "@/hooks/useJVCoinWallet";
 import { useCurrency, CURRENCIES } from "@/hooks/useCurrency";
 import { DepositModal } from "@/components/Customer/DepositModal";
+import WithdrawModal from "@/components/Venue/WithdrawModal";
+import TransactionHistory from "@/components/Wallet/TransactionHistory";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -320,21 +322,7 @@ export default function Wallet() {
         </div>
 
         {/* Transaction History */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <History className="h-5 w-5" />
-              Transaction History
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-8 text-muted-foreground">
-              <Coins className="h-12 w-12 mx-auto mb-3 opacity-30" />
-              <p className="text-sm">No transactions yet</p>
-              <p className="text-xs mt-1">Start by depositing funds to your wallet!</p>
-            </div>
-          </CardContent>
-        </Card>
+        <TransactionHistory />
 
         {/* JVC Info Card */}
         <Card className="bg-muted/30 border-border/50">

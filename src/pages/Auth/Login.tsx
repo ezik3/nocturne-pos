@@ -13,11 +13,8 @@ export default function Login() {
   const { signIn, user } = useAuth();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (user) {
-      navigate('/venue/pos/dashboard');
-    }
-  }, [user, navigate]);
+  // Don't auto-redirect if user is already here - let them navigate manually
+  // This prevents redirect loops
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
