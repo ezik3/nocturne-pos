@@ -1,102 +1,94 @@
-import { useState } from "react";
-import { Search, MapPin, TrendingUp, Users } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, MapPin, TrendingUp, Users, Building2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Web3FeedHeader from "@/components/Customer/Feed/Web3FeedHeader";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
-const cities = ["All Cities", "New York", "Los Angeles", "Chicago", "Miami", "Las Vegas", "San Francisco", "New Orleans", "Nashville", "Austin"];
 const venueTypes = ["All", "Nightclubs", "Bars", "Restaurants", "Events"];
 
-// Mock venues data
-const mockVenues = [
-  { 
-    id: "1", 
-    name: "Club Neon", 
-    description: "Electrifying atmosphere with world-class DJs", 
-    image: "https://images.unsplash.com/photo-1566737236500-c8ac43014a67?w=600",
-    city: "Las Vegas",
-    type: "Nightclubs",
-    vibeScore: 92,
-    occupancy: 85,
-    capacity: 500
-  },
-  { 
-    id: "2", 
-    name: "Skyline Lounge", 
-    description: "Breathtaking views and signature cocktails", 
-    image: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600",
-    city: "New York",
-    type: "Bars",
-    vibeScore: 88,
-    occupancy: 120,
-    capacity: 200
-  },
-  { 
-    id: "3", 
-    name: "Rhythm Arena", 
-    description: "Premier venue for live music performances", 
-    image: "https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=600",
-    city: "Nashville",
-    type: "Events",
-    vibeScore: 95,
-    occupancy: 2500,
-    capacity: 5000
-  },
-  { 
-    id: "4", 
-    name: "Ocean Drive Grill", 
-    description: "Fresh seafood with ocean views", 
-    image: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=600",
-    city: "Miami",
-    type: "Restaurants",
-    vibeScore: 78,
-    occupancy: 45,
-    capacity: 80
-  },
-  { 
-    id: "5", 
-    name: "The Basement", 
-    description: "Underground vibes with the best beats", 
-    image: "https://images.unsplash.com/photo-1574391884720-bbc3740c59d1?w=600",
-    city: "Chicago",
-    type: "Nightclubs",
-    vibeScore: 85,
-    occupancy: 180,
-    capacity: 300
-  },
-  { 
-    id: "6", 
-    name: "Rooftop 54", 
-    description: "Exclusive rooftop experience", 
-    image: "https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=600",
-    city: "Los Angeles",
-    type: "Bars",
-    vibeScore: 90,
-    occupancy: 75,
-    capacity: 150
-  },
-];
+interface Venue {
+  id: string;
+  name: string;
+  description: string | null;
+  image_url: string | null;
+  city: string | null;
+  venue_type: string | null;
+  vibe_score: number | null;
+  current_occupancy: number | null;
+  capacity: number | null;
+  address: string | null;
+}
 
 const DiscoverNew = () => {
   const [selectedCity, setSelectedCity] = useState("All Cities");
   const [selectedType, setSelectedType] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
+  const [venues, setVenues] = useState<Venue[]>([]);
+  const [cities, setCities] = useState<string[]>(["All Cities"]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  const filteredVenues = mockVenues.filter(venue => {
+  useEffect(() => {
+    fetchVenues();
+  }, []);
+
+  const fetchVenues = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('venues')
+        .select('*')
+        .eq('approval_status', 'approved')
+        .order('vibe_score', { ascending: false });
+
+      if (error) throw error;
+
+      if (data) {
+        setVenues(data);
+        
+        // Extract unique cities from venues
+        const uniqueCities = [...new Set(data.map(v => v.city).filter(Boolean))] as string[];
+        setCities(["All Cities", ...uniqueCities.sort()]);
+      }
+    } catch (error) {
+      console.error('Error fetching venues:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredVenues = venues.filter(venue => {
     const matchesCity = selectedCity === "All Cities" || venue.city === selectedCity;
-    const matchesType = selectedType === "All" || venue.type === selectedType;
+    const matchesType = selectedType === "All" || venue.venue_type?.toLowerCase().includes(selectedType.toLowerCase());
     const matchesSearch = venue.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         venue.city.toLowerCase().includes(searchQuery.toLowerCase());
+                         venue.city?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         venue.description?.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCity && matchesType && (searchQuery === "" || matchesSearch);
   });
 
-  const getVibeColor = (score: number) => {
+  const getVibeColor = (score: number | null) => {
+    if (!score) return "text-white/60";
     if (score >= 90) return "text-neon-green";
     if (score >= 80) return "text-neon-cyan";
     if (score >= 70) return "text-neon-purple";
     return "text-neon-pink";
+  };
+
+  const getDefaultImage = (type: string | null) => {
+    switch (type?.toLowerCase()) {
+      case 'nightclub':
+      case 'nightclubs':
+        return "https://images.unsplash.com/photo-1566737236500-c8ac43014a67?w=600";
+      case 'bar':
+      case 'bars':
+        return "https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=600";
+      case 'restaurant':
+      case 'restaurants':
+        return "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600";
+      default:
+        return "https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=600";
+    }
   };
 
   return (
@@ -155,53 +147,75 @@ const DiscoverNew = () => {
           ))}
         </div>
 
-        {/* Venues Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredVenues.map((venue) => (
-            <div
-              key={venue.id}
-              onClick={() => navigate(`/app/venue/${venue.id}`)}
-              className="group cursor-pointer overflow-hidden rounded-xl bg-white/5 hover:border-cyan-400/50 border border-transparent transition-all"
-            >
-              {/* Image */}
-              <div className="aspect-video overflow-hidden">
-                <img
-                  src={venue.image}
-                  alt={venue.name}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                />
-              </div>
-              
-              {/* Info */}
-              <div className="p-4">
-                <h3 className="text-cyan-400 text-xl font-bold mb-1">{venue.name}</h3>
-                <p className="text-white/70 text-sm mb-3">{venue.description}</p>
-                
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-1 text-white/60">
-                    <MapPin className="w-4 h-4" />
-                    {venue.city}
+        {/* Loading State */}
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="animate-spin w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full" />
+          </div>
+        ) : (
+          <>
+            {/* Venues Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredVenues.map((venue) => (
+                <div
+                  key={venue.id}
+                  onClick={() => navigate(`/app/venue/${venue.id}`)}
+                  className="group cursor-pointer overflow-hidden rounded-xl bg-white/5 hover:border-cyan-400/50 border border-transparent transition-all"
+                >
+                  {/* Image */}
+                  <div className="aspect-video overflow-hidden">
+                    <img
+                      src={venue.image_url || getDefaultImage(venue.venue_type)}
+                      alt={venue.name}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    />
                   </div>
-                  <div className="flex items-center gap-3">
-                    <div className={`flex items-center gap-1 ${getVibeColor(venue.vibeScore)}`}>
-                      <TrendingUp className="w-4 h-4" />
-                      {venue.vibeScore}%
-                    </div>
-                    <div className="flex items-center gap-1 text-white/60">
-                      <Users className="w-4 h-4" />
-                      {venue.occupancy}/{venue.capacity}
+                  
+                  {/* Info */}
+                  <div className="p-4">
+                    <h3 className="text-cyan-400 text-xl font-bold mb-1">{venue.name}</h3>
+                    <p className="text-white/70 text-sm mb-3 line-clamp-2">
+                      {venue.description || `A great ${venue.venue_type || 'venue'} to visit`}
+                    </p>
+                    
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-1 text-white/60">
+                        <MapPin className="w-4 h-4" />
+                        {venue.city || 'Location TBD'}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {venue.vibe_score && (
+                          <div className={`flex items-center gap-1 ${getVibeColor(venue.vibe_score)}`}>
+                            <TrendingUp className="w-4 h-4" />
+                            {venue.vibe_score}%
+                          </div>
+                        )}
+                        {venue.capacity && (
+                          <div className="flex items-center gap-1 text-white/60">
+                            <Users className="w-4 h-4" />
+                            {venue.current_occupancy || 0}/{venue.capacity}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
 
-        {filteredVenues.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-white/60 text-lg">No venues found matching your criteria</p>
-          </div>
+            {filteredVenues.length === 0 && (
+              <div className="text-center py-12">
+                <Building2 className="w-16 h-16 text-white/20 mx-auto mb-4" />
+                <p className="text-white/60 text-lg mb-2">No venues found</p>
+                <p className="text-white/40 text-sm">
+                  {venues.length === 0 
+                    ? "Be the first to register your venue!"
+                    : "Try adjusting your search criteria"
+                  }
+                </p>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

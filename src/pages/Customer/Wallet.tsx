@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Coins, ArrowDownLeft, ArrowUpRight, Wifi, WifiOff, Wallet as WalletIcon, Copy, Check, Send, Globe, ChevronDown, Info, Zap, ArrowLeft } from "lucide-react";
+import { Coins, ArrowDownLeft, ArrowUpRight, Wifi, WifiOff, Wallet as WalletIcon, Send, Globe, ChevronDown, Zap, ArrowLeft, CreditCard, Gift } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useJVCoinWallet } from "@/hooks/useJVCoinWallet";
 import { useCurrency, CURRENCIES } from "@/hooks/useCurrency";
 import { DepositModal } from "@/components/Customer/DepositModal";
-import WithdrawModal from "@/components/Venue/WithdrawModal";
 import TransactionHistory from "@/components/Wallet/TransactionHistory";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -20,29 +19,26 @@ export default function Wallet() {
   const [pendingTransactions, setPendingTransactions] = useState<any[]>([]);
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
-  const [transferAddress, setTransferAddress] = useState("");
+  const [transferEmail, setTransferEmail] = useState("");
   const [transferAmount, setTransferAmount] = useState("");
-  const [copied, setCopied] = useState(false);
   
   const { toast } = useToast();
   const { 
     balance, 
     loading, 
-    xrpAddress, 
     fetchBalance, 
-    initializeXRPWallet,
-    transferJVC 
+    initializeWallet,
+    transferJVC,
+    TRANSACTION_FEE_USD
   } = useJVCoinWallet();
 
   const {
     userCurrency,
     jvcToLocal,
     formatCurrency,
-    formatJVC,
     setDisplayCurrency,
     getCurrencyInfo,
     getTransactionFeeLocal,
-    TRANSACTION_FEE_USD,
     availableCurrencies,
   } = useCurrency();
 
@@ -56,33 +52,17 @@ export default function Wallet() {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
+    // Initialize wallet if not already done
+    initializeWallet();
+
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
 
-  const handleInitializeWallet = async () => {
-    const address = await initializeXRPWallet();
-    if (address) {
-      toast({
-        title: "Wallet Created!",
-        description: "Your XRP wallet has been initialized with JVC trustline",
-      });
-    }
-  };
-
-  const copyAddress = () => {
-    if (xrpAddress) {
-      navigator.clipboard.writeText(xrpAddress);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-      toast({ title: "Copied!", description: "Wallet address copied to clipboard" });
-    }
-  };
-
   const handleTransfer = async () => {
-    if (!transferAddress || !transferAmount) {
+    if (!transferEmail || !transferAmount) {
       toast({ title: "Error", description: "Please fill in all fields", variant: "destructive" });
       return;
     }
@@ -93,16 +73,16 @@ export default function Wallet() {
     if (totalWithFee > balance.jvc) {
       toast({ 
         title: "Insufficient Balance", 
-        description: `Need ${totalWithFee.toFixed(2)} JVC (including $0.10 fee)`, 
+        description: `Need ${formatCurrency(jvcToLocal(totalWithFee))} (including fee)`, 
         variant: "destructive" 
       });
       return;
     }
 
-    const success = await transferJVC(transferAddress, amount);
-    if (success) {
+    const result = await transferJVC(transferEmail, amount);
+    if (result.success) {
       setShowTransferModal(false);
-      setTransferAddress("");
+      setTransferEmail("");
       setTransferAmount("");
     }
   };
@@ -128,9 +108,9 @@ export default function Wallet() {
             </Button>
             <div>
               <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-                JV Wallet
+                My Wallet
               </h1>
-              <p className="text-muted-foreground text-sm">Manage your JV Coins</p>
+              <p className="text-muted-foreground text-sm">Manage your balance</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -168,79 +148,41 @@ export default function Wallet() {
           </div>
         </div>
 
-        {/* XRP Wallet Address */}
-        {xrpAddress ? (
-          <Card className="bg-muted/30 border-border/50">
-            <CardContent className="pt-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <WalletIcon className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase">Your XRP Address (JVC Wallet)</p>
-                    <p className="font-mono text-sm">{xrpAddress.slice(0, 12)}...{xrpAddress.slice(-8)}</p>
-                  </div>
-                </div>
-                <Button variant="ghost" size="sm" onClick={copyAddress}>
-                  {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card className="border-dashed border-2 border-primary/30 bg-primary/5">
-            <CardContent className="pt-6 text-center">
-              <WalletIcon className="h-12 w-12 mx-auto text-primary/50 mb-3" />
-              <h3 className="font-semibold mb-1">No Wallet Connected</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Initialize your XRP wallet to receive and send JV Coins
-              </p>
-              <Button onClick={handleInitializeWallet} className="bg-primary text-primary-foreground">
-                Initialize Wallet
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Balance Cards - Showing BOTH JVC and Local Currency */}
+        {/* Balance Cards */}
         <div className="grid gap-4 md:grid-cols-3">
-          {/* JVC Balance with Local Currency */}
+          {/* Main Balance */}
           <Card className="bg-gradient-to-br from-primary to-primary/70 text-primary-foreground border-0 shadow-lg shadow-primary/20">
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-lg">
-                <Coins className="h-5 w-5" />
-                JV Coins
+                <WalletIcon className="h-5 w-5" />
+                Balance
               </CardTitle>
               <CardDescription className="text-primary-foreground/70">
-                Pegged to USDT (1 JVC = $1 USD)
+                Available to spend
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-4xl font-bold">{loading ? '...' : balance.jvc.toFixed(2)}</p>
-              <div className="mt-2 space-y-1">
-                <p className="text-sm text-primary-foreground/80">
+              <p className="text-4xl font-bold">{loading ? '...' : formatCurrency(localBalance)}</p>
+              {userCurrency !== 'USD' && (
+                <p className="text-sm text-primary-foreground/70 mt-1">
                   ≈ ${balance.jvc.toFixed(2)} USD
                 </p>
-                {userCurrency !== 'USD' && (
-                  <p className="text-sm text-primary-foreground/60 flex items-center gap-1">
-                    <Globe className="h-3 w-3" />
-                    ≈ {formatCurrency(localBalance)}
-                  </p>
-                )}
-              </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Deposited Value */}
+          {/* Total Deposited */}
           <Card className="bg-card border-border/50">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Total Deposited</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <CreditCard className="h-5 w-5 text-green-500" />
+                Total Deposited
+              </CardTitle>
               <CardDescription>Your deposits in {currencyInfo.name}</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-4xl font-bold">
-                {loading ? '...' : formatCurrency(localBalance)}
+                {loading ? '...' : formatCurrency(jvcToLocal(balance.usd))}
               </p>
               <p className="text-sm text-muted-foreground mt-1">
                 = ${balance.usd.toFixed(2)} USD
@@ -251,7 +193,10 @@ export default function Wallet() {
           {/* Reward Points */}
           <Card className="bg-card border-border/50">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Reward Points</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Gift className="h-5 w-5 text-amber-500" />
+                Reward Points
+              </CardTitle>
               <CardDescription>Loyalty Rewards</CardDescription>
             </CardHeader>
             <CardContent>
@@ -273,11 +218,11 @@ export default function Wallet() {
             </div>
             <div className="text-right">
               <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30">
-                $0.10 USD
+                {formatCurrency(localFee)}
               </Badge>
               {userCurrency !== 'USD' && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  ≈ {formatCurrency(localFee)}
+                  = $0.10 USD
                 </p>
               )}
             </div>
@@ -307,40 +252,22 @@ export default function Wallet() {
             onClick={() => setShowDepositModal(true)}
           >
             <ArrowDownLeft className="h-5 w-5 mr-2" />
-            Deposit
+            Add Funds
           </Button>
           <Button 
             size="lg" 
             variant="outline"
             className="h-14 border-2 font-semibold"
             onClick={() => setShowTransferModal(true)}
-            disabled={!xrpAddress || balance.jvc <= 0}
+            disabled={balance.jvc <= 0}
           >
             <Send className="h-5 w-5 mr-2" />
-            Send JVC
+            Send Money
           </Button>
         </div>
 
         {/* Transaction History */}
         <TransactionHistory />
-
-        {/* JVC Info Card */}
-        <Card className="bg-muted/30 border-border/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Info className="h-4 w-4" />
-              About JV Coin
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground space-y-2">
-            <p>• <strong>1 JVC = $1 USD</strong> - Pegged to USDT stablecoin</p>
-            <p>• Built on <strong>XRP Ledger</strong> for fast, low-cost transactions</p>
-            <p>• <strong>$0.10 flat fee</strong> per transaction (99% cheaper than card fees)</p>
-            <p>• <strong>Offline payments</strong> supported - transactions sync when online</p>
-            <p>• <strong>Multi-currency display</strong> - See balance in your local currency</p>
-            <p>• Use JVC at all venues for food, drinks, rides, and deliveries</p>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Deposit Modal */}
@@ -356,23 +283,24 @@ export default function Wallet() {
       <Dialog open={showTransferModal} onOpenChange={setShowTransferModal}>
         <DialogContent className="bg-background/95 backdrop-blur-xl border-border/50">
           <DialogHeader>
-            <DialogTitle>Send JV Coins</DialogTitle>
+            <DialogTitle>Send Money</DialogTitle>
             <DialogDescription>
-              Transfer JVC to another wallet. A flat $0.10 USD fee applies.
+              Transfer funds to another user. A small platform fee applies.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="text-sm text-muted-foreground">Recipient XRP Address</label>
+              <label className="text-sm text-muted-foreground">Recipient Email</label>
               <Input
-                placeholder="rXXXXXXXXXXXXXXXXXX"
-                value={transferAddress}
-                onChange={(e) => setTransferAddress(e.target.value)}
-                className="mt-1 font-mono"
+                placeholder="friend@example.com"
+                value={transferEmail}
+                onChange={(e) => setTransferEmail(e.target.value)}
+                className="mt-1"
+                type="email"
               />
             </div>
             <div>
-              <label className="text-sm text-muted-foreground">Amount (JVC)</label>
+              <label className="text-sm text-muted-foreground">Amount ({userCurrency})</label>
               <Input
                 type="number"
                 placeholder="0.00"
@@ -381,7 +309,7 @@ export default function Wallet() {
                 className="mt-1"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Available: {balance.jvc.toFixed(2)} JVC
+                Available: {formatCurrency(localBalance)}
               </p>
             </div>
 
@@ -390,31 +318,26 @@ export default function Wallet() {
               <div className="bg-muted/50 rounded-lg p-3 space-y-1 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Amount:</span>
-                  <span>{parseFloat(transferAmount).toFixed(2)} JVC</span>
+                  <span>{formatCurrency(jvcToLocal(parseFloat(transferAmount)))}</span>
                 </div>
                 <div className="flex justify-between text-amber-500">
                   <span>Platform Fee:</span>
-                  <span>0.10 JVC</span>
+                  <span>{formatCurrency(localFee)}</span>
                 </div>
                 <div className="flex justify-between font-bold border-t border-border/50 pt-1 mt-1">
                   <span>Total:</span>
-                  <span>{(parseFloat(transferAmount) + 0.10).toFixed(2)} JVC</span>
+                  <span>{formatCurrency(jvcToLocal(parseFloat(transferAmount) + TRANSACTION_FEE_USD))}</span>
                 </div>
-                {userCurrency !== 'USD' && (
-                  <p className="text-xs text-muted-foreground text-right">
-                    ≈ {formatCurrency(jvcToLocal(parseFloat(transferAmount) + 0.10))}
-                  </p>
-                )}
               </div>
             )}
 
             <Button 
               onClick={handleTransfer} 
               className="w-full"
-              disabled={!transferAddress || !transferAmount || (parseFloat(transferAmount) + 0.10) > balance.jvc}
+              disabled={!transferEmail || !transferAmount || (parseFloat(transferAmount) + TRANSACTION_FEE_USD) > balance.jvc}
             >
               <Send className="h-4 w-4 mr-2" />
-              Send {transferAmount || '0'} JVC + $0.10 fee
+              Send {transferAmount ? formatCurrency(jvcToLocal(parseFloat(transferAmount))) : formatCurrency(0)}
             </Button>
           </div>
         </DialogContent>
