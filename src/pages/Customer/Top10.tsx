@@ -1,34 +1,30 @@
-import { useState } from "react";
-import { Search, Play, Image, Trophy, Building2, ChevronDown } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, Play, Image, Trophy, Building2, ChevronDown, MapPin } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Web3FeedHeader from "@/components/Customer/Feed/Web3FeedHeader";
+import { supabase } from "@/integrations/supabase/client";
 
-const cities = ["All Cities", "New York", "Los Angeles", "Chicago", "Miami", "Las Vegas", "San Francisco", "New Orleans", "Nashville", "Austin"];
 const venueTypes = ["All", "Nightclubs", "Bars/Pubs", "Restaurants/Cafes", "Events"];
 
-// Mock data for top 10 content
-const mockTopUsers = [
-  { id: "1", name: "User 1", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150", pounds: 285, image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600", city: "New York" },
-  { id: "2", name: "User 2", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150", pounds: 326, image: "https://images.unsplash.com/photo-1504199367641-aba8151af406?w=600", city: "Los Angeles" },
-  { id: "3", name: "User 3", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150", pounds: 198, image: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=600", city: "Miami" },
-  { id: "4", name: "User 4", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150", pounds: 412, image: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=600", city: "Chicago" },
-  { id: "5", name: "User 5", avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150", pounds: 178, image: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=600", city: "Las Vegas" },
-  { id: "6", name: "User 6", avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150", pounds: 256, image: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=600", city: "New York" },
-  { id: "7", name: "User 7", avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150", pounds: 389, image: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=600", city: "Austin" },
-  { id: "8", name: "User 8", avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150", pounds: 445, image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600", city: "Nashville" },
-  { id: "9", name: "User 9", avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150", pounds: 167, image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=600", city: "San Francisco" },
-  { id: "10", name: "User 10", avatar: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150", pounds: 523, image: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=600", city: "Miami" },
-];
+interface TopUser {
+  id: string;
+  user_id: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  location: string | null;
+  total_pounds: number;
+}
 
-const mockTopVenues = [
-  { id: "1", name: "Club Neon", image: "https://images.unsplash.com/photo-1566737236500-c8ac43014a67?w=600", city: "Las Vegas", type: "Nightclubs", vibes: 1250 },
-  { id: "2", name: "Skyline Lounge", image: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600", city: "New York", type: "Bars/Pubs", vibes: 980 },
-  { id: "3", name: "Rhythm Arena", image: "https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=600", city: "Nashville", type: "Events", vibes: 1890 },
-  { id: "4", name: "Ocean Drive Bar", image: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=600", city: "Miami", type: "Bars/Pubs", vibes: 756 },
-  { id: "5", name: "The Basement", image: "https://images.unsplash.com/photo-1574391884720-bbc3740c59d1?w=600", city: "Chicago", type: "Nightclubs", vibes: 1120 },
-];
+interface TopVenue {
+  id: string;
+  name: string;
+  image_url: string | null;
+  city: string | null;
+  venue_type: string | null;
+  vibe_score: number | null;
+}
 
 const Top10 = () => {
   const [selectedCity, setSelectedCity] = useState("All Cities");
@@ -36,15 +32,110 @@ const Top10 = () => {
   const [contentType, setContentType] = useState<"videos" | "pics">("pics");
   const [viewMode, setViewMode] = useState<"users" | "venues">("users");
   const [searchQuery, setSearchQuery] = useState("");
+  const [topUsers, setTopUsers] = useState<TopUser[]>([]);
+  const [topVenues, setTopVenues] = useState<TopVenue[]>([]);
+  const [cities, setCities] = useState<string[]>(["All Cities"]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredUsers = mockTopUsers.filter(user => 
-    (selectedCity === "All Cities" || user.city === selectedCity)
+  useEffect(() => {
+    fetchTopData();
+  }, []);
+
+  const fetchTopData = async () => {
+    try {
+      // Fetch top users by pounds received on their posts
+      const { data: usersData, error: usersError } = await supabase
+        .from('customer_profiles')
+        .select(`
+          id,
+          user_id,
+          display_name,
+          avatar_url,
+          location
+        `)
+        .order('connection_count', { ascending: false })
+        .limit(50);
+
+      if (usersError) throw usersError;
+
+      // For each user, get their total pounds
+      const usersWithPounds: TopUser[] = [];
+      if (usersData) {
+        for (const user of usersData) {
+          const { count } = await supabase
+            .from('post_pounds')
+            .select('id', { count: 'exact', head: true })
+            .in('post_id', 
+              (await supabase
+                .from('posts')
+                .select('id')
+                .eq('user_id', user.user_id)
+              ).data?.map(p => p.id) || []
+            );
+
+          usersWithPounds.push({
+            ...user,
+            total_pounds: count || 0
+          });
+        }
+      }
+
+      // Sort by pounds and take top 10
+      usersWithPounds.sort((a, b) => b.total_pounds - a.total_pounds);
+      setTopUsers(usersWithPounds.slice(0, 10));
+
+      // Fetch top venues by vibe score
+      const { data: venuesData, error: venuesError } = await supabase
+        .from('venues')
+        .select('id, name, image_url, city, venue_type, vibe_score')
+        .eq('approval_status', 'approved')
+        .order('vibe_score', { ascending: false })
+        .limit(10);
+
+      if (venuesError) throw venuesError;
+
+      if (venuesData) {
+        setTopVenues(venuesData);
+        
+        // Extract unique cities
+        const allCities = [
+          ...usersWithPounds.map(u => u.location),
+          ...venuesData.map(v => v.city)
+        ].filter(Boolean) as string[];
+        const uniqueCities = [...new Set(allCities)];
+        setCities(["All Cities", ...uniqueCities.sort()]);
+      }
+    } catch (error) {
+      console.error('Error fetching top data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredUsers = topUsers.filter(user => 
+    (selectedCity === "All Cities" || user.location === selectedCity)
   );
 
-  const filteredVenues = mockTopVenues.filter(venue => 
+  const filteredVenues = topVenues.filter(venue => 
     (selectedCity === "All Cities" || venue.city === selectedCity) &&
-    (selectedType === "All" || venue.type === selectedType)
+    (selectedType === "All" || venue.venue_type?.toLowerCase().includes(selectedType.toLowerCase()))
   );
+
+  const getDefaultImage = (type: string | null) => {
+    switch (type?.toLowerCase()) {
+      case 'nightclub':
+      case 'nightclubs':
+        return "https://images.unsplash.com/photo-1566737236500-c8ac43014a67?w=600";
+      case 'bar':
+      case 'bars':
+        return "https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=600";
+      case 'restaurant':
+      case 'restaurants':
+        return "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600";
+      default:
+        return "https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=600";
+    }
+  };
 
   return (
     <div className="min-h-screen bg-black overflow-x-hidden overflow-y-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
@@ -162,68 +253,109 @@ const Top10 = () => {
           </div>
         )}
 
-        {/* Content Grid */}
-        {viewMode === "users" ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-            {filteredUsers.slice(0, 10).map((user, index) => (
-              <div
-                key={user.id}
-                className="relative group cursor-pointer overflow-hidden rounded-xl aspect-[3/4]"
-              >
-                <img
-                  src={user.image}
-                  alt={user.name}
-                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                />
-                {/* Rank Badge */}
-                <div className="absolute top-3 left-3 w-8 h-8 bg-black/80 rounded-full flex items-center justify-center font-bold text-white border border-white/30">
-                  {index + 1}
-                </div>
-                {/* Gradient Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
-                {/* User Info */}
-                <div className="absolute bottom-3 left-3 right-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Avatar className="w-7 h-7 border-2 border-cyan-400">
-                      <AvatarImage src={user.avatar} />
-                      <AvatarFallback>{user.name[0]}</AvatarFallback>
-                    </Avatar>
-                    <p className="text-white text-sm font-semibold truncate">{user.name}</p>
-                  </div>
-                  <p className="text-cyan-400 text-xs font-medium">👊 {user.pounds} pounds</p>
-                </div>
-              </div>
-            ))}
+        {/* Loading State */}
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="animate-spin w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full" />
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredVenues.map((venue, index) => (
-              <div
-                key={venue.id}
-                className="relative group cursor-pointer overflow-hidden rounded-xl bg-white/5"
-              >
-                <div className="aspect-video overflow-hidden">
-                  <img
-                    src={venue.image}
-                    alt={venue.name}
-                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
+          <>
+            {/* Content Grid */}
+            {viewMode === "users" ? (
+              filteredUsers.length > 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                  {filteredUsers.map((user, index) => (
+                    <div
+                      key={user.id}
+                      className="relative group cursor-pointer overflow-hidden rounded-xl aspect-[3/4] bg-gradient-to-br from-purple-900/50 to-pink-900/50"
+                    >
+                      {user.avatar_url ? (
+                        <img
+                          src={user.avatar_url}
+                          alt={user.display_name || 'User'}
+                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Avatar className="w-20 h-20">
+                            <AvatarFallback className="text-2xl">
+                              {user.display_name?.[0] || 'U'}
+                            </AvatarFallback>
+                          </Avatar>
+                        </div>
+                      )}
+                      {/* Rank Badge */}
+                      <div className="absolute top-3 left-3 w-8 h-8 bg-black/80 rounded-full flex items-center justify-center font-bold text-white border border-white/30">
+                        {index + 1}
+                      </div>
+                      {/* Gradient Overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+                      {/* User Info */}
+                      <div className="absolute bottom-3 left-3 right-3">
+                        <p className="text-white text-sm font-semibold truncate mb-1">
+                          {user.display_name || 'Anonymous'}
+                        </p>
+                        <p className="text-cyan-400 text-xs font-medium">👊 {user.total_pounds} pounds</p>
+                        {user.location && (
+                          <p className="text-white/60 text-xs flex items-center gap-1 mt-1">
+                            <MapPin className="w-3 h-3" />
+                            {user.location}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                {/* Rank Badge */}
-                <div className="absolute top-3 left-3 w-8 h-8 bg-black/80 rounded-full flex items-center justify-center font-bold text-white border border-purple-400/50">
-                  {index + 1}
+              ) : (
+                <div className="text-center py-12">
+                  <Trophy className="w-16 h-16 text-white/20 mx-auto mb-4" />
+                  <p className="text-white/60 text-lg mb-2">No top users yet</p>
+                  <p className="text-white/40 text-sm">Be the first to earn pounds on your posts!</p>
                 </div>
-                {/* Gradient Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
-                {/* Venue Info */}
-                <div className="p-4">
-                  <h3 className="text-cyan-400 font-bold text-lg">{venue.name}</h3>
-                  <p className="text-white text-sm">{venue.city} • {venue.type}</p>
-                  <p className="text-cyan-300 text-sm mt-1 font-medium">{venue.vibes} vibes</p>
+              )
+            ) : (
+              filteredVenues.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredVenues.map((venue, index) => (
+                    <div
+                      key={venue.id}
+                      className="relative group cursor-pointer overflow-hidden rounded-xl bg-white/5"
+                    >
+                      <div className="aspect-video overflow-hidden">
+                        <img
+                          src={venue.image_url || getDefaultImage(venue.venue_type)}
+                          alt={venue.name}
+                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        />
+                      </div>
+                      {/* Rank Badge */}
+                      <div className="absolute top-3 left-3 w-8 h-8 bg-black/80 rounded-full flex items-center justify-center font-bold text-white border border-purple-400/50">
+                        {index + 1}
+                      </div>
+                      {/* Gradient Overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
+                      {/* Venue Info */}
+                      <div className="p-4">
+                        <h3 className="text-cyan-400 font-bold text-lg">{venue.name}</h3>
+                        <p className="text-white text-sm">
+                          {venue.city || 'Location TBD'} • {venue.venue_type || 'Venue'}
+                        </p>
+                        <p className="text-cyan-300 text-sm mt-1 font-medium">
+                          {venue.vibe_score || 0} vibes
+                        </p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </div>
-            ))}
-          </div>
+              ) : (
+                <div className="text-center py-12">
+                  <Building2 className="w-16 h-16 text-white/20 mx-auto mb-4" />
+                  <p className="text-white/60 text-lg mb-2">No top venues yet</p>
+                  <p className="text-white/40 text-sm">Venues with the best vibes will appear here!</p>
+                </div>
+              )
+            )}
+          </>
         )}
       </div>
     </div>
