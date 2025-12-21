@@ -34,7 +34,8 @@ const VenueShell = ({
 
   return (
     <motion.div
-      className="fixed inset-0 z-40"
+      className="fixed inset-0 z-40 overflow-hidden"
+      style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}

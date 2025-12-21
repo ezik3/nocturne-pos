@@ -1,18 +1,28 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Search, Pencil, Trash2, ToggleLeft, ToggleRight, UtensilsCrossed } from "lucide-react";
-import { useVenueMenu } from "@/hooks/useVenueMenu";
-import MenuItemModal, { MenuItem } from "@/components/Venue/MenuItemModal";
+import { useVenueMenuDB, MenuItem } from "@/hooks/useVenueMenuDB";
+import MenuItemModal from "@/components/Venue/MenuItemModal";
 import CategoryModal from "@/components/Venue/CategoryModal";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
 export default function Menu() {
-  const { menuItems, categories, loading, saveItem, deleteItem, toggleAvailability, setAllCategories } = useVenueMenu();
+  const [venueId, setVenueId] = useState<string | null>(null);
+  
+  // Get venue ID from localStorage
+  useEffect(() => {
+    const storedVenueId = localStorage.getItem('jv_current_venue_id');
+    if (storedVenueId) {
+      setVenueId(storedVenueId);
+    }
+  }, []);
+
+  const { menuItems, categories, loading, saveItem, deleteItem, toggleAvailability, setAllCategories } = useVenueMenuDB(venueId);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [isItemModalOpen, setIsItemModalOpen] = useState(false);
@@ -60,7 +70,7 @@ export default function Menu() {
     return `$${item.basePrice.toFixed(2)}`;
   };
 
-  if (loading) {
+  if (loading || !venueId) {
     return (
       <div className="p-8 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>

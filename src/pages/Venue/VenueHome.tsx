@@ -15,18 +15,16 @@ import VenueNotificationToast from "@/components/Venue/VenueNotificationToast";
 import GoLiveVideoPopup from "@/components/Venue/GoLiveVideoPopup";
 import DealCreatorModal from "@/components/Venue/DealCreatorModal";
 import TablesPopup from "@/components/Venue/TablesPopup";
-import { useVenueOrders } from "@/hooks/useVenueOrders";
+import { useVenueOrdersDB } from "@/hooks/useVenueOrdersDB";
 import { formatDistanceToNow } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 
-const peopleAtVenue = [
-  { id: "1", name: "Sarah M.", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100", table: "4" },
-  { id: "2", name: "Mike J.", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100", table: "7" },
-  { id: "3", name: "Emma W.", avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100", table: "12" },
-  { id: "4", name: "Alex C.", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100", table: "3" },
-  { id: "5", name: "Lisa K.", avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100", table: "9" },
-  { id: "6", name: "Tom H.", avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100", table: "1" },
-];
+interface CheckedInUser {
+  id: string;
+  name: string;
+  avatar: string;
+  table: string;
+}
 
 const FloatingOrb = ({ orb, index, onClick }: { orb: { id: string; icon: any; label: string; color: string; count: number | null }; index: number; onClick: () => void }) => {
   const positions = [
@@ -93,7 +91,8 @@ export default function VenueHome() {
   const [isLive, setIsLive] = useState(false);
   const [showDealCreator, setShowDealCreator] = useState(false);
   const [showTablesPopup, setShowTablesPopup] = useState(false);
-  const { orders, stats, getRecentOrders } = useVenueOrders();
+  const [venueId, setVenueId] = useState<string | null>(null);
+  const [checkedInUsers, setCheckedInUsers] = useState<CheckedInUser[]>([]);
   
   // Venue data state
   const [venueData, setVenueData] = useState({
@@ -119,6 +118,7 @@ export default function VenueHome() {
         .maybeSingle();
 
       if (venue && !error) {
+        setVenueId(venue.id);
         setVenueData({
           name: venue.name,
           vibeLevel: "🔥 Lit",
@@ -136,6 +136,64 @@ export default function VenueHome() {
 
     fetchVenueData();
   }, []);
+
+  // Fetch real checked-in users
+  useEffect(() => {
+    if (!venueId) return;
+
+    const fetchCheckedInUsers = async () => {
+      const { data: checkIns, error } = await supabase
+        .from('check_ins')
+        .select(`
+          id,
+          table_number,
+          user_id,
+          customer_profiles!inner (
+            display_name,
+            avatar_url
+          )
+        `)
+        .eq('venue_id', venueId)
+        .is('checked_out_at', null);
+
+      if (!error && checkIns) {
+        const users: CheckedInUser[] = checkIns.map((c: any) => ({
+          id: c.user_id,
+          name: c.customer_profiles?.display_name || 'Guest',
+          avatar: c.customer_profiles?.avatar_url || '',
+          table: c.table_number || '?',
+        }));
+        setCheckedInUsers(users);
+        setVenueData(prev => ({ ...prev, currentOccupancy: users.length }));
+      }
+    };
+
+    fetchCheckedInUsers();
+
+    // Subscribe to realtime check-ins
+    const channel = supabase
+      .channel(`checkins-${venueId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'check_ins',
+          filter: `venue_id=eq.${venueId}`,
+        },
+        () => {
+          fetchCheckedInUsers();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [venueId]);
+
+  // Use database orders hook
+  const { orders, stats, getRecentOrders } = useVenueOrdersDB(venueId);
   
   const occupancyPercent = (venueData.currentOccupancy / venueData.maxCapacity) * 100;
   const todayRevenue = orders.filter(o => o.status === "served").reduce((sum, o) => sum + o.total, 0);
@@ -145,7 +203,7 @@ export default function VenueHome() {
   const controlOrbs = [
     { id: "orders", icon: ShoppingCart, label: "Live Orders", color: "from-orange-500 to-red-500", count: activeOrders },
     { id: "kitchen", icon: Utensils, label: "Kitchen", color: "from-green-500 to-emerald-500", count: stats.pending },
-    { id: "tables", icon: Users, label: "Tables", color: "from-blue-500 to-cyan-500", count: 18 },
+    { id: "tables", icon: Users, label: "Tables", color: "from-blue-500 to-cyan-500", count: checkedInUsers.length },
     { id: "dj", icon: Radio, label: "DJ Booth", color: "from-purple-500 to-pink-500", count: null },
     { id: "chat", icon: MessageCircle, label: "Messages", color: "from-yellow-500 to-orange-500", count: 5 },
     { id: "ai", icon: Bot, label: "AI Waiter", color: "from-cyan-500 to-blue-500", count: null },
@@ -162,7 +220,7 @@ export default function VenueHome() {
 
   const handleOrbClick = (orbId: string) => {
     if (orbId === 'chat') setShowChat(true);
-    if (orbId === 'tables') setShowTablesPopup(true); // Show popup instead of navigating
+    if (orbId === 'tables') setShowTablesPopup(true);
     if (orbId === 'kitchen') navigate('/venue/pos/kitchen');
     if (orbId === 'orders') navigate('/venue/pos/orders');
   };
@@ -175,7 +233,7 @@ export default function VenueHome() {
       <GoLiveVideoPopup 
         isLive={isLive} 
         onClose={() => setIsLive(false)} 
-        streamerName="The Electric Lounge"
+        streamerName={venueData.name}
         viewerCount={47}
       />
       <DealCreatorModal isOpen={showDealCreator} onClose={() => setShowDealCreator(false)} availableCredits={15} />
@@ -276,15 +334,17 @@ export default function VenueHome() {
               <Button variant="ghost" size="sm" className="text-primary">View All <ChevronRight className="w-4 h-4 ml-1" /></Button>
             </div>
             <div className="space-y-4">
-              {recentActivity.map((activity, i) => (
+              {recentActivity.length > 0 ? recentActivity.map((activity, i) => (
                 <div key={i} className="flex items-center gap-4 p-3 rounded-lg bg-slate-700/50">
                   <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
                   <div className="flex-1">
                     <p className="text-sm font-medium text-white">{activity.action}</p>
-                    <p className="text-xs text-slate-400">{activity.time} • {activity.user}</p>
+                    <p className="text-xs text-slate-400">{activity.time} • Table {activity.user}</p>
                   </div>
                 </div>
-              ))}
+              )) : (
+                <p className="text-slate-400 text-center py-4">No recent activity</p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -293,10 +353,10 @@ export default function VenueHome() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-white flex items-center gap-2"><Users className="w-5 h-5 text-green-400" />Who's Here</h2>
-              <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm font-medium">{venueData.currentOccupancy} checked in</span>
+              <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm font-medium">{checkedInUsers.length} checked in</span>
             </div>
             <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
-              {peopleAtVenue.map((person) => (
+              {checkedInUsers.length > 0 ? checkedInUsers.slice(0, 6).map((person) => (
                 <div key={person.id} className="flex flex-col items-center group cursor-pointer">
                   <div className="relative">
                     <Avatar className="w-12 h-12 ring-2 ring-green-500/50 group-hover:ring-green-500">
@@ -307,9 +367,15 @@ export default function VenueHome() {
                   </div>
                   <p className="text-xs text-slate-400 mt-2 truncate max-w-full">{person.name}</p>
                 </div>
-              ))}
+              )) : (
+                <div className="col-span-full text-center py-4 text-slate-400">No one checked in yet</div>
+              )}
             </div>
-            <Button variant="outline" className="w-full mt-4 border-slate-600 text-slate-300">View All Guests</Button>
+            {checkedInUsers.length > 6 && (
+              <Button variant="outline" className="w-full mt-4 border-slate-600 text-slate-300">
+                View All {checkedInUsers.length} Guests
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>
