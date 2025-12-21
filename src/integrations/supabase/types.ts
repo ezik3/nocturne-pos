@@ -821,6 +821,7 @@ export type Database = {
           tax: number | null
           total: number | null
           updated_at: string | null
+          venue_id: string | null
         }
         Insert: {
           created_at?: string | null
@@ -838,6 +839,7 @@ export type Database = {
           tax?: number | null
           total?: number | null
           updated_at?: string | null
+          venue_id?: string | null
         }
         Update: {
           created_at?: string | null
@@ -855,6 +857,7 @@ export type Database = {
           tax?: number | null
           total?: number | null
           updated_at?: string | null
+          venue_id?: string | null
         }
         Relationships: [
           {
@@ -862,6 +865,13 @@ export type Database = {
             columns: ["table_id"]
             isOneToOne: false
             referencedRelation: "venue_tables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
             referencedColumns: ["id"]
           },
         ]
@@ -1320,6 +1330,91 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      venue_menu_categories: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          sort_order: number | null
+          venue_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          sort_order?: number | null
+          venue_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          sort_order?: number | null
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_menu_categories_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      venue_menu_items: {
+        Row: {
+          available: boolean
+          base_price: number
+          category: string
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          name: string
+          preparation_time: number | null
+          sizes: Json | null
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          available?: boolean
+          base_price?: number
+          category: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name: string
+          preparation_time?: number | null
+          sizes?: Json | null
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          available?: boolean
+          base_price?: number
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name?: string
+          preparation_time?: number | null
+          sizes?: Json | null
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_menu_items_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       venue_tables: {
         Row: {
