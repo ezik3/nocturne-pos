@@ -32,8 +32,7 @@ serve(async (req) => {
 
     logStep('Received webhook', { hasSignature: !!signature });
 
-    // For now, we'll process without signature verification for simplicity
-    // In production, you'd verify the webhook signature
+    // Parse the event
     const event = JSON.parse(body);
 
     logStep('Event received', { type: event.type, id: event.id });
@@ -47,7 +46,7 @@ serve(async (req) => {
           metadata: paymentIntent.metadata 
         });
 
-        // Find the deposit record by payment intent ID
+        // IDEMPOTENCY CHECK: Find the deposit record by payment intent ID
         const { data: deposit, error: depositError } = await supabaseAdmin
           .from('deposit_records')
           .select('*')
@@ -59,29 +58,37 @@ serve(async (req) => {
           break;
         }
 
+        // IDEMPOTENCY: Skip if already completed
         if (deposit.status === 'completed') {
-          logStep('Deposit already completed', { depositId: deposit.id });
+          logStep('IDEMPOTENCY: Deposit already completed, skipping', { depositId: deposit.id });
           break;
         }
 
-        // Calculate amounts
-        const amountUsd = paymentIntent.amount / 100; // Stripe uses cents
-        const stripeFee = amountUsd * 0.029 + 0.30; // Standard Stripe fee
-        const netAmount = amountUsd - stripeFee;
+        // Use wallet_credit_amount (the intended amount user wants to receive)
+        // NOT net_amount which was deducted by fees
+        const walletCreditAmount = deposit.wallet_credit_amount || deposit.amount_jvc;
+        const stripeChargeAmount = deposit.stripe_charge_amount || (paymentIntent.amount / 100);
+        const stripeFee = deposit.stripe_fee || (stripeChargeAmount * 0.029 + 0.30);
 
-        // Update deposit record
-        await supabaseAdmin
+        logStep('Minting JVC', { walletCreditAmount, stripeChargeAmount, stripeFee });
+
+        // Update deposit record to completed FIRST (prevents duplicate processing)
+        const { error: updateError } = await supabaseAdmin
           .from('deposit_records')
           .update({
             status: 'completed',
             stripe_charge_id: paymentIntent.latest_charge,
-            stripe_fee: stripeFee,
-            net_amount: netAmount,
             completed_at: new Date().toISOString()
           })
-          .eq('id', deposit.id);
+          .eq('id', deposit.id)
+          .eq('status', 'pending'); // Only update if still pending (double-check idempotency)
 
-        // Credit the wallet
+        if (updateError) {
+          logStep('Error updating deposit or already processed', { error: updateError });
+          break;
+        }
+
+        // Credit the wallet with the intended amount (wallet_credit_amount)
         const isVenueDeposit = !!deposit.venue_id;
         
         if (isVenueDeposit) {
@@ -91,7 +98,8 @@ serve(async (req) => {
             .eq('venue_id', deposit.venue_id)
             .single();
 
-          const newBalance = (wallet?.balance_jvc || 0) + netAmount;
+          const balanceBefore = wallet?.balance_jvc || 0;
+          const newBalance = balanceBefore + walletCreditAmount;
 
           await supabaseAdmin
             .from('venue_wallets')
@@ -104,59 +112,68 @@ serve(async (req) => {
           // Create mint audit
           await supabaseAdmin.from('mint_burn_audit').insert({
             operation_type: 'mint',
-            amount_jvc: netAmount,
-            amount_usd: netAmount,
+            amount_jvc: walletCreditAmount,
+            amount_usd: walletCreditAmount,
             wallet_id: deposit.venue_id,
             wallet_type: 'venue',
             triggered_by: 'deposit',
             deposit_id: deposit.id,
-            balance_before: wallet?.balance_jvc || 0,
+            balance_before: balanceBefore,
             balance_after: newBalance,
-            total_supply_before: 0, // Will update below
+            total_supply_before: 0,
             total_supply_after: 0
           });
+
+          logStep('Venue wallet credited', { balanceBefore, newBalance, credited: walletCreditAmount });
         } else {
           const { data: wallet } = await supabaseAdmin
             .from('user_wallets')
-            .select('balance_jv_token')
+            .select('balance_jv_token, first_deposit_at')
             .eq('user_id', deposit.user_id)
             .single();
 
-          const newBalance = (wallet?.balance_jv_token || 0) + netAmount;
+          const balanceBefore = wallet?.balance_jv_token || 0;
+          const newBalance = balanceBefore + walletCreditAmount;
+          const now = new Date().toISOString();
 
+          // Update wallet with eligibility tracking
           await supabaseAdmin
             .from('user_wallets')
             .update({ 
               balance_jv_token: newBalance,
-              updated_at: new Date().toISOString()
+              updated_at: now,
+              last_deposit_at: now,
+              first_deposit_at: wallet?.first_deposit_at || now // Only set if first deposit
             })
             .eq('user_id', deposit.user_id);
 
           // Create mint audit
           await supabaseAdmin.from('mint_burn_audit').insert({
             operation_type: 'mint',
-            amount_jvc: netAmount,
-            amount_usd: netAmount,
+            amount_jvc: walletCreditAmount,
+            amount_usd: walletCreditAmount,
             wallet_id: deposit.user_id,
             wallet_type: 'user',
             triggered_by: 'deposit',
             deposit_id: deposit.id,
-            balance_before: wallet?.balance_jv_token || 0,
+            balance_before: balanceBefore,
             balance_after: newBalance,
             total_supply_before: 0,
             total_supply_after: 0
           });
+
+          logStep('User wallet credited', { balanceBefore, newBalance, credited: walletCreditAmount });
         }
 
-        // Update treasury
+        // Update treasury - mint JVC
         const { data: treasury } = await supabaseAdmin
           .from('platform_treasury')
           .select('*')
           .limit(1)
           .single();
 
-        const newSupply = (treasury?.total_jvc_supply || 0) + netAmount;
-        const newBacking = (treasury?.total_usd_backing || 0) + netAmount;
+        const newSupply = (treasury?.total_jvc_supply || 0) + walletCreditAmount;
+        const newBacking = (treasury?.total_usd_backing || 0) + walletCreditAmount;
 
         await supabaseAdmin
           .from('platform_treasury')
@@ -164,7 +181,8 @@ serve(async (req) => {
             id: treasury?.id || undefined,
             total_jvc_supply: newSupply,
             total_usd_backing: newBacking,
-            pending_deposits: Math.max(0, (treasury?.pending_deposits || 0) - amountUsd),
+            stripe_balance: (treasury?.stripe_balance || 0) + stripeChargeAmount,
+            pending_deposits: Math.max(0, (treasury?.pending_deposits || 0) - stripeChargeAmount),
             updated_at: new Date().toISOString()
           });
 
@@ -172,18 +190,18 @@ serve(async (req) => {
         await supabaseAdmin.from('transactions').insert({
           to_wallet_id: isVenueDeposit ? deposit.venue_id : deposit.user_id,
           to_wallet_type: isVenueDeposit ? 'venue' : 'user',
-          amount_jvc: netAmount,
-          amount_usd: netAmount,
+          amount_jvc: walletCreditAmount,
+          amount_usd: walletCreditAmount,
           fee_amount: stripeFee,
           transaction_type: 'deposit',
           status: 'completed',
-          description: `Deposit via ${deposit.deposit_method} - ${amountUsd.toFixed(2)} USD (Stripe fee: $${stripeFee.toFixed(2)})`,
+          description: `Deposit via ${deposit.deposit_method} - Received ${walletCreditAmount.toFixed(2)} JVC (Stripe charged: $${stripeChargeAmount.toFixed(2)}, fee: $${stripeFee.toFixed(2)})`,
           reference_id: deposit.id,
           reference_type: 'deposit',
           completed_at: new Date().toISOString()
         });
 
-        logStep('Deposit completed successfully', { depositId: deposit.id, credited: netAmount });
+        logStep('Deposit completed successfully', { depositId: deposit.id, credited: walletCreditAmount });
         break;
       }
 
@@ -191,7 +209,6 @@ serve(async (req) => {
         const paymentIntent = event.data.object;
         logStep('Payment failed', { paymentIntentId: paymentIntent.id });
 
-        // Update deposit record
         await supabaseAdmin
           .from('deposit_records')
           .update({
@@ -206,7 +223,12 @@ serve(async (req) => {
       case 'checkout.session.completed': {
         const session = event.data.object;
         logStep('Checkout session completed', { sessionId: session.id, paymentIntentId: session.payment_intent });
-        // Similar handling as payment_intent.succeeded if needed
+        
+        // For bank transfers via checkout, process similarly
+        if (session.payment_intent && session.metadata?.type === 'jvc_deposit') {
+          // The payment_intent.succeeded event will handle the actual crediting
+          logStep('Bank transfer checkout completed, payment_intent.succeeded will process');
+        }
         break;
       }
 

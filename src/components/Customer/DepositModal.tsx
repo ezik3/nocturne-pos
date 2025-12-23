@@ -196,27 +196,28 @@ export const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => 
               </div>
             )}
 
-            {/* Payment Methods */}
+            {/* Payment Methods - PayID and Crypto DISABLED for launch */}
             <Tabs value={depositMethod} onValueChange={(v) => setDepositMethod(v as any)}>
-              <TabsList className="grid grid-cols-4 w-full bg-muted/50">
+              <TabsList className="grid grid-cols-2 w-full bg-muted/50">
                 <TabsTrigger value="card" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                  <CreditCard className="w-4 h-4" />
+                  <CreditCard className="w-4 h-4 mr-2" />
+                  Card
                 </TabsTrigger>
                 <TabsTrigger value="bank" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                  <Building2 className="w-4 h-4" />
-                </TabsTrigger>
-                <TabsTrigger value="payid" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                  <Smartphone className="w-4 h-4" />
-                </TabsTrigger>
-                <TabsTrigger value="crypto" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                  <Bitcoin className="w-4 h-4" />
+                  <Building2 className="w-4 h-4 mr-2" />
+                  Bank
                 </TabsTrigger>
               </TabsList>
 
               <TabsContent value="card" className="mt-4">
                 <div className="text-center text-sm text-muted-foreground">
                   <p>Pay with Visa, Mastercard, or American Express</p>
-                  <p className="text-xs mt-1">Instant deposit • 2.9% + $0.30 fee</p>
+                  <p className="text-xs mt-1">Instant deposit • 2.9% + $0.30 fee added to total</p>
+                  {amountLocal > 0 && (
+                    <p className="text-xs mt-2 text-primary font-medium">
+                      You'll pay {formatCurrency(amountLocal + (usdEquivalent * 0.029 + 0.30) * (amountLocal / usdEquivalent))} total → receive {jvcAmount.toFixed(2)} JVC
+                    </p>
+                  )}
                 </div>
               </TabsContent>
 
@@ -224,20 +225,6 @@ export const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => 
                 <div className="text-center text-sm text-muted-foreground">
                   <p>Direct bank transfer (ACH/BECS)</p>
                   <p className="text-xs mt-1 text-green-500 font-medium">1-3 business days • NO FEES</p>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="payid" className="mt-4">
-                <div className="text-center text-sm text-muted-foreground">
-                  <p>Australian instant bank transfer via PayID</p>
-                  <p className="text-xs mt-1 text-green-500 font-medium">Usually within minutes • NO FEES</p>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="crypto" className="mt-4">
-                <div className="text-center text-sm text-muted-foreground">
-                  <p>Deposit with XRP cryptocurrency</p>
-                  <p className="text-xs mt-1">3 confirmations • 1 XRP = 1 JVC</p>
                 </div>
               </TabsContent>
             </Tabs>

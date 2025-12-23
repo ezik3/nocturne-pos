@@ -10,6 +10,12 @@ const corsHeaders = {
 // Conversion rate: 1 USD = 1 JVC (stablecoin model)
 const USD_TO_JVC_RATE = 1;
 
+// Feature flags for launch - PayID and Crypto DISABLED
+const FEATURE_FLAGS = {
+  PAYID_ENABLED: false,
+  CRYPTO_ENABLED: false,
+};
+
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[DEPOSIT-FUNDS] ${step}${detailsStr}`);
@@ -39,7 +45,7 @@ serve(async (req) => {
 
     const { 
       deposit_type, // 'card' | 'bank_transfer' | 'payid' | 'crypto'
-      amount, 
+      amount,       // This is the wallet top-up amount (what user wants to receive)
       currency = 'usd',
       payment_method_id,
       return_url
@@ -47,6 +53,15 @@ serve(async (req) => {
 
     if (!deposit_type || !amount || amount <= 0) {
       throw new Error('Invalid deposit details');
+    }
+
+    // Feature flag checks for PayID and Crypto
+    if (deposit_type === 'payid' && !FEATURE_FLAGS.PAYID_ENABLED) {
+      throw new Error('PayID deposits are temporarily unavailable. Please use Card or Bank Transfer.');
+    }
+
+    if (deposit_type === 'crypto' && !FEATURE_FLAGS.CRYPTO_ENABLED) {
+      throw new Error('Crypto deposits are temporarily unavailable. Please use Card or Bank Transfer.');
     }
 
     logStep('Processing deposit', { deposit_type, amount, currency });
@@ -57,10 +72,13 @@ serve(async (req) => {
 
     let transaction_id = '';
     let status = 'pending';
-    let jvc_amount = amount * USD_TO_JVC_RATE;
+    
+    // The wallet credit amount is ALWAYS the intended amount (what user wants to receive)
+    const wallet_credit_amount = amount * USD_TO_JVC_RATE;
+    let stripe_charge_amount = amount; // Will be updated for card to include fee
+    let stripe_fee = 0;
     let client_secret = null;
     let payment_url = null;
-    let stripe_fee = 0;
 
     // Check if Stripe customer exists
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
@@ -80,11 +98,19 @@ serve(async (req) => {
 
     switch (deposit_type) {
       case 'card': {
-        // Card payment - Stripe charges ~2.9% + $0.30
+        // Card payment: User pays X + fee, receives X JVC
+        // Calculate Stripe fee: 2.9% + $0.30
         stripe_fee = (amount * 0.029) + 0.30;
+        stripe_charge_amount = amount + stripe_fee; // User pays this total
         
+        logStep('Card deposit calculation', {
+          walletCreditAmount: wallet_credit_amount,
+          stripeFee: stripe_fee,
+          stripeChargeAmount: stripe_charge_amount
+        });
+
         const paymentIntent = await stripe.paymentIntents.create({
-          amount: Math.round(amount * 100),
+          amount: Math.round(stripe_charge_amount * 100), // Charge includes fee
           currency: currency,
           customer: customerId,
           payment_method: payment_method_id,
@@ -94,7 +120,8 @@ serve(async (req) => {
             user_id: user.id,
             type: 'jvc_deposit',
             deposit_type: 'card',
-            jvc_amount: jvc_amount.toString()
+            wallet_credit_amount: wallet_credit_amount.toString(),
+            stripe_charge_amount: stripe_charge_amount.toString()
           },
         });
 
@@ -112,8 +139,9 @@ serve(async (req) => {
       }
 
       case 'bank_transfer': {
-        // Bank transfer via Stripe Checkout - no additional Stripe fees for ACH
+        // Bank transfer: No fees, user pays X and receives X JVC
         stripe_fee = 0;
+        stripe_charge_amount = amount;
         
         const session = await stripe.checkout.sessions.create({
           customer: customerId,
@@ -123,7 +151,7 @@ serve(async (req) => {
               currency: currency,
               product_data: {
                 name: 'JV Coin Deposit',
-                description: `${jvc_amount} JVC tokens`,
+                description: `${wallet_credit_amount} JVC tokens`,
               },
               unit_amount: Math.round(amount * 100),
             },
@@ -136,7 +164,7 @@ serve(async (req) => {
             user_id: user.id,
             type: 'jvc_deposit',
             deposit_type: 'bank_transfer',
-            jvc_amount: jvc_amount.toString()
+            wallet_credit_amount: wallet_credit_amount.toString()
           },
         });
 
@@ -147,98 +175,29 @@ serve(async (req) => {
         break;
       }
 
-      case 'payid': {
-        // PayID - Australian instant transfer
-        stripe_fee = 0;
-        const reference = `JV${user.id.slice(-6).toUpperCase()}${Date.now().toString(36).toUpperCase()}`;
-        transaction_id = `payid_${reference}`;
-        status = 'awaiting_transfer';
-        
-        // Create pending deposit record
-        await supabaseAdmin.from('deposit_records').insert({
-          user_id: user.id,
-          amount_local: amount,
-          amount_usd: amount,
-          amount_jvc: jvc_amount,
-          deposit_method: 'payid',
-          status: 'awaiting_transfer',
-          local_currency: 'AUD',
-          metadata: { reference }
-        });
-
-        logStep('PayID deposit created', { reference });
-        
-        return new Response(JSON.stringify({
-          success: true,
-          deposit_type: 'payid',
-          transaction_id,
-          status,
-          instructions: {
-            payid: 'joinvibe@payid.com.au',
-            amount: amount,
-            reference: reference,
-            message: `Transfer $${amount} AUD to the PayID above with reference: ${reference}. Your JVC will be credited within 1-2 business days after verification.`
-          }
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
-        });
-      }
-
-      case 'crypto': {
-        // Crypto deposit - XRP
-        stripe_fee = 0;
-        const depositAddress = `r${user.id.replace(/-/g, '').slice(0, 20)}DEPOSIT`;
-        transaction_id = `crypto_${Date.now()}_${user.id.slice(-8)}`;
-        status = 'awaiting_deposit';
-
-        // Create pending deposit record
-        await supabaseAdmin.from('deposit_records').insert({
-          user_id: user.id,
-          amount_local: amount,
-          amount_usd: amount,
-          amount_jvc: jvc_amount,
-          deposit_method: 'crypto',
-          status: 'awaiting_deposit',
-          metadata: { depositAddress, currency: 'XRP' }
-        });
-
-        logStep('Crypto deposit created', { depositAddress });
-        
-        return new Response(JSON.stringify({
-          success: true,
-          deposit_type: 'crypto',
-          transaction_id,
-          status,
-          instructions: {
-            address: depositAddress,
-            currency: 'XRP',
-            amount: amount,
-            rate: '1 XRP ≈ 1 JVC (market rate)',
-            message: `Send ${amount} XRP to the address above. Your JVC will be credited automatically after 3 confirmations.`
-          }
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
-        });
-      }
+      // PayID and Crypto are DISABLED for launch
+      case 'payid':
+      case 'crypto':
+        throw new Error(`${deposit_type} deposits are temporarily unavailable. Please use Card or Bank Transfer.`);
 
       default:
         throw new Error(`Unsupported deposit type: ${deposit_type}`);
     }
 
-    // Create deposit record for card/bank payments
+    // Create deposit record with new fields for proper tracking
     const depositRecord = {
       user_id: user.id,
-      amount_local: amount,
-      amount_usd: amount,
-      amount_jvc: jvc_amount,
+      amount_local: stripe_charge_amount, // What Stripe charges
+      amount_usd: amount, // The base amount before fees
+      amount_jvc: wallet_credit_amount, // What user receives (same as wallet_credit_amount)
+      wallet_credit_amount: wallet_credit_amount, // NEW: Explicit field for what to mint
+      stripe_charge_amount: stripe_charge_amount, // NEW: What Stripe actually charges
       deposit_method: deposit_type,
       status: status,
       local_currency: currency.toUpperCase(),
       stripe_payment_intent_id: deposit_type === 'card' ? transaction_id : null,
       stripe_fee: stripe_fee,
-      net_amount: amount - stripe_fee,
+      net_amount: amount, // The intended amount (not net after fees)
       metadata: { stripe_customer_id: customerId }
     };
 
@@ -250,13 +209,14 @@ serve(async (req) => {
 
     if (depositError) {
       logStep('Error creating deposit record', { error: depositError });
-    } else {
-      logStep('Deposit record created', { depositId: depositData?.id });
+      throw new Error('Failed to create deposit record');
     }
+    
+    logStep('Deposit record created', { depositId: depositData?.id, walletCreditAmount: wallet_credit_amount });
 
     // If payment completed immediately (card with payment_method_id), process the deposit
     if (status === 'completed') {
-      await processCompletedDeposit(supabaseAdmin, user.id, jvc_amount, amount, depositData?.id);
+      await processCompletedDeposit(supabaseAdmin, user.id, wallet_credit_amount, amount, depositData?.id);
     }
 
     return new Response(
@@ -265,13 +225,15 @@ serve(async (req) => {
         transaction_id,
         deposit_type,
         status,
-        amount,
-        jvc_amount: status === 'completed' ? jvc_amount : 0,
+        amount: stripe_charge_amount, // Total charged
+        wallet_credit_amount: wallet_credit_amount, // What user receives
+        stripe_fee: stripe_fee,
+        jvc_amount: status === 'completed' ? wallet_credit_amount : 0,
         client_secret,
         payment_url,
         message: status === 'completed' 
-          ? `Successfully deposited ${jvc_amount} JVC` 
-          : 'Deposit initiated, complete payment to receive JVC'
+          ? `Successfully deposited ${wallet_credit_amount} JVC` 
+          : `Deposit initiated. You will receive ${wallet_credit_amount} JVC after payment.`
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -295,11 +257,13 @@ serve(async (req) => {
 async function processCompletedDeposit(
   supabase: any,
   userId: string,
-  jvcAmount: number,
+  jvcAmount: number, // This is the wallet_credit_amount
   usdAmount: number,
   depositId?: string
 ) {
   logStep('Processing completed deposit', { userId, jvcAmount, usdAmount });
+
+  const now = new Date().toISOString();
 
   // 1. Get or create user wallet
   const { data: wallet, error: walletError } = await supabase
@@ -311,20 +275,22 @@ async function processCompletedDeposit(
   const balanceBefore = wallet?.balance_jv_token || 0;
   const newBalance = balanceBefore + jvcAmount;
 
-  // 2. Update user wallet
+  // 2. Update user wallet with eligibility tracking
   const { error: upsertError } = await supabase
     .from('user_wallets')
     .upsert({
       user_id: userId,
       balance_jv_token: newBalance,
       balance_usd: (wallet?.balance_usd || 0) + usdAmount,
+      last_deposit_at: now,
+      first_deposit_at: wallet?.first_deposit_at || now, // Only set if first deposit
     }, { onConflict: 'user_id' });
 
   if (upsertError) {
     logStep('Error updating wallet', { error: upsertError });
     throw upsertError;
   }
-  logStep('Wallet updated', { balanceBefore, newBalance });
+  logStep('Wallet updated with eligibility tracking', { balanceBefore, newBalance, firstDeposit: !wallet?.first_deposit_at });
 
   // 3. Get current treasury state
   const { data: treasury } = await supabase
@@ -342,12 +308,12 @@ async function processCompletedDeposit(
     .upsert({
       id: treasury?.id || undefined,
       total_jvc_supply: newSupply,
-      total_usd_backing: (treasury?.total_usd_backing || 0) + usdAmount,
+      total_usd_backing: (treasury?.total_usd_backing || 0) + jvcAmount,
       stripe_balance: (treasury?.stripe_balance || 0) + usdAmount,
-      updated_at: new Date().toISOString()
+      updated_at: now
     });
 
-  logStep('Treasury updated - JVC minted', { supplyBefore, newSupply, usdBacking: usdAmount });
+  logStep('Treasury updated - JVC minted', { supplyBefore, newSupply, usdBacking: jvcAmount });
 
   // 5. Create mint audit record
   await supabase.from('mint_burn_audit').insert({
@@ -355,7 +321,7 @@ async function processCompletedDeposit(
     wallet_type: 'user',
     operation_type: 'mint',
     amount_jvc: jvcAmount,
-    amount_usd: usdAmount,
+    amount_usd: jvcAmount,
     balance_before: balanceBefore,
     balance_after: newBalance,
     total_supply_before: supplyBefore,
@@ -369,11 +335,11 @@ async function processCompletedDeposit(
     to_wallet_id: userId,
     to_wallet_type: 'user',
     amount_jvc: jvcAmount,
-    amount_usd: usdAmount,
+    amount_usd: jvcAmount,
     transaction_type: 'deposit',
     status: 'completed',
     description: `Deposited ${jvcAmount} JVC`,
-    completed_at: new Date().toISOString()
+    completed_at: now
   });
 
   // 7. Create ledger entry
@@ -391,7 +357,7 @@ async function processCompletedDeposit(
   if (depositId) {
     await supabase
       .from('deposit_records')
-      .update({ status: 'completed', completed_at: new Date().toISOString() })
+      .update({ status: 'completed', completed_at: now })
       .eq('id', depositId);
   }
 

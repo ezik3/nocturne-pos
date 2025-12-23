@@ -150,11 +150,13 @@ export type Database = {
           metadata: Json | null
           net_amount: number | null
           status: string
+          stripe_charge_amount: number | null
           stripe_charge_id: string | null
           stripe_fee: number | null
           stripe_payment_intent_id: string | null
           user_id: string | null
           venue_id: string | null
+          wallet_credit_amount: number | null
         }
         Insert: {
           amount_jvc: number
@@ -172,11 +174,13 @@ export type Database = {
           metadata?: Json | null
           net_amount?: number | null
           status?: string
+          stripe_charge_amount?: number | null
           stripe_charge_id?: string | null
           stripe_fee?: number | null
           stripe_payment_intent_id?: string | null
           user_id?: string | null
           venue_id?: string | null
+          wallet_credit_amount?: number | null
         }
         Update: {
           amount_jvc?: number
@@ -194,11 +198,13 @@ export type Database = {
           metadata?: Json | null
           net_amount?: number | null
           status?: string
+          stripe_charge_amount?: number | null
           stripe_charge_id?: string | null
           stripe_fee?: number | null
           stripe_payment_intent_id?: string | null
           user_id?: string | null
           venue_id?: string | null
+          wallet_credit_amount?: number | null
         }
         Relationships: [
           {
@@ -1291,11 +1297,15 @@ export type Database = {
           balance_jv_token: number | null
           balance_usd: number | null
           created_at: string | null
+          first_deposit_at: string | null
           freeze_reason: string | null
           frozen_at: string | null
           frozen_by: string | null
           id: string
           is_frozen: boolean
+          last_deposit_at: string | null
+          last_spend_at: string | null
+          locked_balance: number
           pending_balance: number
           reward_points: number | null
           updated_at: string | null
@@ -1305,11 +1315,15 @@ export type Database = {
           balance_jv_token?: number | null
           balance_usd?: number | null
           created_at?: string | null
+          first_deposit_at?: string | null
           freeze_reason?: string | null
           frozen_at?: string | null
           frozen_by?: string | null
           id?: string
           is_frozen?: boolean
+          last_deposit_at?: string | null
+          last_spend_at?: string | null
+          locked_balance?: number
           pending_balance?: number
           reward_points?: number | null
           updated_at?: string | null
@@ -1319,11 +1333,15 @@ export type Database = {
           balance_jv_token?: number | null
           balance_usd?: number | null
           created_at?: string | null
+          first_deposit_at?: string | null
           freeze_reason?: string | null
           frozen_at?: string | null
           frozen_by?: string | null
           id?: string
           is_frozen?: boolean
+          last_deposit_at?: string | null
+          last_spend_at?: string | null
+          locked_balance?: number
           pending_balance?: number
           reward_points?: number | null
           updated_at?: string | null
@@ -1473,6 +1491,7 @@ export type Database = {
           frozen_by: string | null
           id: string
           is_frozen: boolean
+          locked_balance: number
           pending_balance: number
           updated_at: string
           venue_id: string
@@ -1486,6 +1505,7 @@ export type Database = {
           frozen_by?: string | null
           id?: string
           is_frozen?: boolean
+          locked_balance?: number
           pending_balance?: number
           updated_at?: string
           venue_id: string
@@ -1499,6 +1519,7 @@ export type Database = {
           frozen_by?: string | null
           id?: string
           is_frozen?: boolean
+          locked_balance?: number
           pending_balance?: number
           updated_at?: string
           venue_id?: string
@@ -1644,6 +1665,7 @@ export type Database = {
           local_currency: string
           metadata: Json | null
           net_payout: number
+          processed_at: string | null
           rejection_reason: string | null
           status: string
           stripe_payout_id: string | null
@@ -1670,6 +1692,7 @@ export type Database = {
           local_currency?: string
           metadata?: Json | null
           net_payout: number
+          processed_at?: string | null
           rejection_reason?: string | null
           status?: string
           stripe_payout_id?: string | null
@@ -1696,6 +1719,7 @@ export type Database = {
           local_currency?: string
           metadata?: Json | null
           net_payout?: number
+          processed_at?: string | null
           rejection_reason?: string | null
           status?: string
           stripe_payout_id?: string | null
