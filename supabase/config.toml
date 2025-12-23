@@ -14,3 +14,18 @@ verify_jwt = false
 
 [functions.bank-deposit]
 verify_jwt = true
+
+[functions.process-withdrawal]
+verify_jwt = true
+
+[functions.admin-withdrawal]
+verify_jwt = true
+
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.transfer-jvc]
+verify_jwt = true
+
+[functions.approve-withdrawal]
+verify_jwt = true
