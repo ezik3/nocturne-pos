@@ -6,12 +6,18 @@ import { toast } from '@/hooks/use-toast';
 // Transaction fee in USD (flat $0.10 per transaction)
 export const TRANSACTION_FEE_USD = 0.10;
 
+// Withdrawal fee in USD (flat $1.00 per withdrawal)
+export const WITHDRAWAL_FEE_USD = 1.00;
 interface WalletBalance {
   jvc: number;
   usd: number;
   rewards: number;
   pending: number;
+  locked: number;
   isFrozen: boolean;
+  firstDepositAt: string | null;
+  lastDepositAt: string | null;
+  lastSpendAt: string | null;
 }
 
 interface DepositResult {
@@ -58,7 +64,11 @@ export const useJVCoinWallet = () => {
     usd: 0, 
     rewards: 0, 
     pending: 0,
-    isFrozen: false 
+    locked: 0,
+    isFrozen: false,
+    firstDepositAt: null,
+    lastDepositAt: null,
+    lastSpendAt: null
   });
   const [loading, setLoading] = useState(true);
   const [xrpAddress, setXrpAddress] = useState<string | null>(null);
@@ -66,7 +76,7 @@ export const useJVCoinWallet = () => {
   // Fetch wallet balance
   const fetchBalance = useCallback(async () => {
     if (!user) {
-      setBalance({ jvc: 0, usd: 0, rewards: 0, pending: 0, isFrozen: false });
+      setBalance({ jvc: 0, usd: 0, rewards: 0, pending: 0, locked: 0, isFrozen: false, firstDepositAt: null, lastDepositAt: null, lastSpendAt: null });
       setLoading(false);
       return;
     }
@@ -88,7 +98,11 @@ export const useJVCoinWallet = () => {
           usd: data.balance_usd || 0,
           rewards: data.reward_points || 0,
           pending: data.pending_balance || 0,
-          isFrozen: data.is_frozen || false
+          locked: data.locked_balance || 0,
+          isFrozen: data.is_frozen || false,
+          firstDepositAt: data.first_deposit_at || null,
+          lastDepositAt: data.last_deposit_at || null,
+          lastSpendAt: data.last_spend_at || null
         });
       }
     } catch (error) {

@@ -72,19 +72,16 @@ export default function AdminWithdrawals() {
 
   const handleApprove = async (withdrawal: Withdrawal) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-
-      const { error } = await supabase
-        .from("withdrawal_records")
-        .update({
-          status: "approved",
-          approved_by: user.id,
-          approved_at: new Date().toISOString()
-        })
-        .eq("id", withdrawal.id);
+      const { data, error } = await supabase.functions.invoke('admin-withdrawal', {
+        body: {
+          withdrawal_id: withdrawal.id,
+          action: 'approve'
+        }
+      });
 
       if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Failed to approve');
+      
       toast.success("Withdrawal approved");
       fetchWithdrawals();
     } catch (error: any) {
@@ -92,20 +89,41 @@ export default function AdminWithdrawals() {
     }
   };
 
+  const handleMarkPaid = async (withdrawal: Withdrawal) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-withdrawal', {
+        body: {
+          withdrawal_id: withdrawal.id,
+          action: 'mark_paid'
+        }
+      });
+
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Failed to mark as paid');
+      
+      toast.success("Withdrawal marked as paid - JVC burned");
+      fetchWithdrawals();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to mark withdrawal as paid");
+    }
+  };
+
   const handleReject = async () => {
     if (!rejectDialog.withdrawal || !rejectReason) return;
 
     try {
-      const { error } = await supabase
-        .from("withdrawal_records")
-        .update({
-          status: "rejected",
+      const { data, error } = await supabase.functions.invoke('admin-withdrawal', {
+        body: {
+          withdrawal_id: rejectDialog.withdrawal.id,
+          action: 'reject',
           rejection_reason: rejectReason
-        })
-        .eq("id", rejectDialog.withdrawal.id);
+        }
+      });
 
       if (error) throw error;
-      toast.success("Withdrawal rejected");
+      if (!data?.success) throw new Error(data?.error || 'Failed to reject');
+      
+      toast.success("Withdrawal rejected - funds unlocked");
       setRejectDialog({ open: false, withdrawal: null });
       setRejectReason("");
       fetchWithdrawals();
@@ -241,6 +259,7 @@ export default function AdminWithdrawals() {
                               size="sm"
                               className="text-green-400 hover:text-green-300 hover:bg-green-500/10"
                               onClick={() => handleApprove(withdrawal)}
+                              title="Approve"
                             >
                               <CheckCircle className="h-4 w-4" />
                             </Button>
@@ -249,16 +268,29 @@ export default function AdminWithdrawals() {
                               size="sm"
                               className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
                               onClick={() => setRejectDialog({ open: true, withdrawal })}
+                              title="Reject"
                             >
                               <XCircle className="h-4 w-4" />
                             </Button>
                           </>
+                        )}
+                        {withdrawal.status === "approved" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10"
+                            onClick={() => handleMarkPaid(withdrawal)}
+                            title="Mark as Paid"
+                          >
+                            <Upload className="h-4 w-4" />
+                          </Button>
                         )}
                         <Button
                           variant="ghost"
                           size="sm"
                           className="text-slate-400 hover:text-white"
                           onClick={() => setSelectedWithdrawal(withdrawal)}
+                          title="View Details"
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
