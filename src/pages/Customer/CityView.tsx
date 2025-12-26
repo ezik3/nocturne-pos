@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { X, Search, MapPin, Users, UserPlus } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface PublicPoster {
   id: string;
@@ -15,9 +16,11 @@ interface PublicPoster {
   city: string;
   connections: number;
   isGold?: boolean;
+  isLive?: boolean;
   postContent?: string;
   postImage?: string;
   createdAt?: string;
+  user_id?: string;
 }
 
 const cityBackgrounds: Record<string, string> = {
@@ -33,9 +36,10 @@ const cityBackgrounds: Record<string, string> = {
   "Tokyo": "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=1920&q=80",
   "Paris": "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=1920&q=80",
   "Dubai": "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=1920&q=80",
+  "Gold Coast": "https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?w=1920&q=80",
 };
 
-const cities = ["Brisbane", "Sydney", "Melbourne", "Adelaide", "Hobart", "Perth", "New York", "Los Angeles", "London", "Tokyo", "Paris", "Dubai"];
+const cities = ["Brisbane", "Sydney", "Melbourne", "Adelaide", "Hobart", "Perth", "New York", "Los Angeles", "London", "Tokyo", "Paris", "Dubai", "Gold Coast"];
 
 const CityView = () => {
   const navigate = useNavigate();
@@ -43,6 +47,7 @@ const CityView = () => {
   const [selectedCity, setSelectedCity] = useState("Brisbane");
   const [searchQuery, setSearchQuery] = useState("");
   const [publicPosters, setPublicPosters] = useState<PublicPoster[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Get initial city from navigation state
   useEffect(() => {
@@ -51,22 +56,77 @@ const CityView = () => {
     }
   }, [location.state]);
 
-  // Generate mock public posters based on city
+  // Fetch real public posts from database
   useEffect(() => {
-    const mockPosters: PublicPoster[] = Array.from({ length: 10 }, (_, i) => ({
-      id: `poster-${selectedCity}-${i}`,
-      username: ["Ally Wilks", "Milly Vanilly", "Mary Meyers", "Chris Baulk", "Sam Smith", "Emma Watson", "Tom Hardy", "Lisa Jones", "John Doe", "Sarah Connor"][i],
-      avatar_url: `https://randomuser.me/api/portraits/${i % 2 === 0 ? 'women' : 'men'}/${i + 10}.jpg`,
-      age: 18 + Math.floor(Math.random() * 12),
-      relationship_status: ["Single", "Taken", "Single", "Single", "Taken"][i % 5],
-      city: selectedCity,
-      connections: Math.floor(Math.random() * 500),
-      isGold: i === 0 || i === 3,
-      postContent: "Party vibes tonight! 🎉 Who's coming out?",
-      postImage: `https://images.unsplash.com/photo-${1500000000000 + i * 1000}?w=400&q=80`,
-      createdAt: new Date(Date.now() - Math.random() * 3600000).toISOString(),
-    }));
-    setPublicPosters(mockPosters);
+    const fetchPublicPosts = async () => {
+      setLoading(true);
+      
+      // Fetch public posts
+      const { data: posts, error } = await supabase
+        .from("posts")
+        .select("*")
+        .eq("visibility", "public")
+        .order("created_at", { ascending: false })
+        .limit(20);
+
+      if (error) {
+        console.error("Error fetching posts:", error);
+        setLoading(false);
+        return;
+      }
+
+      if (!posts || posts.length === 0) {
+        setPublicPosters([]);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch profiles for the post authors
+      const userIds = [...new Set(posts.map(p => p.user_id))];
+      const { data: profiles } = await supabase
+        .from("customer_profiles")
+        .select("user_id, display_name, avatar_url, age, relationship_status, location, connection_count")
+        .in("user_id", userIds);
+
+      const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
+
+      // Transform posts to PublicPoster format
+      const posters: PublicPoster[] = posts.map((post) => {
+        const profile = profileMap.get(post.user_id);
+        return {
+          id: post.id,
+          user_id: post.user_id,
+          username: profile?.display_name || "Anonymous",
+          avatar_url: profile?.avatar_url,
+          age: profile?.age || undefined,
+          relationship_status: profile?.relationship_status || "Single",
+          city: profile?.location || selectedCity,
+          connections: profile?.connection_count || 0,
+          isGold: post.post_type === "gold",
+          isLive: post.is_live || false,
+          postContent: post.content,
+          postImage: post.image_url,
+          createdAt: post.created_at,
+        };
+      });
+
+      setPublicPosters(posters);
+      setLoading(false);
+    };
+
+    fetchPublicPosts();
+
+    // Subscribe to real-time updates
+    const channel = supabase
+      .channel("public-posts-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "posts", filter: "visibility=eq.public" }, () => {
+        fetchPublicPosts();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [selectedCity]);
 
   const filteredCities = cities.filter(city => 
@@ -84,6 +144,7 @@ const CityView = () => {
           username: p.username,
           avatar_url: p.avatar_url,
           isGold: p.isGold,
+          isLive: p.isLive,
           postContent: p.postContent,
           postImage: p.postImage || `https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&q=80`,
           pounds: Math.floor(Math.random() * 50) + 5,
@@ -168,65 +229,91 @@ const CityView = () => {
 
         {/* Public Posters Grid */}
         <div className="flex-1 p-4 overflow-auto">
-          <ScrollArea className="w-full h-full">
-            <div className="flex gap-4 pb-8">
-              {publicPosters.map((poster) => (
-                <button
-                  key={poster.id}
-                  onClick={() => handlePosterClick(poster)}
-                  className={`flex-shrink-0 w-36 md:w-44 p-4 rounded-2xl backdrop-blur-xl transition-all duration-300 hover:scale-105 ${
-                    poster.isGold 
-                      ? "bg-black/60 ring-2 ring-neon-cyan shadow-[0_0_30px_rgba(0,255,255,0.3)]" 
-                      : "bg-black/50 ring-1 ring-white/20 hover:ring-neon-cyan/50"
-                  }`}
-                >
-                  {/* Avatar */}
-                  <div className={`relative mx-auto mb-3 p-0.5 rounded-full ${
-                    poster.isGold 
-                      ? "bg-gradient-to-br from-neon-cyan via-green-400 to-neon-cyan" 
-                      : "bg-gradient-to-br from-neon-purple via-neon-pink to-neon-cyan"
-                  }`}>
-                    <Avatar className="w-16 h-16 md:w-20 md:h-20 ring-2 ring-black">
-                      <AvatarImage src={poster.avatar_url} className="object-cover" />
-                      <AvatarFallback className="bg-gradient-to-br from-neon-purple to-neon-pink text-white text-xl font-bold">
-                        {poster.username[0]}
-                      </AvatarFallback>
-                    </Avatar>
-                    {poster.isGold && (
-                      <div className="absolute -top-1 -right-1 text-lg">⭐</div>
-                    )}
-                  </div>
-
-                  {/* Info */}
-                  <p className="font-semibold text-white text-sm truncate">{poster.username}</p>
-                  <p className="text-xs text-white/60 truncate">
-                    {poster.age}, {poster.relationship_status}
-                  </p>
-                  <p className="text-xs text-neon-cyan truncate">{poster.city}</p>
-
-                  {/* Connections */}
-                  <div className="flex items-center justify-center gap-1 mt-2 text-white/70">
-                    <Users className="w-3 h-3" />
-                    <span className="text-xs font-bold">{poster.connections}</span>
-                  </div>
-
-                  {/* Connect Button */}
-                  <Button
-                    size="sm"
-                    className="w-full mt-3 bg-transparent border border-neon-cyan text-neon-cyan hover:bg-neon-cyan hover:text-black text-xs"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      // Handle connect
-                    }}
-                  >
-                    <UserPlus className="w-3 h-3 mr-1" />
-                    Connect
-                  </Button>
-                </button>
-              ))}
+          {loading ? (
+            <div className="flex items-center justify-center py-20">
+              <div className="w-10 h-10 border-4 border-neon-cyan border-t-transparent rounded-full animate-spin" />
             </div>
-            <ScrollBar orientation="horizontal" className="invisible" />
-          </ScrollArea>
+          ) : publicPosters.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-white/60">
+              <Users className="w-16 h-16 mb-4" />
+              <p className="text-lg font-medium">No public posts yet</p>
+              <p className="text-sm">Be the first to share something!</p>
+            </div>
+          ) : (
+            <ScrollArea className="w-full h-full">
+              <div className="flex gap-4 pb-8">
+                {publicPosters.map((poster) => (
+                  <button
+                    key={poster.id}
+                    onClick={() => handlePosterClick(poster)}
+                    className={`flex-shrink-0 w-36 md:w-44 p-4 rounded-2xl backdrop-blur-xl transition-all duration-300 hover:scale-105 ${
+                      poster.isGold 
+                        ? "bg-black/60 ring-2 ring-neon-cyan shadow-[0_0_30px_rgba(0,255,255,0.3)]" 
+                        : "bg-black/50 ring-1 ring-white/20 hover:ring-neon-cyan/50"
+                    }`}
+                  >
+                    {/* Avatar with Live Indicator */}
+                    <div className="relative mx-auto mb-3">
+                      <div className={`p-0.5 rounded-full ${
+                        poster.isGold 
+                          ? "bg-gradient-to-br from-neon-cyan via-green-400 to-neon-cyan" 
+                          : "bg-gradient-to-br from-neon-purple via-neon-pink to-neon-cyan"
+                      }`}>
+                        <Avatar className="w-16 h-16 md:w-20 md:h-20 ring-2 ring-black">
+                          <AvatarImage src={poster.avatar_url} className="object-cover" />
+                          <AvatarFallback className="bg-gradient-to-br from-neon-purple to-neon-pink text-white text-xl font-bold">
+                            {poster.username[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                      </div>
+                      
+                      {/* Live Indicator - pulsing green circle */}
+                      {poster.isLive && (
+                        <div className="absolute -top-1 -right-1 w-6 h-6 flex items-center justify-center z-10">
+                          <div className="absolute w-6 h-6 bg-green-500 rounded-full animate-ping opacity-75" />
+                          <div className="relative w-5 h-5 bg-green-500 rounded-full border-2 border-black shadow-[0_0_12px_rgba(34,197,94,0.8)] flex items-center justify-center">
+                            <div className="w-2 h-2 bg-white rounded-full" />
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Gold Badge */}
+                      {poster.isGold && !poster.isLive && (
+                        <div className="absolute -top-1 -right-1 text-lg">⭐</div>
+                      )}
+                    </div>
+
+                    {/* Info */}
+                    <p className="font-semibold text-white text-sm truncate">{poster.username}</p>
+                    <p className="text-xs text-white/60 truncate">
+                      {poster.age && `${poster.age}, `}{poster.relationship_status}
+                    </p>
+                    <p className="text-xs text-neon-cyan truncate">{poster.city}</p>
+
+                    {/* Connections */}
+                    <div className="flex items-center justify-center gap-1 mt-2 text-white/70">
+                      <Users className="w-3 h-3" />
+                      <span className="text-xs font-bold">{poster.connections}</span>
+                    </div>
+
+                    {/* Connect Button */}
+                    <Button
+                      size="sm"
+                      className="w-full mt-3 bg-transparent border border-neon-cyan text-neon-cyan hover:bg-neon-cyan hover:text-black text-xs"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // Handle connect
+                      }}
+                    >
+                      <UserPlus className="w-3 h-3 mr-1" />
+                      Connect
+                    </Button>
+                  </button>
+                ))}
+              </div>
+              <ScrollBar orientation="horizontal" className="invisible" />
+            </ScrollArea>
+          )}
         </div>
       </div>
     </div>

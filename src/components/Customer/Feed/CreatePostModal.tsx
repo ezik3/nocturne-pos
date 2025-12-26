@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
-import { Camera, MapPin, Users, Sparkles, Globe, Lock, X, Image, Video, Upload, Navigation } from "lucide-react";
+import { Camera, MapPin, Users, Sparkles, Globe, Lock, X, Image, Video, Upload, Navigation, Radio } from "lucide-react";
 import { toast } from "sonner";
 
 interface CreatePostModalProps {
@@ -18,6 +18,7 @@ interface CreatePostModalProps {
     content: string;
     visibility: "private" | "public";
     isGold: boolean;
+    isLive: boolean;
     imageUrl?: string;
     videoUrl?: string;
     venue?: string;
@@ -35,6 +36,7 @@ const CreatePostModal = ({
   const [content, setContent] = useState("");
   const [visibility, setVisibility] = useState<"private" | "public">("private");
   const [isGold, setIsGold] = useState(false);
+  const [isLive, setIsLive] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [displayName, setDisplayName] = useState(userName);
   const [displayAvatar, setDisplayAvatar] = useState(userAvatar);
@@ -122,12 +124,14 @@ const CreatePostModal = ({
       content, 
       visibility, 
       isGold,
+      isLive: visibility === "public" && isLive,
       imageUrl: selectedImage || undefined,
       videoUrl: selectedVideo || undefined,
     });
     setIsSubmitting(false);
     setContent("");
     setIsGold(false);
+    setIsLive(false);
     clearMedia();
     onClose();
   };
@@ -175,6 +179,36 @@ const CreatePostModal = ({
               <span>Public</span>
             </button>
           </div>
+
+          {/* Go Live Option - Only for Public Posts */}
+          {visibility === "public" && (
+            <button
+              type="button"
+              onClick={() => setIsLive(!isLive)}
+              className={`w-full p-3 rounded-xl border-2 transition-all duration-300 flex items-center gap-3 ${
+                isLive 
+                  ? "border-green-500 bg-gradient-to-r from-green-500/20 to-emerald-500/20 shadow-[0_0_20px_rgba(34,197,94,0.4)]" 
+                  : "border-white/10 hover:border-green-500/50"
+              }`}
+            >
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                isLive ? "bg-green-500" : "bg-white/10"
+              }`}>
+                <Radio className={`w-5 h-5 ${isLive ? "text-white animate-pulse" : "text-green-500"}`} />
+              </div>
+              <div className="text-left flex-1">
+                <p className={`font-semibold ${isLive ? "text-green-500" : "text-white"}`}>
+                  🔴 Go Live
+                </p>
+                <p className="text-xs text-muted-foreground">Show you're active & broadcasting</p>
+              </div>
+              <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                isLive ? "border-green-500 bg-green-500" : "border-white/30"
+              }`}>
+                {isLive && <div className="w-2 h-2 bg-white rounded-full animate-pulse" />}
+              </div>
+            </button>
+          )}
 
           {/* Gold Post Option */}
           {canUseGold && (
