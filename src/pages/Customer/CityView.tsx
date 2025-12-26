@@ -19,6 +19,7 @@ interface PublicPoster {
   isLive?: boolean;
   postContent?: string;
   postImage?: string;
+  postVideo?: string;
   createdAt?: string;
   user_id?: string;
 }
@@ -106,6 +107,7 @@ const CityView = () => {
           isLive: post.is_live || false,
           postContent: post.content,
           postImage: post.image_url,
+          postVideo: post.video_url,
           createdAt: post.created_at,
         };
       });
@@ -146,10 +148,11 @@ const CityView = () => {
           isGold: p.isGold,
           isLive: p.isLive,
           postContent: p.postContent,
-          postImage: p.postImage || `https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&q=80`,
+          postImage: p.postImage || undefined,
+          postVideo: p.postVideo,
           pounds: Math.floor(Math.random() * 50) + 5,
         }))
-      } 
+      }
     });
   };
 

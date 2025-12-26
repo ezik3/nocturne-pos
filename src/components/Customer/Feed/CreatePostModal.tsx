@@ -7,6 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Input } from "@/components/ui/input";
 import { Camera, MapPin, Users, Sparkles, Globe, Lock, X, Image, Video, Upload, Navigation, Radio } from "lucide-react";
 import { toast } from "sonner";
+import GoLiveRecorder from "./GoLiveRecorder";
 
 interface CreatePostModalProps {
   isOpen: boolean;
@@ -45,6 +46,7 @@ const CreatePostModal = ({
   const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null);
   const [locationName, setLocationName] = useState<string>("");
   const [isLocationOpen, setIsLocationOpen] = useState(false);
+  const [showGoLiveRecorder, setShowGoLiveRecorder] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
@@ -180,35 +182,25 @@ const CreatePostModal = ({
             </button>
           </div>
 
-          {/* Go Live Option - Only for Public Posts */}
-          {visibility === "public" && (
-            <button
-              type="button"
-              onClick={() => setIsLive(!isLive)}
-              className={`w-full p-3 rounded-xl border-2 transition-all duration-300 flex items-center gap-3 ${
-                isLive 
-                  ? "border-green-500 bg-gradient-to-r from-green-500/20 to-emerald-500/20 shadow-[0_0_20px_rgba(34,197,94,0.4)]" 
-                  : "border-white/10 hover:border-green-500/50"
-              }`}
-            >
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                isLive ? "bg-green-500" : "bg-white/10"
-              }`}>
-                <Radio className={`w-5 h-5 ${isLive ? "text-white animate-pulse" : "text-green-500"}`} />
-              </div>
-              <div className="text-left flex-1">
-                <p className={`font-semibold ${isLive ? "text-green-500" : "text-white"}`}>
-                  🔴 Go Live
-                </p>
-                <p className="text-xs text-muted-foreground">Show you're active & broadcasting</p>
-              </div>
-              <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                isLive ? "border-green-500 bg-green-500" : "border-white/30"
-              }`}>
-                {isLive && <div className="w-2 h-2 bg-white rounded-full animate-pulse" />}
-              </div>
-            </button>
-          )}
+          {/* Go Live Button */}
+          <button
+            type="button"
+            onClick={() => setShowGoLiveRecorder(true)}
+            className="w-full p-3 rounded-xl border-2 border-red-500/50 hover:border-red-500 bg-gradient-to-r from-red-500/10 to-orange-500/10 hover:from-red-500/20 hover:to-orange-500/20 transition-all duration-300 flex items-center gap-3 group"
+          >
+            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-red-500 to-red-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Radio className="w-5 h-5 text-white animate-pulse" />
+            </div>
+            <div className="text-left flex-1">
+              <p className="font-semibold text-red-400 group-hover:text-red-300">
+                🔴 Go Live
+              </p>
+              <p className="text-xs text-muted-foreground">Start a live video broadcast</p>
+            </div>
+            <div className="px-3 py-1 bg-red-500 rounded-full text-xs font-bold text-white">
+              START
+            </div>
+          </button>
 
           {/* Gold Post Option */}
           {canUseGold && (
@@ -417,6 +409,25 @@ const CreatePostModal = ({
           </Button>
         </div>
       </DialogContent>
+
+      {/* Go Live Recorder */}
+      <GoLiveRecorder
+        isOpen={showGoLiveRecorder}
+        onClose={() => setShowGoLiveRecorder(false)}
+        userAvatar={displayAvatar}
+        userName={displayName}
+        onComplete={(data) => {
+          onSubmit({
+            content: data.content,
+            visibility: data.visibility,
+            isGold: false,
+            isLive: true,
+            videoUrl: data.videoUrl,
+          });
+          setShowGoLiveRecorder(false);
+          onClose();
+        }}
+      />
     </Dialog>
   );
 };
