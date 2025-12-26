@@ -1033,6 +1033,7 @@ export type Database = {
           created_at: string | null
           id: string
           image_url: string | null
+          is_live: boolean | null
           post_type: string | null
           pounds_count: number | null
           user_id: string
@@ -1046,6 +1047,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           image_url?: string | null
+          is_live?: boolean | null
           post_type?: string | null
           pounds_count?: number | null
           user_id: string
@@ -1059,6 +1061,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           image_url?: string | null
+          is_live?: boolean | null
           post_type?: string | null
           pounds_count?: number | null
           user_id?: string

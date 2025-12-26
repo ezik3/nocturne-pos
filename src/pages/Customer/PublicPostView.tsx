@@ -301,17 +301,29 @@ const PostCard = ({
       {/* Profile Section - Only show for active */}
       {isActive && (
         <div className="flex flex-col items-center mb-4">
-          <div className={`p-1 rounded-full ${
-            post.isGold 
-              ? "bg-gradient-to-br from-yellow-400 via-amber-300 to-yellow-500 shadow-[0_0_30px_rgba(255,215,0,0.5)]" 
-              : "bg-gradient-to-br from-neon-purple via-neon-pink to-neon-cyan"
-          }`}>
-            <Avatar className="w-24 h-24 ring-4 ring-black">
-              <AvatarImage src={post.avatar_url} className="object-cover" />
-              <AvatarFallback className="bg-gradient-to-br from-neon-purple to-neon-pink text-white text-3xl font-bold">
-                {post.username?.[0]}
-              </AvatarFallback>
-            </Avatar>
+          <div className="relative">
+            <div className={`p-1 rounded-full ${
+              post.isGold 
+                ? "bg-gradient-to-br from-yellow-400 via-amber-300 to-yellow-500 shadow-[0_0_30px_rgba(255,215,0,0.5)]" 
+                : "bg-gradient-to-br from-neon-purple via-neon-pink to-neon-cyan"
+            }`}>
+              <Avatar className="w-24 h-24 ring-4 ring-black">
+                <AvatarImage src={post.avatar_url} className="object-cover" />
+                <AvatarFallback className="bg-gradient-to-br from-neon-purple to-neon-pink text-white text-3xl font-bold">
+                  {post.username?.[0]}
+                </AvatarFallback>
+              </Avatar>
+            </div>
+            
+            {/* Live Indicator - pulsing green circle */}
+            {post.isLive && (
+              <div className="absolute -top-1 -right-1 w-7 h-7 flex items-center justify-center z-10">
+                <div className="absolute w-7 h-7 bg-green-500 rounded-full animate-ping opacity-75" />
+                <div className="relative w-6 h-6 bg-green-500 rounded-full border-2 border-black shadow-[0_0_15px_rgba(34,197,94,0.8)] flex items-center justify-center">
+                  <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                </div>
+              </div>
+            )}
           </div>
           <h2 className="text-2xl font-bold text-white mt-4 drop-shadow-lg">{post.username}</h2>
           <div className="flex items-center gap-1 text-neon-cyan">

@@ -10,6 +10,7 @@ interface StoryUser {
   city?: string;
   distance?: number; // km
   isOnline?: boolean;
+  isLive?: boolean; // NEW: actively broadcasting
   postedAt?: Date;
 }
 
@@ -78,8 +79,16 @@ const HexagonalStoryRing = ({ users, onUserClick }: HexagonalStoryRingProps) => 
                 </div>
               </div>
 
-              {/* Online Indicator - green circle */}
-              {user.isOnline && (
+              {/* Live Indicator - pulsing green circle for broadcasting users */}
+              {user.isLive && (
+                <div className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center z-10">
+                  <div className="absolute w-5 h-5 bg-green-500 rounded-full animate-ping opacity-75" />
+                  <div className="relative w-4 h-4 bg-green-500 rounded-full border-2 border-black shadow-[0_0_10px_rgba(34,197,94,0.8)]" />
+                </div>
+              )}
+
+              {/* Online Indicator - smaller green circle (only if not live) */}
+              {user.isOnline && !user.isLive && (
                 <div className="absolute top-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-black shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
               )}
 

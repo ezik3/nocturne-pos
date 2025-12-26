@@ -23,6 +23,7 @@ interface Post {
   venue_id?: string;
   visibility?: string;
   post_type?: string;
+  is_live?: boolean;
   customer_profiles?: {
     display_name?: string;
     avatar_url?: string;
@@ -42,6 +43,7 @@ interface StoryUser {
   city?: string;
   distance?: number;
   isOnline?: boolean;
+  isLive?: boolean;
 }
 
 const ImmersiveFeed = () => {
@@ -140,6 +142,7 @@ const ImmersiveFeed = () => {
       city: cities[Math.floor(Math.random() * cities.length)],
       distance: Math.round((i * 2.5 + Math.random() * 5) * 10) / 10, // km from user
       isOnline: Math.random() > 0.4, // 60% chance of being online
+      isLive: i === 1 || i === 4 || i === 8, // Some users are live broadcasting
     }));
     // Sort by distance (closest first for new posts)
     mockUsers.sort((a, b) => (a.distance || 0) - (b.distance || 0));
@@ -207,6 +210,7 @@ const ImmersiveFeed = () => {
     content: string; 
     visibility: "private" | "public"; 
     isGold: boolean;
+    isLive: boolean;
     imageUrl?: string;
     videoUrl?: string;
   }) => {
@@ -219,6 +223,7 @@ const ImmersiveFeed = () => {
       content: data.content,
       visibility: data.visibility,
       post_type: data.isGold ? "gold" : "standard",
+      is_live: data.isLive,
       image_url: data.imageUrl,
       video_url: data.videoUrl,
       pounds_count: 0,
@@ -235,6 +240,7 @@ const ImmersiveFeed = () => {
       content: data.content,
       visibility: data.visibility,
       post_type: data.isGold ? "gold" : "standard",
+      is_live: data.isLive,
       image_url: data.imageUrl,
       video_url: data.videoUrl,
     }).select().single();
@@ -244,7 +250,7 @@ const ImmersiveFeed = () => {
       // Remove optimistic post on error
       setPosts(prev => prev.filter(p => p.id !== optimisticPost.id));
     } else {
-      toast.success(data.isGold ? "⭐ Gold post published!" : "Post published!");
+      toast.success(data.isGold ? "⭐ Gold post published!" : data.isLive ? "🔴 You're now live!" : "Post published!");
       if (data.isGold) setCanUseGold(false);
       // Replace optimistic post with real post
       setPosts(prev => prev.map(p => p.id === optimisticPost.id ? { ...newPost, customer_profiles: currentUserProfile } : p));
