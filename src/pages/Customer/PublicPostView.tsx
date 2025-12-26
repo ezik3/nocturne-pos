@@ -343,13 +343,33 @@ const PostCard = ({
 
       {/* Post Card */}
       <div className={`${isActive ? "w-80 md:w-96" : "w-64 md:w-72"} mx-auto`}>
-        {/* Post Image */}
+        {/* Post Media (Image or Video) */}
         <div className="relative rounded-2xl overflow-hidden shadow-2xl">
-          <img 
-            src={post.postImage || `https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&q=80`}
-            alt="Post"
-            className="w-full aspect-square object-cover"
-          />
+          {post.postVideo ? (
+            <video 
+              src={post.postVideo}
+              controls={isActive}
+              autoPlay={isActive}
+              loop
+              muted={!isActive}
+              playsInline
+              className="w-full aspect-square object-cover"
+            />
+          ) : (
+            <img 
+              src={post.postImage || `https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&q=80`}
+              alt="Post"
+              className="w-full aspect-square object-cover"
+            />
+          )}
+          
+          {/* Live Badge */}
+          {post.isLive && post.postVideo && (
+            <div className="absolute top-3 left-3 flex items-center gap-1 bg-red-500 px-2 py-1 rounded text-xs font-bold text-white">
+              <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+              LIVE
+            </div>
+          )}
           
           {/* Engagement Stats Overlay */}
           <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent">
