@@ -4,7 +4,6 @@ import { X, Search, Clock, Plus, Minus, ShoppingCart, ChevronRight, Trash2 } fro
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -263,7 +262,7 @@ const CustomerMenuModal = ({ isOpen, onClose, venueId, venueName }: CustomerMenu
         
         {/* Modal */}
         <motion.div
-          className="relative w-full max-w-lg max-h-[85vh] bg-gradient-to-b from-secondary/95 to-background/95 backdrop-blur-xl rounded-3xl border border-primary/20 overflow-hidden shadow-2xl shadow-primary/10"
+          className="relative w-full max-w-lg max-h-[85vh] bg-gradient-to-b from-secondary/95 to-background/95 backdrop-blur-xl rounded-3xl border border-primary/20 shadow-2xl shadow-primary/10 flex flex-col"
           initial={{ scale: 0.9, y: 50 }}
           animate={{ scale: 1, y: 0 }}
           exit={{ scale: 0.9, y: 50 }}
@@ -346,7 +345,7 @@ const CustomerMenuModal = ({ isOpen, onClose, venueId, venueName }: CustomerMenu
           </div>
 
           {/* Content */}
-          <ScrollArea className="h-[55vh]">
+          <div className="flex-1 overflow-y-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
             {showCart ? (
               /* Cart View */
               <div className="p-4 space-y-4">
@@ -534,7 +533,7 @@ const CustomerMenuModal = ({ isOpen, onClose, venueId, venueName }: CustomerMenu
                 )}
               </div>
             )}
-          </ScrollArea>
+          </div>
 
           {/* Footer - Checkout */}
           {cart.length > 0 && (
