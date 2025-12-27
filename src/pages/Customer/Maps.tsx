@@ -4,6 +4,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDriverSystem } from '@/hooks/useDriverSystem';
+import { useDeliveryFee } from '@/hooks/useDeliveryFee';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,10 +20,14 @@ import Web3FeedHeader from '@/components/Customer/Feed/Web3FeedHeader';
 // Mapbox token from env or fallback
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN || 'pk.your_token_here';
 
+// Platform fee constant
+const PLATFORM_FEE = 0.10;
+
 const Maps = () => {
   const { user } = useAuth();
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
+  const { calculateRideFare } = useDeliveryFee();
   const {
     isDriver,
     driverProfile,
@@ -69,7 +74,7 @@ const Maps = () => {
   const [showDestinationSuggestions, setShowDestinationSuggestions] = useState(false);
   const [pickupCoords, setPickupCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [destinationCoords, setDestinationCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [fareEstimate, setFareEstimate] = useState<{ fare: number; distance: number; duration: number } | null>(null);
+  const [fareEstimate, setFareEstimate] = useState<{ fare: number; distance: number; duration: number; driverEarnings: number; platformFee: number } | null>(null);
   const [isForFriend, setIsForFriend] = useState(false);
   const [friendSearch, setFriendSearch] = useState('');
   const [friendSuggestions, setFriendSuggestions] = useState<any[]>([]);
@@ -311,7 +316,7 @@ const Maps = () => {
     setPickupAddress(suggestion.place_name);
     setPickupCoords({ lat: suggestion.center[1], lng: suggestion.center[0] });
     setShowPickupSuggestions(false);
-    calculateFareEstimate(
+    calculateFareEstimateFromRoute(
       { lat: suggestion.center[1], lng: suggestion.center[0] },
       destinationCoords
     );
@@ -322,11 +327,11 @@ const Maps = () => {
     setDestinationAddress(suggestion.place_name);
     setDestinationCoords({ lat: suggestion.center[1], lng: suggestion.center[0] });
     setShowDestinationSuggestions(false);
-    calculateFareEstimate(pickupCoords, { lat: suggestion.center[1], lng: suggestion.center[0] });
+    calculateFareEstimateFromRoute(pickupCoords, { lat: suggestion.center[1], lng: suggestion.center[0] });
   };
 
-  // Calculate fare estimate
-  const calculateFareEstimate = async (
+  // Calculate fare estimate using real Mapbox directions API
+  const calculateFareEstimateFromRoute = async (
     pickup: { lat: number; lng: number } | null,
     destination: { lat: number; lng: number } | null
   ) => {
@@ -342,12 +347,16 @@ const Maps = () => {
         const route = data.routes[0];
         const distanceKm = route.distance / 1000;
         const durationMin = Math.round(route.duration / 60);
-        // Base fare: $3 + $1.50/km
-        const fare = 3 + (distanceKm * 1.5);
+        
+        // Use the hook's fare calculation for consistency
+        const fareCalc = calculateRideFare(distanceKm, durationMin);
+        
         setFareEstimate({
-          fare: Math.round(fare * 100) / 100,
+          fare: fareCalc.fare,
           distance: Math.round(distanceKm * 10) / 10,
           duration: durationMin,
+          driverEarnings: fareCalc.driverEarnings,
+          platformFee: fareCalc.platformFee,
         });
       }
     } catch (error) {
@@ -1158,9 +1167,12 @@ const Maps = () => {
                     <p className="text-purple font-bold text-lg">{fareEstimate.duration} min</p>
                   </div>
                 </div>
-                <p className="text-white/40 text-xs mt-2 text-center">
-                  + $0.10 platform fee
-                </p>
+                <div className="mt-3 pt-3 border-t border-white/10">
+                  <div className="flex justify-between text-xs text-white/50">
+                    <span>+ ${fareEstimate.platformFee.toFixed(2)} platform fee</span>
+                    <span>Driver receives: <span className="text-green-400 font-medium">${fareEstimate.driverEarnings.toFixed(2)}</span></span>
+                  </div>
+                </div>
               </div>
             )}
 

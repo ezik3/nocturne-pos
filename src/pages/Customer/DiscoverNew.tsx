@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, MapPin, TrendingUp, Users, Building2, CheckCircle } from "lucide-react";
+import { Search, MapPin, TrendingUp, Users, Building2, CheckCircle, UtensilsCrossed } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +7,8 @@ import Web3FeedHeader from "@/components/Customer/Feed/Web3FeedHeader";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserCheckIn } from "@/hooks/useUserCheckIn";
+import { useGeolocation } from "@/hooks/useGeolocation";
+import { useDeliveryFee } from "@/hooks/useDeliveryFee";
 
 const venueTypes = ["All", "Nightclubs", "Bars", "Restaurants", "Events"];
 
@@ -21,6 +23,10 @@ interface Venue {
   current_occupancy: number | null;
   capacity: number | null;
   address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  delivery_enabled: boolean | null;
+  max_delivery_radius_km: number | null;
 }
 
 const DiscoverNew = () => {
@@ -32,6 +38,8 @@ const DiscoverNew = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { isCheckedInAt } = useUserCheckIn();
+  const { latitude, longitude, loading: locationLoading } = useGeolocation({ enableHighAccuracy: true });
+  const { calculateDistance, calculateDeliveryFee } = useDeliveryFee();
 
   useEffect(() => {
     fetchVenues();
@@ -59,6 +67,38 @@ const DiscoverNew = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Calculate if venue delivers to user and the distance
+  const getDeliveryInfo = (venue: Venue): { delivers: boolean; distance: number | null; fee: number | null } => {
+    if (!venue.latitude || !venue.longitude || !latitude || !longitude) {
+      return { delivers: false, distance: null, fee: null };
+    }
+
+    if (!venue.delivery_enabled) {
+      return { delivers: false, distance: null, fee: null };
+    }
+
+    const distance = calculateDistance(
+      venue.latitude,
+      venue.longitude,
+      latitude,
+      longitude
+    );
+
+    const maxRadius = venue.max_delivery_radius_km || 20;
+    const delivers = distance <= maxRadius;
+
+    if (delivers) {
+      const feeCalc = calculateDeliveryFee(distance);
+      return { 
+        delivers: true, 
+        distance: Math.round(distance * 10) / 10,
+        fee: feeCalc.fare 
+      };
+    }
+
+    return { delivers: false, distance: Math.round(distance * 10) / 10, fee: null };
   };
 
   const filteredVenues = venues.filter(venue => {
@@ -161,6 +201,7 @@ const DiscoverNew = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredVenues.map((venue) => {
                 const checkedIn = isCheckedInAt(venue.id);
+                const deliveryInfo = getDeliveryInfo(venue);
                 
                 return (
                   <div
@@ -176,6 +217,16 @@ const DiscoverNew = () => {
                         <Badge className="bg-green-500 text-white border-0 shadow-lg shadow-green-500/30 flex items-center gap-1">
                           <CheckCircle className="w-3 h-3" />
                           Checked In
+                        </Badge>
+                      </div>
+                    )}
+
+                    {/* Delivery Badge */}
+                    {deliveryInfo.delivers && !checkedIn && (
+                      <div className="absolute top-3 right-3 z-10">
+                        <Badge className="bg-gradient-to-r from-orange-500 to-red-500 text-white border-0 shadow-lg shadow-orange-500/30 flex items-center gap-1">
+                          <UtensilsCrossed className="w-3 h-3" />
+                          Delivers
                         </Badge>
                       </div>
                     )}
@@ -199,9 +250,19 @@ const DiscoverNew = () => {
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-1 text-white/60">
                           <MapPin className="w-4 h-4" />
-                          {venue.city || 'Location TBD'}
+                          {deliveryInfo.distance !== null 
+                            ? `${deliveryInfo.distance} km away`
+                            : venue.city || 'Location TBD'
+                          }
                         </div>
                         <div className="flex items-center gap-3">
+                          {/* Delivery fee indicator */}
+                          {deliveryInfo.delivers && deliveryInfo.fee && (
+                            <div className="flex items-center gap-1 text-orange-400">
+                              <UtensilsCrossed className="w-3 h-3" />
+                              <span className="text-xs">${deliveryInfo.fee.toFixed(2)} delivery</span>
+                            </div>
+                          )}
                           {venue.vibe_score && (
                             <div className={`flex items-center gap-1 ${getVibeColor(venue.vibe_score)}`}>
                               <TrendingUp className="w-4 h-4" />
