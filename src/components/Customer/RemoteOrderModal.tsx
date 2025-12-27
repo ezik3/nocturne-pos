@@ -13,6 +13,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useDeliveryFee } from "@/hooks/useDeliveryFee";
 import { OrderTrackingModal } from "./OrderTrackingModal";
+import { AddressAutocomplete } from "./AddressAutocomplete";
 interface MenuItemSize {
   id: string;
   name: string;
@@ -85,6 +86,7 @@ const RemoteOrderModal = ({
   // Order type and delivery details
   const [orderType, setOrderType] = useState<OrderType>(deliveryEnabled ? "delivery" : "pickup");
   const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [deliveryCoordinates, setDeliveryCoordinates] = useState<{ lat: number; lng: number } | null>(null);
   const [deliveryNotes, setDeliveryNotes] = useState("");
   
   // Calculate delivery fee
@@ -271,8 +273,8 @@ const RemoteOrderModal = ({
             pickup_latitude: venueLatitude,
             pickup_longitude: venueLongitude,
             delivery_address: deliveryAddress,
-            delivery_latitude: userLat,
-            delivery_longitude: userLng,
+            delivery_latitude: deliveryCoordinates?.lat || userLat,
+            delivery_longitude: deliveryCoordinates?.lng || userLng,
             delivery_fee: deliveryFee,
             calculated_delivery_fee: deliveryFee,
             driver_earnings: deliveryFeeCalc.driverEarnings,
@@ -469,16 +471,22 @@ const RemoteOrderModal = ({
                   )}
                 </div>
 
-                {/* Delivery Address Input */}
+                {/* Delivery Address Input - FIRST at top */}
                 {orderType === "delivery" && (
-                  <div className="space-y-3">
+                  <div className="space-y-3 bg-orange-500/10 p-4 rounded-xl border border-orange-500/20">
                     <div>
-                      <Label className="text-white/70 text-sm">Delivery Address *</Label>
-                      <Input
-                        placeholder="Enter your delivery address"
+                      <Label className="text-white/70 text-sm font-medium flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-orange-400" />
+                        Delivery Address *
+                      </Label>
+                      <AddressAutocomplete
                         value={deliveryAddress}
-                        onChange={(e) => setDeliveryAddress(e.target.value)}
-                        className="mt-1 bg-white/5 border-white/10 text-white placeholder:text-white/40"
+                        onChange={(address, coords) => {
+                          setDeliveryAddress(address);
+                          if (coords) setDeliveryCoordinates(coords);
+                        }}
+                        placeholder="Start typing your address..."
+                        className="mt-1"
                       />
                     </div>
                     <div>
