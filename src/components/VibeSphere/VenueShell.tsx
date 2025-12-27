@@ -6,6 +6,7 @@ import AmbientBackground from "./AmbientBackground";
 import OrbsLayer from "./OrbsLayer";
 import AIChat from "@/components/Customer/AIChat";
 import CustomerMenuModal from "./CustomerMenuModal";
+import CustomerChatModal from "./CustomerChatModal";
 import { toast } from "sonner";
 
 interface VenueShellProps {
@@ -30,6 +31,7 @@ const VenueShell = ({
   const [showInstructions, setShowInstructions] = useState(true);
   const [showAIChat, setShowAIChat] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [showChat, setShowChat] = useState(false);
 
   const handleDoubleClick = () => {
     setShowAIChat(true);
@@ -38,8 +40,8 @@ const VenueShell = ({
 
   return (
     <motion.div
-      className="fixed inset-0 z-40 overflow-hidden"
-      style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      className="fixed inset-0 z-[100]"
+      style={{ overflow: 'hidden', top: 0, left: 0, right: 0, bottom: 0 }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -50,7 +52,7 @@ const VenueShell = ({
 
       {/* Header Info Bar */}
       <motion.div
-        className="fixed top-4 left-1/2 -translate-x-1/2 z-30"
+        className="fixed top-16 left-1/2 -translate-x-1/2 z-30"
         initial={{ y: -100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.5, duration: 0.5 }}
@@ -70,7 +72,7 @@ const VenueShell = ({
 
       {/* AI Waiter Notification */}
       <motion.div
-        className="fixed top-20 right-4 z-30"
+        className="fixed top-28 right-4 z-30"
         initial={{ x: 100, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ delay: 0.7, duration: 0.5 }}
@@ -87,6 +89,7 @@ const VenueShell = ({
       <OrbsLayer 
         onAIClick={() => setShowAIChat(true)} 
         onMenuClick={() => setShowMenu(true)}
+        onChatClick={() => setShowChat(true)}
       />
 
       {/* Instructions Card */}
@@ -148,6 +151,14 @@ const VenueShell = ({
       <CustomerMenuModal
         isOpen={showMenu}
         onClose={() => setShowMenu(false)}
+        venueId={venueId || ""}
+        venueName={venueName}
+      />
+
+      {/* Customer Chat Modal */}
+      <CustomerChatModal
+        isOpen={showChat}
+        onClose={() => setShowChat(false)}
         venueId={venueId || ""}
         venueName={venueName}
       />

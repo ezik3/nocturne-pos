@@ -181,6 +181,8 @@ const ImmersiveVenue = () => {
 
   const handleExitVibeSphere = () => {
     setShowVibeSphere(false);
+    // Navigate back to previous page
+    navigate(-1);
   };
 
   const handleStatusChange = (status: "at" | "heading" | "maybe") => {
@@ -220,7 +222,7 @@ const ImmersiveVenue = () => {
   }
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-black overflow-x-hidden" style={{ overflowY: showVibeSphere ? 'hidden' : 'auto' }}>
       <Web3FeedHeader />
       
       {/* Hero Section with Venue Image */}

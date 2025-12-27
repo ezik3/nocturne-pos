@@ -14,7 +14,7 @@ const AmbientBackground = () => {
   }, []);
 
   return (
-    <div className="fixed inset-0 overflow-hidden pointer-events-none">
+    <div className="fixed inset-0 pointer-events-none" style={{ overflow: 'hidden' }}>
       {/* Dark gradient background */}
       <div className="absolute inset-0 bg-gradient-to-b from-[hsl(200,50%,5%)] via-[hsl(220,50%,8%)] to-[hsl(240,50%,5%)]" />
       

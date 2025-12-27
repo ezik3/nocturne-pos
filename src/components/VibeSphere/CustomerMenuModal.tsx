@@ -81,10 +81,11 @@ const CustomerMenuModal = ({ isOpen, onClose, venueId, venueName }: CustomerMenu
   }, [venueId]);
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && venueId) {
+      setLoading(true);
       fetchMenuItems();
     }
-  }, [isOpen, fetchMenuItems]);
+  }, [isOpen, venueId, fetchMenuItems]);
 
   // Realtime subscription
   useEffect(() => {
