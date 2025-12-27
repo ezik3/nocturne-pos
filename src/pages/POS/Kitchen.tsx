@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Clock, CheckCircle2, LayoutGrid, List, Columns3, Search, ChefHat, Eye, MessageSquare } from "lucide-react";
-import { useVenueOrders } from "@/hooks/useVenueOrders";
+import { useVenueOrdersDB } from "@/hooks/useVenueOrdersDB";
 import { toast } from "sonner";
 import KitchenCard from "@/components/POS/KDS/KitchenCard";
 
@@ -15,14 +15,20 @@ type LayoutMode = 'compact' | 'grid' | 'multi';
 type ViewMode = 'legacy' | 'enhanced' | 'display';
 
 export default function Kitchen() {
-  const { orders, updateOrderStatus } = useVenueOrders();
+  const [venueId, setVenueId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('legacy');
   const [filter, setFilter] = useState<"all" | "pending" | "preparing" | "ready">("all");
   const [stationFilter, setStationFilter] = useState('all');
   const [layoutMode, setLayoutMode] = useState<LayoutMode>('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const storedVenueId = localStorage.getItem('jv_current_venue_id');
+    if (storedVenueId) setVenueId(storedVenueId);
+  }, []);
+
+  const { orders, updateOrderStatus, loading } = useVenueOrdersDB(venueId);
 
   useEffect(() => {
     const clockInterval = setInterval(() => {
