@@ -2,10 +2,13 @@ import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { X, MapPin, MessageCircle, Share2, UserPlus, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, MapPin, MessageCircle, Share2, UserPlus, ChevronLeft, ChevronRight, Eye } from "lucide-react";
 import FistPoundIcon from "@/components/Customer/Feed/FistPoundIcon";
 import CommentModal from "@/components/Customer/Feed/CommentModal";
 import TaggedUsersDisplay from "@/components/Customer/Feed/TaggedUsersDisplay";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 const cityBackgrounds: Record<string, string> = {
   "Brisbane": "https://images.unsplash.com/photo-1524293581917-878a6d017c71?w=1920&q=80",
@@ -26,6 +29,7 @@ const mockPosts = [
     isGold: true,
     pounds: 16,
     comments: 8,
+    viewCount: 142,
     taggedUsers: [
       { id: "t1", name: "Mike J", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100" },
       { id: "t2", name: "Emma W", avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100" },
@@ -41,6 +45,7 @@ const mockPosts = [
     isGold: false,
     pounds: 24,
     comments: 12,
+    viewCount: 89,
     taggedUsers: [],
   },
   {
@@ -52,6 +57,7 @@ const mockPosts = [
     isGold: false,
     pounds: 32,
     comments: 5,
+    viewCount: 210,
     taggedUsers: [
       { id: "t4", name: "Sarah M", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100" },
     ],
@@ -65,6 +71,7 @@ const mockPosts = [
     isGold: true,
     pounds: 45,
     comments: 18,
+    viewCount: 356,
     taggedUsers: [
       { id: "t5", name: "User 1", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100" },
       { id: "t6", name: "User 2", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100" },
@@ -80,6 +87,7 @@ const mockPosts = [
 const PublicPostView = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { poster, city, allPosters } = location.state || {};
   
   // Use all posters from navigation or fallback to mock
@@ -89,6 +97,8 @@ const PublicPostView = () => {
   const initialIndex = poster ? posts.findIndex((p: any) => p.id === poster.id || p.username === poster.username) : 0;
   const [currentIndex, setCurrentIndex] = useState(initialIndex >= 0 ? initialIndex : 0);
   const [poundedPosts, setPoundedPosts] = useState<Set<string>>(new Set());
+  const [poundCounts, setPoundCounts] = useState<Record<string, number>>({});
+  const [viewCounts, setViewCounts] = useState<Record<string, number>>({});
   const [commentModalOpen, setCommentModalOpen] = useState(false);
   
   const currentPost = posts[currentIndex] || poster || mockPosts[0];
@@ -97,6 +107,66 @@ const PublicPostView = () => {
 
   const backgroundUrl = cityBackgrounds[city] || cityBackgrounds["Brisbane"];
   const timeAgo = "11 minutes ago";
+
+  // Fetch user's pounded posts and load counts
+  useEffect(() => {
+    const loadPostData = async () => {
+      // Load pounds user has given
+      if (user) {
+        const postIds = posts.map((p: any) => p.id);
+        const { data: userPounds } = await supabase
+          .from("post_pounds")
+          .select("post_id")
+          .eq("user_id", user.id)
+          .in("post_id", postIds);
+        
+        if (userPounds) {
+          setPoundedPosts(new Set(userPounds.map(p => p.post_id)));
+        }
+      }
+
+      // Load pound counts for all posts
+      const postIds = posts.map((p: any) => p.id);
+      const { data: postsData } = await supabase
+        .from("posts")
+        .select("id, pounds_count, view_count")
+        .in("id", postIds);
+      
+      if (postsData) {
+        const counts: Record<string, number> = {};
+        const views: Record<string, number> = {};
+        postsData.forEach(p => {
+          counts[p.id] = p.pounds_count || 0;
+          views[p.id] = p.view_count || 0;
+        });
+        setPoundCounts(counts);
+        setViewCounts(views);
+      }
+    };
+
+    loadPostData();
+  }, [user, posts]);
+
+  // Track view when post changes
+  useEffect(() => {
+    const trackView = async () => {
+      if (!currentPost?.id || currentPost.id.startsWith("mock") || currentPost.id === "1" || currentPost.id === "2" || currentPost.id === "3" || currentPost.id === "4") return;
+      
+      // Increment view count directly
+      const currentViewCount = viewCounts[currentPost.id] || 0;
+      await supabase
+        .from("posts")
+        .update({ view_count: currentViewCount + 1 })
+        .eq("id", currentPost.id);
+      
+      setViewCounts(prev => ({
+        ...prev,
+        [currentPost.id]: currentViewCount + 1
+      }));
+    };
+
+    trackView();
+  }, [currentIndex, currentPost?.id]);
 
   const goToPrev = () => {
     if (currentIndex > 0) {
@@ -110,16 +180,61 @@ const PublicPostView = () => {
     }
   };
 
-  const handlePound = (postId: string) => {
-    setPoundedPosts(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(postId)) {
-        newSet.delete(postId);
-      } else {
-        newSet.add(postId);
+  const handlePound = async (postId: string) => {
+    if (!user) {
+      toast.error("Please sign in to pound posts");
+      return;
+    }
+
+    const isPounded = poundedPosts.has(postId);
+    
+    if (isPounded) {
+      // Remove pound
+      const { error } = await supabase
+        .from("post_pounds")
+        .delete()
+        .eq("post_id", postId)
+        .eq("user_id", user.id);
+      
+      if (!error) {
+        setPoundedPosts(prev => {
+          const next = new Set(prev);
+          next.delete(postId);
+          return next;
+        });
+        setPoundCounts(prev => ({
+          ...prev,
+          [postId]: Math.max((prev[postId] || 1) - 1, 0)
+        }));
+        
+        // Update post count
+        await supabase
+          .from("posts")
+          .update({ pounds_count: Math.max((poundCounts[postId] || 1) - 1, 0) })
+          .eq("id", postId);
       }
-      return newSet;
-    });
+    } else {
+      // Add pound
+      const { error } = await supabase
+        .from("post_pounds")
+        .insert({ post_id: postId, user_id: user.id });
+      
+      if (!error) {
+        setPoundedPosts(prev => new Set([...prev, postId]));
+        setPoundCounts(prev => ({
+          ...prev,
+          [postId]: (prev[postId] || 0) + 1
+        }));
+        
+        // Update post count
+        await supabase
+          .from("posts")
+          .update({ pounds_count: (poundCounts[postId] || 0) + 1 })
+          .eq("id", postId);
+        
+        toast.success("Post pounded! 👊");
+      }
+    }
   };
 
   const handleSubmitComment = (data: { content: string; isPrivate: boolean; postId: string }) => {
@@ -391,6 +506,11 @@ const PostCard = ({
                 <MessageCircle className="w-6 h-6" />
                 <span className="text-sm font-bold">{post.comments || 0}</span>
               </button>
+              {/* View Count */}
+              <div className="flex items-center gap-1 text-white/70">
+                <Eye className="w-5 h-5" />
+                <span className="text-sm">{post.viewCount || 0}</span>
+              </div>
             </div>
           </div>
         </div>

@@ -483,6 +483,7 @@ const ImmersiveVenue = () => {
         vibeLevel="🔥 Lit"
         priceLevel="💰 $$"
         hours="Closes 2 AM"
+        venueId={venue.id}
         onExit={handleExitVibeSphere}
       />
     </div>
