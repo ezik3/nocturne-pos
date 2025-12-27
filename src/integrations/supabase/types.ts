@@ -1039,6 +1039,7 @@ export type Database = {
           user_id: string
           venue_id: string | null
           video_url: string | null
+          view_count: number | null
           visibility: string | null
         }
         Insert: {
@@ -1053,6 +1054,7 @@ export type Database = {
           user_id: string
           venue_id?: string | null
           video_url?: string | null
+          view_count?: number | null
           visibility?: string | null
         }
         Update: {
@@ -1067,6 +1069,7 @@ export type Database = {
           user_id?: string
           venue_id?: string | null
           video_url?: string | null
+          view_count?: number | null
           visibility?: string | null
         }
         Relationships: [

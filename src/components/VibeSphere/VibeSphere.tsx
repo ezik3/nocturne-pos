@@ -10,6 +10,7 @@ interface VibeSphereProps {
   vibeLevel?: string;
   priceLevel?: string;
   hours?: string;
+  venueId?: string;
   onExit: () => void;
 }
 
@@ -21,6 +22,7 @@ const VibeSphere = ({
   vibeLevel,
   priceLevel,
   hours,
+  venueId,
   onExit,
 }: VibeSphereProps) => {
   return (
@@ -42,6 +44,7 @@ const VibeSphere = ({
             vibeLevel={vibeLevel}
             priceLevel={priceLevel}
             hours={hours}
+            venueId={venueId}
             onExit={onExit}
           />
         )}

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import AmbientBackground from "./AmbientBackground";
 import OrbsLayer from "./OrbsLayer";
 import AIChat from "@/components/Customer/AIChat";
+import CustomerMenuModal from "./CustomerMenuModal";
 import { toast } from "sonner";
 
 interface VenueShellProps {
@@ -13,6 +14,7 @@ interface VenueShellProps {
   vibeLevel?: string;
   priceLevel?: string;
   hours?: string;
+  venueId?: string;
   onExit: () => void;
 }
 
@@ -22,10 +24,12 @@ const VenueShell = ({
   vibeLevel = "🔥 Lit",
   priceLevel = "💰 $$",
   hours = "Closes 2 AM",
+  venueId,
   onExit,
 }: VenueShellProps) => {
   const [showInstructions, setShowInstructions] = useState(true);
   const [showAIChat, setShowAIChat] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
 
   const handleDoubleClick = () => {
     setShowAIChat(true);
@@ -80,7 +84,10 @@ const VenueShell = ({
       </motion.div>
 
       {/* Floating Orbs */}
-      <OrbsLayer onAIClick={() => setShowAIChat(true)} />
+      <OrbsLayer 
+        onAIClick={() => setShowAIChat(true)} 
+        onMenuClick={() => setShowMenu(true)}
+      />
 
       {/* Instructions Card */}
       <AnimatePresence>
@@ -136,6 +143,14 @@ const VenueShell = ({
           onClose={() => setShowAIChat(false)}
         />
       )}
+
+      {/* Customer Menu Modal */}
+      <CustomerMenuModal
+        isOpen={showMenu}
+        onClose={() => setShowMenu(false)}
+        venueId={venueId || ""}
+        venueName={venueName}
+      />
     </motion.div>
   );
 };
