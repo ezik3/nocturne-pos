@@ -1,17 +1,27 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Plus, Edit, Trash2, Search, Tag, Settings, 
-  Eye, EyeOff, Layers, Info, Clock, AlertCircle 
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Search,
+  Tag,
+  Eye,
+  EyeOff,
+  Info,
+  Clock,
+  AlertCircle,
 } from "lucide-react";
-import { useVenueMenu } from "@/hooks/useVenueMenu";
+import { useVenueMenuDB } from "@/hooks/useVenueMenuDB";
 import MenuItemModal, { MenuItem } from "@/components/Venue/MenuItemModal";
 import CategoryModal from "@/components/Venue/CategoryModal";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,16 +34,53 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export default function VenueMenu() {
-  const { 
-    menuItems, 
-    categories, 
+  const { user } = useAuth();
+  const [venueId, setVenueId] = useState<string | null>(null);
+  const [venueLoading, setVenueLoading] = useState(true);
+
+  useEffect(() => {
+    const loadVenueId = async () => {
+      if (!user) {
+        setVenueLoading(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from("venues")
+          .select("id")
+          .eq("owner_user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (error) throw error;
+
+        if (data?.id) {
+          setVenueId(data.id);
+          localStorage.setItem("jv_current_venue_id", data.id);
+        }
+      } catch (e) {
+        console.error("Failed to resolve venue id", e);
+      } finally {
+        setVenueLoading(false);
+      }
+    };
+
+    loadVenueId();
+  }, [user]);
+
+  const {
+    menuItems,
+    categories,
     loading,
     saveItem,
     deleteItem: removeItem,
     toggleAvailability,
     addCategory,
-    setAllCategories 
-  } = useVenueMenu();
+    setAllCategories,
+  } = useVenueMenuDB(venueId);
+
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -69,13 +116,26 @@ export default function VenueMenu() {
     setEditingItem(null);
   };
 
-  if (loading) {
+  if (venueLoading || loading) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-muted-foreground">Loading menu...</div>
       </div>
     );
   }
+
+  if (!venueId) {
+    return (
+      <div className="p-6">
+        <Card className="bg-card border-border">
+          <CardContent className="p-6">
+            <p className="text-muted-foreground">No venue found for this account.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
 
   return (
     <div className="p-6 space-y-6">

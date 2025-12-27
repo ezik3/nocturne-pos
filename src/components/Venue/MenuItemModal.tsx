@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { v4 as uuidv4 } from "uuid";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -129,7 +130,7 @@ export default function MenuItemModal({
     }
 
     const menuItem: MenuItem = {
-      id: item?.id || `item-${Date.now()}`,
+      id: item?.id || uuidv4(),
       name: name.trim(),
       description: description.trim(),
       category,
