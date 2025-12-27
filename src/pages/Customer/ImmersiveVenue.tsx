@@ -2,12 +2,14 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserCheckIn } from "@/hooks/useUserCheckIn";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Web3FeedHeader from "@/components/Customer/Feed/Web3FeedHeader";
 import VibeSphere from "@/components/VibeSphere/VibeSphere";
+import CheckinConflictModal from "@/components/Customer/CheckinConflictModal";
 import { 
   MapPin, 
   Users, 
@@ -57,12 +59,15 @@ const ImmersiveVenue = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { currentCheckIn } = useUserCheckIn();
   const [venue, setVenue] = useState<Venue | null>(null);
   const [loading, setLoading] = useState(true);
   const [isCheckedIn, setIsCheckedIn] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [showVibeSphere, setShowVibeSphere] = useState(false);
   const [userStatus, setUserStatus] = useState<"at" | "heading" | "maybe" | null>(null);
+  const [showConflictModal, setShowConflictModal] = useState(false);
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
   
   // Mock crowd data
   const [crowdStatus] = useState({
@@ -144,6 +149,16 @@ const ImmersiveVenue = () => {
       return;
     }
 
+    // Check if already checked in at another venue
+    if (currentCheckIn && currentCheckIn.venueId !== id) {
+      setShowConflictModal(true);
+      return;
+    }
+
+    await performCheckIn();
+  };
+
+  const performCheckIn = async () => {
     // Start transition animation
     setIsTransitioning(true);
 
@@ -159,7 +174,7 @@ const ImmersiveVenue = () => {
     }
 
     const { error } = await supabase.from("check_ins").insert({
-      user_id: user.id,
+      user_id: user!.id,
       venue_id: id,
       visibility: "public",
     });
@@ -177,6 +192,36 @@ const ImmersiveVenue = () => {
         setShowVibeSphere(true);
       }, 3000);
     }
+  };
+
+  const handleCheckoutAndContinue = async () => {
+    if (!user || !currentCheckIn) return;
+
+    setIsCheckingOut(true);
+
+    // Checkout from current venue
+    const { error: checkoutError } = await supabase
+      .from("check_ins")
+      .update({ checked_out_at: new Date().toISOString() })
+      .eq("user_id", user.id)
+      .eq("venue_id", currentCheckIn.venueId)
+      .is("checked_out_at", null);
+
+    if (checkoutError) {
+      toast.error("Failed to checkout from current venue");
+      setIsCheckingOut(false);
+      console.error(checkoutError);
+      return;
+    }
+
+    toast.success(`Checked out of ${currentCheckIn.venueName || "previous venue"}`);
+    setShowConflictModal(false);
+    setIsCheckingOut(false);
+
+    // Small delay to allow real-time update to propagate
+    setTimeout(() => {
+      performCheckIn();
+    }, 500);
   };
 
   const handleExitVibeSphere = () => {
@@ -487,6 +532,16 @@ const ImmersiveVenue = () => {
         hours="Closes 2 AM"
         venueId={venue.id}
         onExit={handleExitVibeSphere}
+      />
+
+      {/* Checkin Conflict Modal */}
+      <CheckinConflictModal
+        isOpen={showConflictModal}
+        onClose={() => setShowConflictModal(false)}
+        currentVenueName={currentCheckIn?.venueName || "Unknown Venue"}
+        newVenueName={venue.name}
+        onCheckoutAndContinue={handleCheckoutAndContinue}
+        isLoading={isCheckingOut}
       />
     </div>
   );
