@@ -1,12 +1,20 @@
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Eye, RefreshCw } from "lucide-react";
-import { useVenueOrders } from "@/hooks/useVenueOrders";
+import { useVenueOrdersDB } from "@/hooks/useVenueOrdersDB";
 import { formatDistanceToNow } from "date-fns";
 
 export default function Orders() {
-  const { orders, updateOrderStatus } = useVenueOrders();
+  const [venueId, setVenueId] = useState<string | null>(null);
+  
+  useEffect(() => {
+    const storedVenueId = localStorage.getItem('jv_current_venue_id');
+    if (storedVenueId) setVenueId(storedVenueId);
+  }, []);
+
+  const { orders, updateOrderStatus, loading } = useVenueOrdersDB(venueId);
 
   const getStatusColor = (status: string) => {
     switch (status) {

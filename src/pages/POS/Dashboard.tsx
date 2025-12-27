@@ -1,11 +1,19 @@
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { DollarSign, ShoppingCart, Users, TrendingUp, RefreshCw } from "lucide-react";
-import { useVenueOrders } from "@/hooks/useVenueOrders";
+import { useVenueOrdersDB } from "@/hooks/useVenueOrdersDB";
 import { formatDistanceToNow } from "date-fns";
 
 export default function Dashboard() {
-  const { orders, stats, getRecentOrders } = useVenueOrders();
+  const [venueId, setVenueId] = useState<string | null>(null);
+  
+  useEffect(() => {
+    const storedVenueId = localStorage.getItem('jv_current_venue_id');
+    if (storedVenueId) setVenueId(storedVenueId);
+  }, []);
+
+  const { orders, stats, getRecentOrders, loading } = useVenueOrdersDB(venueId);
   
   const recentOrders = getRecentOrders(5);
   const todayRevenue = orders
