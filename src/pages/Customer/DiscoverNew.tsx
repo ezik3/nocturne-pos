@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
-import { Search, MapPin, TrendingUp, Users, Building2 } from "lucide-react";
+import { Search, MapPin, TrendingUp, Users, Building2, CheckCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import Web3FeedHeader from "@/components/Customer/Feed/Web3FeedHeader";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useUserCheckIn } from "@/hooks/useUserCheckIn";
 
 const venueTypes = ["All", "Nightclubs", "Bars", "Restaurants", "Events"];
 
@@ -29,6 +31,7 @@ const DiscoverNew = () => {
   const [cities, setCities] = useState<string[]>(["All Cities"]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { isCheckedInAt } = useUserCheckIn();
 
   useEffect(() => {
     fetchVenues();
@@ -156,51 +159,67 @@ const DiscoverNew = () => {
           <>
             {/* Venues Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredVenues.map((venue) => (
-                <div
-                  key={venue.id}
-                  onClick={() => navigate(`/app/venue/${venue.id}`)}
-                  className="group cursor-pointer overflow-hidden rounded-xl bg-white/5 hover:border-cyan-400/50 border border-transparent transition-all"
-                >
-                  {/* Image */}
-                  <div className="aspect-video overflow-hidden">
-                    <img
-                      src={venue.image_url || getDefaultImage(venue.venue_type)}
-                      alt={venue.name}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                    />
-                  </div>
-                  
-                  {/* Info */}
-                  <div className="p-4">
-                    <h3 className="text-cyan-400 text-xl font-bold mb-1">{venue.name}</h3>
-                    <p className="text-white/70 text-sm mb-3 line-clamp-2">
-                      {venue.description || `A great ${venue.venue_type || 'venue'} to visit`}
-                    </p>
-                    
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-1 text-white/60">
-                        <MapPin className="w-4 h-4" />
-                        {venue.city || 'Location TBD'}
+              {filteredVenues.map((venue) => {
+                const checkedIn = isCheckedInAt(venue.id);
+                
+                return (
+                  <div
+                    key={venue.id}
+                    onClick={() => navigate(`/app/venue/${venue.id}`)}
+                    className={`group cursor-pointer overflow-hidden rounded-xl bg-white/5 hover:border-cyan-400/50 border transition-all relative ${
+                      checkedIn ? 'border-green-500/50 ring-2 ring-green-500/20' : 'border-transparent'
+                    }`}
+                  >
+                    {/* Checked In Badge */}
+                    {checkedIn && (
+                      <div className="absolute top-3 right-3 z-10">
+                        <Badge className="bg-green-500 text-white border-0 shadow-lg shadow-green-500/30 flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3" />
+                          Checked In
+                        </Badge>
                       </div>
-                      <div className="flex items-center gap-3">
-                        {venue.vibe_score && (
-                          <div className={`flex items-center gap-1 ${getVibeColor(venue.vibe_score)}`}>
-                            <TrendingUp className="w-4 h-4" />
-                            {venue.vibe_score}%
-                          </div>
-                        )}
-                        {venue.capacity && (
-                          <div className="flex items-center gap-1 text-white/60">
-                            <Users className="w-4 h-4" />
-                            {venue.current_occupancy || 0}/{venue.capacity}
-                          </div>
-                        )}
+                    )}
+                    
+                    {/* Image */}
+                    <div className="aspect-video overflow-hidden">
+                      <img
+                        src={venue.image_url || getDefaultImage(venue.venue_type)}
+                        alt={venue.name}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                      />
+                    </div>
+                    
+                    {/* Info */}
+                    <div className="p-4">
+                      <h3 className="text-cyan-400 text-xl font-bold mb-1">{venue.name}</h3>
+                      <p className="text-white/70 text-sm mb-3 line-clamp-2">
+                        {venue.description || `A great ${venue.venue_type || 'venue'} to visit`}
+                      </p>
+                      
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-1 text-white/60">
+                          <MapPin className="w-4 h-4" />
+                          {venue.city || 'Location TBD'}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {venue.vibe_score && (
+                            <div className={`flex items-center gap-1 ${getVibeColor(venue.vibe_score)}`}>
+                              <TrendingUp className="w-4 h-4" />
+                              {venue.vibe_score}%
+                            </div>
+                          )}
+                          {venue.capacity && (
+                            <div className="flex items-center gap-1 text-white/60">
+                              <Users className="w-4 h-4" />
+                              {venue.current_occupancy || 0}/{venue.capacity}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {filteredVenues.length === 0 && (

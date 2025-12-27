@@ -7,6 +7,7 @@ import OrbsLayer from "./OrbsLayer";
 import AIChat from "@/components/Customer/AIChat";
 import CustomerMenuModal from "./CustomerMenuModal";
 import CustomerChatModal from "./CustomerChatModal";
+import ExitVenueModal from "./ExitVenueModal";
 import { toast } from "sonner";
 
 interface VenueShellProps {
@@ -17,6 +18,7 @@ interface VenueShellProps {
   hours?: string;
   venueId?: string;
   onExit: () => void;
+  onCheckout?: () => void;
 }
 
 const VenueShell = ({
@@ -27,15 +29,34 @@ const VenueShell = ({
   hours = "Closes 2 AM",
   venueId,
   onExit,
+  onCheckout,
 }: VenueShellProps) => {
   const [showInstructions, setShowInstructions] = useState(true);
   const [showAIChat, setShowAIChat] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showChat, setShowChat] = useState(false);
+  const [showExitModal, setShowExitModal] = useState(false);
 
   const handleDoubleClick = () => {
     setShowAIChat(true);
     toast.success("AI Waiter summoned!");
+  };
+
+  const handleExitClick = () => {
+    setShowExitModal(true);
+  };
+
+  const handleExitOnly = () => {
+    // Exit VenueVerse but stay checked in
+    onExit();
+  };
+
+  const handleFullCheckout = () => {
+    // Full checkout - this will be handled by the modal
+    if (onCheckout) {
+      onCheckout();
+    }
+    onExit();
   };
 
   return (
@@ -130,7 +151,7 @@ const VenueShell = ({
         transition={{ delay: 1.2, duration: 0.5 }}
       >
         <Button
-          onClick={onExit}
+          onClick={handleExitClick}
           variant="outline"
           className="bg-black/40 backdrop-blur-md border-white/20 text-white hover:bg-white/10 rounded-full px-6 py-3"
         >
@@ -138,6 +159,16 @@ const VenueShell = ({
           Exit Venue
         </Button>
       </motion.div>
+
+      {/* Exit Venue Modal */}
+      <ExitVenueModal
+        isOpen={showExitModal}
+        onClose={() => setShowExitModal(false)}
+        venueId={venueId || ""}
+        venueName={venueName}
+        onExitOnly={handleExitOnly}
+        onCheckout={handleFullCheckout}
+      />
 
       {/* AI Chat Modal */}
       {showAIChat && (
