@@ -171,8 +171,9 @@ const ImmersiveVenue = () => {
   }, [venue, userLat, userLng]);
 
   // Check if user is within check-in radius
-  const isWithinCheckInRadius = distanceToVenue !== null && distanceToVenue <= CHECK_IN_RADIUS_METERS;
-  const hasVenueLocation = venue?.latitude && venue?.longitude;
+  const hasVenueLocation = Boolean(venue?.latitude && venue?.longitude);
+  const hasUserLocation = Boolean(userLat && userLng);
+  const isWithinCheckInRadius = hasVenueLocation && hasUserLocation && distanceToVenue !== null && distanceToVenue <= CHECK_IN_RADIUS_METERS;
 
   const handleCheckIn = async () => {
     if (!user) {
@@ -180,15 +181,21 @@ const ImmersiveVenue = () => {
       return;
     }
 
-    // Check if venue has location and user has location
-    if (hasVenueLocation && !userLat && !userLng) {
+    // Venue MUST have location set for check-in
+    if (!hasVenueLocation) {
+      toast.error("This venue hasn't set their location yet. Check-in unavailable.");
+      return;
+    }
+
+    // User MUST have location enabled
+    if (!hasUserLocation) {
       toast.error("Please enable location services to check in");
       requestLocation();
       return;
     }
 
     // Check proximity - must be within 100m of venue
-    if (hasVenueLocation && !isWithinCheckInRadius) {
+    if (!isWithinCheckInRadius) {
       const distanceKm = distanceToVenue ? (distanceToVenue / 1000).toFixed(1) : 'unknown';
       toast.error(`You must be at the venue to check in. You're ${distanceKm}km away.`);
       return;
@@ -499,8 +506,8 @@ const ImmersiveVenue = () => {
 
           {/* Action Buttons */}
           <div className="space-y-3">
-            {/* Distance indicator when venue has location */}
-            {hasVenueLocation && distanceToVenue !== null && !isCheckedIn && (
+          {/* Distance indicator when venue has location */}
+            {hasVenueLocation && hasUserLocation && distanceToVenue !== null && !isCheckedIn && (
               <div className={`text-center py-2 px-4 rounded-xl text-sm ${
                 isWithinCheckInRadius 
                   ? "bg-green-500/20 text-green-400 border border-green-500/30"
@@ -510,6 +517,13 @@ const ImmersiveVenue = () => {
                   ? <span className="flex items-center justify-center gap-2"><MapPin className="w-4 h-4" /> You're at the venue!</span>
                   : <span className="flex items-center justify-center gap-2"><MapPinOff className="w-4 h-4" /> {(distanceToVenue / 1000).toFixed(1)}km away - Must be at venue to check in</span>
                 }
+              </div>
+            )}
+
+            {/* No venue location indicator */}
+            {!hasVenueLocation && !isCheckedIn && (
+              <div className="text-center py-2 px-4 rounded-xl text-sm bg-gray-500/20 text-gray-400 border border-gray-500/30">
+                <span className="flex items-center justify-center gap-2"><MapPinOff className="w-4 h-4" /> Venue location not set - Check-in unavailable</span>
               </div>
             )}
 
@@ -526,11 +540,11 @@ const ImmersiveVenue = () => {
             {/* Check In Button */}
             <Button
               onClick={handleCheckIn}
-              disabled={isCheckedIn || (hasVenueLocation && !isWithinCheckInRadius && !locationLoading)}
+              disabled={isCheckedIn || !hasVenueLocation || (!isWithinCheckInRadius && !locationLoading)}
               className={`w-full h-14 text-lg font-semibold rounded-xl ${
                 isCheckedIn 
                   ? "bg-green-500/30 text-green-400 border border-green-500/50" 
-                  : hasVenueLocation && !isWithinCheckInRadius
+                  : !hasVenueLocation || !isWithinCheckInRadius
                     ? "bg-gray-500/30 text-gray-400 border border-gray-500/50 cursor-not-allowed"
                     : "bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700"
               }`}
@@ -538,9 +552,11 @@ const ImmersiveVenue = () => {
               <CheckCircle className="w-5 h-5 mr-2" />
               {isCheckedIn 
                 ? "@ " + venue.name 
-                : hasVenueLocation && !isWithinCheckInRadius 
-                  ? "Too Far to Check In" 
-                  : "Check In"
+                : !hasVenueLocation
+                  ? "Location Not Set"
+                  : !isWithinCheckInRadius 
+                    ? "Too Far to Check In" 
+                    : "Check In"
               }
             </Button>
 
