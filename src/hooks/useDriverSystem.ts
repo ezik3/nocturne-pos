@@ -293,23 +293,48 @@ export const useDriverSystem = () => {
   };
 
   // Book a ride (for customers)
-  const bookRide = async (pickup: {
-    address: string;
-    latitude: number;
-    longitude: number;
-  }, destination: {
-    address: string;
-    latitude: number;
-    longitude: number;
-  }) => {
+  const bookRide = async (
+    pickup: {
+      address: string;
+      latitude: number;
+      longitude: number;
+    }, 
+    destination: {
+      address: string;
+      latitude: number;
+      longitude: number;
+    },
+    fareEstimate?: {
+      fare: number;
+      distance: number;
+      duration: number;
+      driverEarnings: number;
+      platformFee: number;
+    }
+  ) => {
     if (!user) return { success: false };
 
-    // Calculate estimated fare (simplified: $2 base + $1.50/km)
-    const distance = calculateDistance(
-      pickup.latitude, pickup.longitude,
-      destination.latitude, destination.longitude
-    );
-    const estimatedFare = 2 + (distance * 1.5);
+    // Use pre-calculated fare if provided, otherwise calculate basic estimate
+    let estimatedFare: number;
+    let distance: number;
+    let duration: number;
+    let driverEarnings: number;
+
+    if (fareEstimate) {
+      estimatedFare = fareEstimate.fare;
+      distance = fareEstimate.distance;
+      duration = fareEstimate.duration;
+      driverEarnings = fareEstimate.driverEarnings;
+    } else {
+      // Fallback calculation
+      distance = calculateDistance(
+        pickup.latitude, pickup.longitude,
+        destination.latitude, destination.longitude
+      );
+      estimatedFare = 3 + (distance * 1.5) + (Math.round(distance * 3) * 0.2);
+      duration = Math.round(distance * 3);
+      driverEarnings = estimatedFare - 0.10;
+    }
 
     const { data, error } = await supabase
       .from('ride_bookings')
@@ -323,8 +348,9 @@ export const useDriverSystem = () => {
         destination_longitude: destination.longitude,
         estimated_fare: estimatedFare,
         distance_km: distance,
-        estimated_duration_minutes: Math.round(distance * 3), // ~3 min per km
+        estimated_duration_minutes: duration,
         platform_fee: 0.10,
+        driver_earnings: driverEarnings,
       })
       .select()
       .single();
