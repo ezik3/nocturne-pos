@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Web3FeedHeader from "@/components/Customer/Feed/Web3FeedHeader";
+import RemoteOrderModal from "@/components/Customer/RemoteOrderModal";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserCheckIn } from "@/hooks/useUserCheckIn";
@@ -40,6 +41,10 @@ const DiscoverNew = () => {
   const { isCheckedInAt } = useUserCheckIn();
   const { latitude, longitude, loading: locationLoading } = useGeolocation({ enableHighAccuracy: true });
   const { calculateDistance, calculateDeliveryFee } = useDeliveryFee();
+  
+  // Remote order modal state
+  const [orderModalOpen, setOrderModalOpen] = useState(false);
+  const [selectedVenueForOrder, setSelectedVenueForOrder] = useState<Venue | null>(null);
 
   useEffect(() => {
     fetchVenues();
@@ -221,13 +226,20 @@ const DiscoverNew = () => {
                       </div>
                     )}
 
-                    {/* Delivery Badge */}
+                    {/* Delivery Badge + Order Button */}
                     {deliveryInfo.delivers && !checkedIn && (
-                      <div className="absolute top-3 right-3 z-10">
-                        <Badge className="bg-gradient-to-r from-orange-500 to-red-500 text-white border-0 shadow-lg shadow-orange-500/30 flex items-center gap-1">
+                      <div className="absolute top-3 right-3 z-10 flex gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedVenueForOrder(venue);
+                            setOrderModalOpen(true);
+                          }}
+                          className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg shadow-orange-500/30 flex items-center gap-1 hover:from-orange-600 hover:to-red-600 transition-all"
+                        >
                           <UtensilsCrossed className="w-3 h-3" />
-                          Delivers
-                        </Badge>
+                          Order
+                        </button>
                       </div>
                     )}
                     
@@ -256,10 +268,8 @@ const DiscoverNew = () => {
                           }
                         </div>
                         <div className="flex items-center gap-3">
-                          {/* Delivery fee indicator */}
                           {deliveryInfo.delivers && deliveryInfo.fee && (
                             <div className="flex items-center gap-1 text-orange-400">
-                              <UtensilsCrossed className="w-3 h-3" />
                               <span className="text-xs">${deliveryInfo.fee.toFixed(2)} delivery</span>
                             </div>
                           )}
@@ -267,12 +277,6 @@ const DiscoverNew = () => {
                             <div className={`flex items-center gap-1 ${getVibeColor(venue.vibe_score)}`}>
                               <TrendingUp className="w-4 h-4" />
                               {venue.vibe_score}%
-                            </div>
-                          )}
-                          {venue.capacity && (
-                            <div className="flex items-center gap-1 text-white/60">
-                              <Users className="w-4 h-4" />
-                              {venue.current_occupancy || 0}/{venue.capacity}
                             </div>
                           )}
                         </div>
@@ -298,6 +302,25 @@ const DiscoverNew = () => {
           </>
         )}
       </div>
+
+      {/* Remote Order Modal */}
+      {selectedVenueForOrder && (
+        <RemoteOrderModal
+          isOpen={orderModalOpen}
+          onClose={() => {
+            setOrderModalOpen(false);
+            setSelectedVenueForOrder(null);
+          }}
+          venueId={selectedVenueForOrder.id}
+          venueName={selectedVenueForOrder.name}
+          venueLatitude={selectedVenueForOrder.latitude || undefined}
+          venueLongitude={selectedVenueForOrder.longitude || undefined}
+          venueAddress={selectedVenueForOrder.address || undefined}
+          deliveryEnabled={selectedVenueForOrder.delivery_enabled || false}
+          maxDeliveryRadius={selectedVenueForOrder.max_delivery_radius_km || 20}
+          distanceToUser={getDeliveryInfo(selectedVenueForOrder).distance || undefined}
+        />
+      )}
     </div>
   );
 };
