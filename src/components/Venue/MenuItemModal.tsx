@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -8,8 +8,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Trash2, ImagePlus, DollarSign, Tag, Layers, Info } from "lucide-react";
+import { Plus, Trash2, ImagePlus, DollarSign, Tag, Layers, Info, Upload, Link as LinkIcon } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface MenuItemSize {
   id: string;
@@ -58,6 +59,9 @@ export default function MenuItemModal({
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [newSizeName, setNewSizeName] = useState("");
   const [newSizePrice, setNewSizePrice] = useState("");
+  const [imageMode, setImageMode] = useState<'upload' | 'url'>('upload');
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (item) {
@@ -317,25 +321,127 @@ export default function MenuItemModal({
             </Card>
           </div>
 
-          {/* Image URL */}
-          <div className="space-y-2">
+          {/* Image */}
+          <div className="space-y-3">
             <Label className="flex items-center gap-2">
               <ImagePlus className="h-4 w-4 text-blue-400" />
-              Image URL
+              Item Image
             </Label>
-            <Input
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              placeholder="https://example.com/image.jpg"
-              className="bg-slate-800 border-slate-600"
-            />
-            {imageUrl && (
-              <img 
-                src={imageUrl} 
-                alt="Preview" 
-                className="w-full h-32 object-cover rounded-lg"
-                onError={(e) => (e.currentTarget.style.display = 'none')}
+            
+            {/* Toggle between upload and URL */}
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant={imageMode === 'upload' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setImageMode('upload')}
+                className={imageMode === 'upload' ? 'bg-primary' : 'border-slate-600'}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Upload Image
+              </Button>
+              <Button
+                type="button"
+                variant={imageMode === 'url' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setImageMode('url')}
+                className={imageMode === 'url' ? 'bg-primary' : 'border-slate-600'}
+              >
+                <LinkIcon className="h-4 w-4 mr-2" />
+                Use URL
+              </Button>
+            </div>
+
+            {imageMode === 'upload' ? (
+              <div className="space-y-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+
+                    if (file.size > 5 * 1024 * 1024) {
+                      toast.error("Image must be less than 5MB");
+                      return;
+                    }
+
+                    setUploading(true);
+                    try {
+                      const fileExt = file.name.split('.').pop();
+                      const fileName = `${uuidv4()}.${fileExt}`;
+                      const filePath = `menu-items/${fileName}`;
+
+                      const { error: uploadError } = await supabase.storage
+                        .from('venue-assets')
+                        .upload(filePath, file);
+
+                      if (uploadError) throw uploadError;
+
+                      const { data: { publicUrl } } = supabase.storage
+                        .from('venue-assets')
+                        .getPublicUrl(filePath);
+
+                      setImageUrl(publicUrl);
+                      toast.success("Image uploaded successfully");
+                    } catch (error) {
+                      console.error("Upload error:", error);
+                      toast.error("Failed to upload image");
+                    } finally {
+                      setUploading(false);
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full h-24 border-dashed border-2 border-slate-600 hover:border-primary/50 bg-slate-800/50"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                >
+                  {uploading ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                      <span>Uploading...</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 text-slate-400">
+                      <Upload className="h-8 w-8" />
+                      <span>Click to upload image</span>
+                      <span className="text-xs">Max 5MB</span>
+                    </div>
+                  )}
+                </Button>
+              </div>
+            ) : (
+              <Input
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                placeholder="https://example.com/image.jpg"
+                className="bg-slate-800 border-slate-600"
               />
+            )}
+
+            {imageUrl && (
+              <div className="relative">
+                <img 
+                  src={imageUrl} 
+                  alt="Preview" 
+                  className="w-full h-32 object-cover rounded-lg"
+                  onError={(e) => (e.currentTarget.style.display = 'none')}
+                />
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  className="absolute top-2 right-2 h-8 w-8"
+                  onClick={() => setImageUrl('')}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             )}
           </div>
 
