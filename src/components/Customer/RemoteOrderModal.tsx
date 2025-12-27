@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Search, Plus, Minus, ShoppingCart, Trash2, Flame, MapPin, Truck, ShoppingBag, UtensilsCrossed } from "lucide-react";
+import { X, Search, Plus, Minus, ShoppingCart, Trash2, Flame, MapPin, Truck, ShoppingBag, UtensilsCrossed, Clock, ChefHat, CheckCircle2, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useDeliveryFee } from "@/hooks/useDeliveryFee";
-
+import { OrderTrackingModal } from "./OrderTrackingModal";
 interface MenuItemSize {
   id: string;
   name: string;
@@ -79,6 +79,8 @@ const RemoteOrderModal = ({
   const [cart, setCart] = useState<CartItem[]>([]);
   const [showCart, setShowCart] = useState(false);
   const [placingOrder, setPlacingOrder] = useState(false);
+  const [placedOrderId, setPlacedOrderId] = useState<string | null>(null);
+  const [showTracking, setShowTracking] = useState(false);
   
   // Order type and delivery details
   const [orderType, setOrderType] = useState<OrderType>(deliveryEnabled ? "delivery" : "pickup");
@@ -286,14 +288,13 @@ const RemoteOrderModal = ({
 
       toast.success(
         orderType === "delivery" 
-          ? "Order placed! A driver will deliver it to you soon." 
-          : "Order placed! Head to the venue to pick it up."
+          ? "Order placed! Waiting for venue confirmation..." 
+          : "Order placed! Waiting for venue to prepare it."
       );
+      setPlacedOrderId(order.id);
+      setShowTracking(true);
       setCart([]);
       setShowCart(false);
-      setDeliveryAddress("");
-      setDeliveryNotes("");
-      onClose();
     } catch (error) {
       console.error("Error placing order:", error);
       toast.error("Failed to place order. Please try again.");
@@ -703,6 +704,20 @@ const RemoteOrderModal = ({
           )}
         </motion.div>
       </motion.div>
+
+      {/* Order Tracking Modal */}
+      <OrderTrackingModal
+        isOpen={showTracking}
+        onClose={() => {
+          setShowTracking(false);
+          setPlacedOrderId(null);
+          setDeliveryAddress("");
+          setDeliveryNotes("");
+          onClose();
+        }}
+        orderId={placedOrderId}
+        orderType={orderType}
+      />
     </AnimatePresence>
   );
 };
