@@ -133,6 +133,39 @@ export type Database = {
         }
         Relationships: []
       }
+      delivery_fee_config: {
+        Row: {
+          base_fee: number
+          created_at: string | null
+          id: string
+          max_fee: number
+          min_fee: number
+          per_km_rate: number
+          platform_fee: number
+          updated_at: string | null
+        }
+        Insert: {
+          base_fee?: number
+          created_at?: string | null
+          id?: string
+          max_fee?: number
+          min_fee?: number
+          per_km_rate?: number
+          platform_fee?: number
+          updated_at?: string | null
+        }
+        Update: {
+          base_fee?: number
+          created_at?: string | null
+          id?: string
+          max_fee?: number
+          min_fee?: number
+          per_km_rate?: number
+          platform_fee?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       deposit_records: {
         Row: {
           amount_jvc: number
@@ -588,6 +621,7 @@ export type Database = {
         Row: {
           actual_delivery_time: string | null
           actual_pickup_time: string | null
+          calculated_delivery_fee: number | null
           created_at: string | null
           customer_id: string
           customer_rating: number | null
@@ -595,6 +629,7 @@ export type Database = {
           delivery_fee: number | null
           delivery_latitude: number | null
           delivery_longitude: number | null
+          driver_earnings: number | null
           driver_id: string | null
           driver_rating: number | null
           estimated_delivery_time: string | null
@@ -613,6 +648,7 @@ export type Database = {
         Insert: {
           actual_delivery_time?: string | null
           actual_pickup_time?: string | null
+          calculated_delivery_fee?: number | null
           created_at?: string | null
           customer_id: string
           customer_rating?: number | null
@@ -620,6 +656,7 @@ export type Database = {
           delivery_fee?: number | null
           delivery_latitude?: number | null
           delivery_longitude?: number | null
+          driver_earnings?: number | null
           driver_id?: string | null
           driver_rating?: number | null
           estimated_delivery_time?: string | null
@@ -638,6 +675,7 @@ export type Database = {
         Update: {
           actual_delivery_time?: string | null
           actual_pickup_time?: string | null
+          calculated_delivery_fee?: number | null
           created_at?: string | null
           customer_id?: string
           customer_rating?: number | null
@@ -645,6 +683,7 @@ export type Database = {
           delivery_fee?: number | null
           delivery_latitude?: number | null
           delivery_longitude?: number | null
+          driver_earnings?: number | null
           driver_id?: string | null
           driver_rating?: number | null
           estimated_delivery_time?: string | null
@@ -1120,6 +1159,7 @@ export type Database = {
           destination_latitude: number | null
           destination_longitude: number | null
           distance_km: number | null
+          driver_earnings: number | null
           driver_id: string | null
           driver_rating: number | null
           estimated_duration_minutes: number | null
@@ -1143,6 +1183,7 @@ export type Database = {
           destination_latitude?: number | null
           destination_longitude?: number | null
           distance_km?: number | null
+          driver_earnings?: number | null
           driver_id?: string | null
           driver_rating?: number | null
           estimated_duration_minutes?: number | null
@@ -1166,6 +1207,7 @@ export type Database = {
           destination_latitude?: number | null
           destination_longitude?: number | null
           distance_km?: number | null
+          driver_earnings?: number | null
           driver_id?: string | null
           driver_rating?: number | null
           estimated_duration_minutes?: number | null
@@ -1177,6 +1219,42 @@ export type Database = {
           pickup_longitude?: number | null
           platform_fee?: number | null
           status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      ride_fare_config: {
+        Row: {
+          base_fare: number
+          created_at: string | null
+          id: string
+          max_fare: number
+          min_fare: number
+          per_km_rate: number
+          per_minute_rate: number
+          platform_fee: number
+          updated_at: string | null
+        }
+        Insert: {
+          base_fare?: number
+          created_at?: string | null
+          id?: string
+          max_fare?: number
+          min_fare?: number
+          per_km_rate?: number
+          per_minute_rate?: number
+          platform_fee?: number
+          updated_at?: string | null
+        }
+        Update: {
+          base_fare?: number
+          created_at?: string | null
+          id?: string
+          max_fare?: number
+          min_fare?: number
+          per_km_rate?: number
+          per_minute_rate?: number
+          platform_fee?: number
           updated_at?: string | null
         }
         Relationships: []
@@ -1552,11 +1630,13 @@ export type Database = {
           city: string | null
           created_at: string | null
           current_occupancy: number | null
+          delivery_enabled: boolean | null
           description: string | null
           id: string
           image_url: string | null
           latitude: number | null
           longitude: number | null
+          max_delivery_radius_km: number | null
           name: string
           owner_user_id: string | null
           rejection_reason: string | null
@@ -1575,11 +1655,13 @@ export type Database = {
           city?: string | null
           created_at?: string | null
           current_occupancy?: number | null
+          delivery_enabled?: boolean | null
           description?: string | null
           id?: string
           image_url?: string | null
           latitude?: number | null
           longitude?: number | null
+          max_delivery_radius_km?: number | null
           name: string
           owner_user_id?: string | null
           rejection_reason?: string | null
@@ -1598,11 +1680,13 @@ export type Database = {
           city?: string | null
           created_at?: string | null
           current_occupancy?: number | null
+          delivery_enabled?: boolean | null
           description?: string | null
           id?: string
           image_url?: string | null
           latitude?: number | null
           longitude?: number | null
+          max_delivery_radius_km?: number | null
           name?: string
           owner_user_id?: string | null
           rejection_reason?: string | null
