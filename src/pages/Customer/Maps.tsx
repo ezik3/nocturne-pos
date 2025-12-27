@@ -444,7 +444,8 @@ const Maps = () => {
 
     const result = await bookRide(
       { address: pickupAddress, latitude: pickup.lat, longitude: pickup.lng },
-      { address: destinationAddress, latitude: destination.lat, longitude: destination.lng }
+      { address: destinationAddress, latitude: destination.lat, longitude: destination.lng },
+      fareEstimate || undefined
     );
 
     if (result.success) {
@@ -622,7 +623,7 @@ const Maps = () => {
                       Become a JV Driver
                     </h3>
                     <p className="text-white/60 text-sm mb-4">
-                      Keep 100% of your earnings! We only charge venues $0.10 per order.
+                      Keep 100% of your earnings! We only charge venues $0.10 per delivery and riders $0.10 per trip.
                     </p>
                     <Button
                       onClick={() => setShowDriverSignup(true)}
