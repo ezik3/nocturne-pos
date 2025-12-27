@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Search, Clock, Plus, Minus, ShoppingCart, ChevronRight, Trash2 } from "lucide-react";
+import { X, Search, Clock, Plus, Minus, ShoppingCart, ChevronRight, Trash2, Flame, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -195,7 +195,6 @@ const CustomerMenuModal = ({ isOpen, onClose, venueId, venueName }: CustomerMenu
     setPlacingOrder(true);
     
     try {
-      // Create order
       const subtotal = cartTotal;
       const tax = subtotal * 0.1;
       const total = subtotal + tax;
@@ -216,7 +215,6 @@ const CustomerMenuModal = ({ isOpen, onClose, venueId, venueName }: CustomerMenu
 
       if (orderError) throw orderError;
 
-      // Create order items
       const orderItems = cart.map(item => ({
         order_id: order.id,
         menu_item_id: item.menuItem.id,
@@ -249,94 +247,105 @@ const CustomerMenuModal = ({ isOpen, onClose, venueId, venueName }: CustomerMenu
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
       >
         {/* Backdrop */}
         <div 
-          className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+          className="absolute inset-0 bg-black/90 backdrop-blur-md"
           onClick={onClose}
         />
         
-        {/* Modal */}
+        {/* Modal - McCompose Inspired Design */}
         <motion.div
-          className="relative w-full max-w-lg max-h-[85vh] bg-gradient-to-b from-secondary/95 to-background/95 backdrop-blur-xl rounded-3xl border border-primary/20 shadow-2xl shadow-primary/10 flex flex-col"
-          initial={{ scale: 0.9, y: 50 }}
-          animate={{ scale: 1, y: 0 }}
-          exit={{ scale: 0.9, y: 50 }}
+          className="relative w-full max-w-md h-[90vh] sm:h-[85vh] bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 sm:rounded-3xl overflow-hidden flex flex-col shadow-2xl border border-white/10"
+          initial={{ y: "100%" }}
+          animate={{ y: 0 }}
+          exit={{ y: "100%" }}
+          transition={{ type: "spring", damping: 25, stiffness: 300 }}
         >
-          {/* Header */}
-          <div className="p-4 border-b border-border/30 sticky top-0 bg-secondary/95 backdrop-blur-xl z-10">
-            <div className="flex items-center justify-between mb-3">
+          {/* Header - Fixed */}
+          <div className="relative p-5 pb-4 bg-gradient-to-b from-slate-800/80 to-transparent">
+            {/* Venue Name & Close */}
+            <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-xl font-bold bg-gradient-to-r from-primary to-cyan-400 bg-clip-text text-transparent">
+                <h2 className="text-2xl font-bold text-white">
                   {venueName}
                 </h2>
-                <p className="text-sm text-muted-foreground">Order from the menu</p>
+                <p className="text-sm text-white/50">Menu</p>
               </div>
               <div className="flex items-center gap-2">
-                {/* Cart Button */}
-                <Button 
-                  variant="outline" 
-                  size="icon" 
-                  className="relative border-primary/30 hover:bg-primary/10"
+                {/* Cart Button - McDonalds Style */}
+                <motion.button 
+                  className="relative w-12 h-12 rounded-full bg-gradient-to-br from-primary to-cyan-500 flex items-center justify-center shadow-lg shadow-primary/30"
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => setShowCart(!showCart)}
                 >
-                  <ShoppingCart className="w-5 h-5 text-primary" />
+                  <ShoppingCart className="w-5 h-5 text-white" />
                   {cartItemCount > 0 && (
-                    <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-bold">
+                    <motion.span 
+                      className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-bold shadow-lg"
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", stiffness: 500 }}
+                    >
                       {cartItemCount}
-                    </span>
+                    </motion.span>
                   )}
-                </Button>
-                <Button variant="ghost" size="icon" onClick={onClose}>
-                  <X className="w-5 h-5" />
+                </motion.button>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10"
+                  onClick={onClose}
+                >
+                  <X className="w-5 h-5 text-white/70" />
                 </Button>
               </div>
             </div>
 
             {!showCart && (
               <>
-                {/* Search */}
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                {/* Search Bar - Rounded */}
+                <div className="relative mb-4">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
                   <Input
                     placeholder="Search menu..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 bg-background/50 border-border/30 focus:border-primary/50"
+                    className="pl-12 h-12 bg-white/5 border-0 rounded-2xl text-white placeholder:text-white/40 focus:ring-2 focus:ring-primary/50"
                   />
                 </div>
 
-                {/* Category Tabs */}
+                {/* Category Pills - Horizontal Scroll */}
                 {categories.length > 0 && (
-                  <div className="flex gap-2 mt-3 overflow-x-auto pb-1 scrollbar-hide">
-                    <Badge
-                      variant={selectedCategory === null ? "default" : "outline"}
-                      className={`cursor-pointer whitespace-nowrap transition-all ${
+                  <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      className={`px-5 py-2.5 rounded-full whitespace-nowrap text-sm font-semibold transition-all ${
                         selectedCategory === null 
-                          ? 'bg-primary text-primary-foreground' 
-                          : 'hover:bg-primary/10 border-primary/30'
+                          ? 'bg-primary text-white shadow-lg shadow-primary/30' 
+                          : 'bg-white/5 text-white/70 hover:bg-white/10'
                       }`}
                       onClick={() => setSelectedCategory(null)}
                     >
                       All
-                    </Badge>
+                    </motion.button>
                     {categories.map((cat) => (
-                      <Badge
+                      <motion.button
                         key={cat}
-                        variant={selectedCategory === cat ? "default" : "outline"}
-                        className={`cursor-pointer whitespace-nowrap transition-all ${
+                        whileTap={{ scale: 0.95 }}
+                        className={`px-5 py-2.5 rounded-full whitespace-nowrap text-sm font-semibold transition-all ${
                           selectedCategory === cat 
-                            ? 'bg-primary text-primary-foreground' 
-                            : 'hover:bg-primary/10 border-primary/30'
+                            ? 'bg-primary text-white shadow-lg shadow-primary/30' 
+                            : 'bg-white/5 text-white/70 hover:bg-white/10'
                         }`}
                         onClick={() => setSelectedCategory(cat)}
                       >
                         {cat}
-                      </Badge>
+                      </motion.button>
                     ))}
                   </div>
                 )}
@@ -344,86 +353,103 @@ const CustomerMenuModal = ({ isOpen, onClose, venueId, venueName }: CustomerMenu
             )}
           </div>
 
-          {/* Content */}
-          <div className="flex-1 overflow-y-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+          {/* Content - Scrollable */}
+          <div className="flex-1 overflow-y-auto px-4 pb-4" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
             {showCart ? (
-              /* Cart View */
-              <div className="p-4 space-y-4">
-                <h3 className="text-lg font-semibold text-foreground">Your Order</h3>
+              /* Cart View - McCompose Style */
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-bold text-white">Your Order</h3>
+                  <button 
+                    className="text-sm text-primary"
+                    onClick={() => setShowCart(false)}
+                  >
+                    ← Back to Menu
+                  </button>
+                </div>
                 
                 {cart.length === 0 ? (
-                  <div className="text-center py-12">
-                    <ShoppingCart className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
-                    <p className="text-muted-foreground">Your cart is empty</p>
-                    <p className="text-sm text-muted-foreground/70 mt-1">Add items from the menu to get started</p>
+                  <motion.div 
+                    className="text-center py-16"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                  >
+                    <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-white/5 flex items-center justify-center">
+                      <ShoppingCart className="w-10 h-10 text-white/20" />
+                    </div>
+                    <p className="text-white/50 text-lg">Your cart is empty</p>
+                    <p className="text-white/30 text-sm mt-2">Add some delicious items from the menu</p>
                     <Button 
-                      variant="outline" 
-                      className="mt-4 border-primary/30"
+                      className="mt-6 bg-primary hover:bg-primary/90 rounded-full px-8"
                       onClick={() => setShowCart(false)}
                     >
                       Browse Menu
                     </Button>
-                  </div>
+                  </motion.div>
                 ) : (
                   <div className="space-y-3">
-                    {cart.map((item) => (
+                    {cart.map((item, index) => (
                       <motion.div
                         key={item.id}
                         layout
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 20 }}
-                        className="bg-background/50 rounded-xl border border-border/30 p-3"
+                        transition={{ delay: index * 0.05 }}
+                        className="bg-white/5 rounded-2xl p-4 border border-white/5"
                       >
-                        <div className="flex items-center gap-3">
-                          {item.menuItem.imageUrl && (
-                            <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0">
+                        <div className="flex gap-4">
+                          {/* Image */}
+                          {item.menuItem.imageUrl ? (
+                            <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-white/5">
                               <img
                                 src={item.menuItem.imageUrl}
                                 alt={item.menuItem.name}
                                 className="w-full h-full object-cover"
                               />
                             </div>
+                          ) : (
+                            <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-primary/20 to-purple-500/20 flex items-center justify-center flex-shrink-0">
+                              <Flame className="w-8 h-8 text-primary/50" />
+                            </div>
                           )}
                           
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-medium text-foreground truncate">
+                            <h4 className="font-semibold text-white truncate">
                               {item.menuItem.name}
                             </h4>
                             {item.selectedSize && (
-                              <p className="text-xs text-muted-foreground">{item.selectedSize.name}</p>
+                              <p className="text-xs text-white/40">{item.selectedSize.name}</p>
                             )}
-                            <p className="text-sm font-semibold text-primary">
+                            <p className="text-lg font-bold text-primary mt-1">
                               ${(getItemPrice(item) * item.quantity).toFixed(2)}
                             </p>
                           </div>
                           
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              className="w-8 h-8 border-border/50"
-                              onClick={() => updateCartQuantity(item.id, -1)}
-                            >
-                              <Minus className="w-3 h-3" />
-                            </Button>
-                            <span className="w-6 text-center font-medium">{item.quantity}</span>
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              className="w-8 h-8 border-border/50"
-                              onClick={() => updateCartQuantity(item.id, 1)}
-                            >
-                              <Plus className="w-3 h-3" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="w-8 h-8 text-destructive hover:text-destructive"
+                          {/* Quantity Controls - McCompose Style */}
+                          <div className="flex flex-col items-end gap-2">
+                            <button
+                              className="w-8 h-8 rounded-full bg-red-500/20 text-red-400 hover:bg-red-500/30 flex items-center justify-center"
                               onClick={() => removeFromCart(item.id)}
                             >
                               <Trash2 className="w-4 h-4" />
-                            </Button>
+                            </button>
+                            <div className="flex items-center gap-1 bg-white/5 rounded-full p-1">
+                              <motion.button
+                                whileTap={{ scale: 0.9 }}
+                                className="w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center"
+                                onClick={() => updateCartQuantity(item.id, -1)}
+                              >
+                                <Minus className="w-4 h-4" />
+                              </motion.button>
+                              <span className="w-8 text-center font-bold text-white">{item.quantity}</span>
+                              <motion.button
+                                whileTap={{ scale: 0.9 }}
+                                className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center"
+                                onClick={() => updateCartQuantity(item.id, 1)}
+                              >
+                                <Plus className="w-4 h-4" />
+                              </motion.button>
+                            </div>
                           </div>
                         </div>
                       </motion.div>
@@ -432,144 +458,162 @@ const CustomerMenuModal = ({ isOpen, onClose, venueId, venueName }: CustomerMenu
                 )}
               </div>
             ) : (
-              /* Menu View */
-              <div className="p-4 space-y-3">
+              /* Menu View - McCompose Style Grid */
+              <div className="space-y-4">
                 {loading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  <div className="flex items-center justify-center py-16">
+                    <div className="w-12 h-12 border-3 border-primary border-t-transparent rounded-full animate-spin" />
                   </div>
                 ) : filteredItems.length === 0 ? (
-                  <div className="text-center py-12">
-                    <p className="text-muted-foreground">
+                  <motion.div 
+                    className="text-center py-16"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                  >
+                    <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-white/5 flex items-center justify-center">
+                      <Search className="w-10 h-10 text-white/20" />
+                    </div>
+                    <p className="text-white/50 text-lg">
                       {menuItems.length === 0 
                         ? "No menu items available yet"
                         : "No items match your search"
                       }
                     </p>
-                  </div>
+                  </motion.div>
                 ) : (
-                  filteredItems.map((item) => (
-                    <motion.div
-                      key={item.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="bg-background/50 rounded-xl border border-border/30 overflow-hidden hover:border-primary/30 transition-colors"
-                    >
-                      <div className="p-3">
-                        <div className="flex gap-3">
-                          {/* Image */}
-                          {item.imageUrl && (
-                            <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 border border-border/20">
+                  /* Menu Items Grid - 2 Column McCompose Style */
+                  <div className="grid grid-cols-2 gap-3">
+                    {filteredItems.map((item, index) => (
+                      <motion.div
+                        key={item.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.03 }}
+                        className="group"
+                      >
+                        <div className="bg-white/5 rounded-2xl overflow-hidden border border-white/5 hover:border-primary/30 transition-all">
+                          {/* Image Section */}
+                          <div className="relative aspect-square bg-gradient-to-br from-slate-800 to-slate-900 p-3">
+                            {item.imageUrl ? (
                               <img
                                 src={item.imageUrl}
                                 alt={item.name}
-                                className="w-full h-full object-cover"
+                                className="w-full h-full object-cover rounded-xl"
                               />
-                            </div>
-                          )}
-                          
-                          {/* Info */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex-1 min-w-0">
-                                <h3 className="font-semibold text-foreground truncate">
-                                  {item.name}
-                                </h3>
-                                {item.description && (
-                                  <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
-                                    {item.description}
-                                  </p>
-                                )}
-                                <div className="flex items-center gap-2 mt-1.5">
-                                  <Badge variant="secondary" className="text-xs bg-primary/10 text-primary border-0">
-                                    {item.category}
-                                  </Badge>
-                                  {item.preparationTime && (
-                                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                                      <Clock className="w-3 h-3" />
-                                      {item.preparationTime}m
-                                    </span>
-                                  )}
-                                </div>
+                            ) : (
+                              <div className="w-full h-full rounded-xl bg-gradient-to-br from-primary/10 to-purple-500/10 flex items-center justify-center">
+                                <Flame className="w-12 h-12 text-primary/30" />
                               </div>
-                            </div>
+                            )}
                             
-                            {/* Price and Add Button */}
-                            <div className="flex items-center justify-between mt-2">
-                              <p className="font-bold text-lg text-primary">
+                            {/* Prep Time Badge */}
+                            {item.preparationTime && (
+                              <div className="absolute top-2 left-2 flex items-center gap-1 bg-black/60 backdrop-blur-sm rounded-full px-2 py-1">
+                                <Clock className="w-3 h-3 text-white/70" />
+                                <span className="text-xs text-white/70">{item.preparationTime}m</span>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Info Section */}
+                          <div className="p-3">
+                            <h3 className="font-semibold text-white text-sm line-clamp-1 mb-0.5">
+                              {item.name}
+                            </h3>
+                            <p className="text-xs text-white/40 line-clamp-1 mb-2">
+                              {item.description || item.category}
+                            </p>
+                            
+                            {/* Price & Add Button */}
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-primary text-lg">
                                 ${item.basePrice.toFixed(2)}
-                              </p>
+                              </span>
                               
                               {item.sizes.length > 0 ? (
                                 <div className="flex gap-1">
-                                  {item.sizes.map((size) => (
-                                    <Button
+                                  {item.sizes.slice(0, 2).map((size) => (
+                                    <motion.button
                                       key={size.id}
-                                      size="sm"
-                                      variant="outline"
-                                      className="text-xs px-2 py-1 h-7 border-primary/30 hover:bg-primary hover:text-primary-foreground"
+                                      whileTap={{ scale: 0.9 }}
+                                      className="w-8 h-8 rounded-full bg-primary/20 text-primary text-xs font-bold hover:bg-primary hover:text-white transition-colors flex items-center justify-center"
                                       onClick={() => addToCart(item, size)}
+                                      title={`${size.name} - $${size.price}`}
                                     >
-                                      {size.name} ${size.price.toFixed(0)}
-                                    </Button>
+                                      {size.name.charAt(0)}
+                                    </motion.button>
                                   ))}
                                 </div>
                               ) : (
-                                <Button
-                                  size="sm"
-                                  className="bg-primary hover:bg-primary/90"
+                                <motion.button
+                                  whileTap={{ scale: 0.9 }}
+                                  className="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/30"
                                   onClick={() => addToCart(item, null)}
                                 >
-                                  <Plus className="w-4 h-4 mr-1" />
-                                  Add
-                                </Button>
+                                  <Plus className="w-5 h-5" />
+                                </motion.button>
                               )}
                             </div>
                           </div>
                         </div>
-                      </div>
-                    </motion.div>
-                  ))
+                      </motion.div>
+                    ))}
+                  </div>
                 )}
               </div>
             )}
           </div>
 
-          {/* Footer - Checkout */}
+          {/* Footer - Checkout Button - McCompose Style */}
           {cart.length > 0 && (
-            <div className="p-4 border-t border-border/30 bg-secondary/95 backdrop-blur-xl">
-              <div className="flex items-center justify-between mb-3">
+            <motion.div 
+              className="p-4 bg-gradient-to-t from-slate-900 to-transparent"
+              initial={{ y: 50, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+            >
+              <div className="flex items-center justify-between mb-3 px-1">
                 <div>
-                  <p className="text-sm text-muted-foreground">Subtotal</p>
-                  <p className="text-lg font-bold text-foreground">${cartTotal.toFixed(2)}</p>
+                  <p className="text-white/50 text-sm">Subtotal</p>
+                  <p className="text-xl font-bold text-white">${cartTotal.toFixed(2)}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-muted-foreground">Tax (10%)</p>
-                  <p className="text-sm text-muted-foreground">${(cartTotal * 0.1).toFixed(2)}</p>
+                  <p className="text-white/50 text-xs">Tax (10%)</p>
+                  <p className="text-white/70 text-sm">${(cartTotal * 0.1).toFixed(2)}</p>
                 </div>
               </div>
               
-              <Button 
-                className="w-full bg-gradient-to-r from-primary to-cyan-500 hover:from-primary/90 hover:to-cyan-500/90 text-primary-foreground font-semibold py-6"
+              <motion.button 
+                className="w-full h-14 bg-gradient-to-r from-primary via-cyan-500 to-primary bg-[length:200%_100%] rounded-2xl font-bold text-white text-lg shadow-xl shadow-primary/30 flex items-center justify-center gap-3 disabled:opacity-50"
+                whileTap={{ scale: 0.98 }}
                 onClick={placeOrder}
                 disabled={placingOrder}
+                style={{
+                  animation: 'shimmer 2s infinite linear',
+                }}
               >
                 {placingOrder ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     Placing Order...
-                  </div>
+                  </>
                 ) : (
-                  <div className="flex items-center gap-2">
+                  <>
                     Place Order - ${(cartTotal * 1.1).toFixed(2)}
                     <ChevronRight className="w-5 h-5" />
-                  </div>
+                  </>
                 )}
-              </Button>
-            </div>
+              </motion.button>
+            </motion.div>
           )}
         </motion.div>
       </motion.div>
+      
+      <style>{`
+        @keyframes shimmer {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+      `}</style>
     </AnimatePresence>
   );
 };
